@@ -225,9 +225,9 @@ class VideoService {
   static async issueStreamToken(videoId, user, sessionId) {
     const video = await Video.findOne({ _id: videoId, deletedAt: null });
     if (!video) throw ApiError.notFound('Video not found');
-    if (video.status !== 'ready') throw ApiError.badRequest('Video is still processing', 'VIDEO_NOT_READY');
 
-    // Access: admin, owning teacher, or actively enrolled student.
+    // Access first (admin, owning teacher, or actively enrolled student) — an outsider
+    // must not learn whether the video exists or is still processing.
     if (user.role === 'student') {
       const enrollment = await Enrollment.findOne({ student: user.id, course: video.course, status: 'active' });
       if (!enrollment) throw ApiError.forbidden('Not enrolled in this course');
@@ -235,6 +235,7 @@ class VideoService {
       const owns = await Course.findOne({ _id: video.course, teacher: user.id });
       if (!owns) throw ApiError.forbidden('Not your course');
     }
+    if (video.status !== 'ready') throw ApiError.badRequest('Video is still processing', 'VIDEO_NOT_READY');
 
     const token = signStreamToken({ resourceId: String(videoId), userId: String(user.id), sessionId: String(sessionId), ttlSeconds: 300 });
     return { token, expiresInSeconds: 300 };
