@@ -92,5 +92,23 @@ module.exports = {
     ALLOWED_DOC_TYPES: ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.zip', '.txt', '.xls', '.xlsx'],
     ALLOWED_IMAGE_TYPES: ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'],
     ALLOWED_VIDEO_TYPES: ['.mp4', '.webm', '.mov', '.mkv', '.m4v'],
+    // Declared MIME type must agree with the extension (checked alongside magic bytes).
+    ALLOWED_MIME: {
+      '.pdf': ['application/pdf'],
+      '.doc': ['application/msword'],
+      '.docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+      '.ppt': ['application/vnd.ms-powerpoint'],
+      '.pptx': ['application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+      '.xls': ['application/vnd.ms-excel'],
+      '.xlsx': ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+      '.zip': ['application/zip', 'application/x-zip-compressed'],
+      '.txt': ['text/plain'],
+      '.png': ['image/png'],
+      '.jpg': ['image/jpeg'],
+      '.jpeg': ['image/jpeg'],
+      '.webp': ['image/webp'],
+      '.gif': ['image/gif'],
+      '.svg': ['image/svg+xml'],
+    },
   },
 };

@@ -148,6 +148,18 @@ class VideoService {
 
     const stat = await fs.promises.stat(assembledPath);
 
+    // Container sniff: ftyp box at offset 4 (mp4/mov/m4v) or EBML header (webm/mkv).
+    const head = Buffer.alloc(12);
+    const fd = await fs.promises.open(assembledPath, 'r');
+    try { await fd.read(head, 0, 12, 0); } finally { await fd.close(); }
+    const isIsoBmff = head.subarray(4, 8).toString('latin1') === 'ftyp';
+    const isEbml = head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3;
+    if (!isIsoBmff && !isEbml) {
+      await fs.promises.unlink(assembledPath).catch(() => {});
+      await fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});
+      throw new Error('Not a recognised video container (expected MP4/MOV/M4V or WebM/MKV)');
+    }
+
     // 2. Probe duration + generate thumbnail while the file is still plaintext.
     if (await hasFfmpeg()) {
       try {

@@ -26,9 +26,10 @@ router.post('/courses/:courseId/documents', uploadLimiter, requireCourseOwnershi
 
 router.post('/courses/:courseId/images', uploadLimiter, requireCourseOwnership, imageUpload,
   asyncHandler(async (req, res) => {
+    const scope = req.body.scope === 'thumbnail' ? 'thumbnail' : req.body.scope === 'question' ? 'question' : 'course';
     const asset = await FileService.upload(req.file, {
-      uploadedBy: req.user.id, course: req.course._id, kind: 'images',
-      scope: req.body.scope === 'thumbnail' ? 'thumbnail' : req.body.scope === 'question' ? 'question' : 'course',
+      uploadedBy: req.user.id, course: req.course._id, kind: 'images', scope,
+      allowSvg: scope === 'thumbnail', // SVG can carry scripts; thumbnails are served as attachments only
     }, req.ip);
     res.status(201).json(asset);
   }));
@@ -98,7 +99,8 @@ router.get('/:fileId/content', asyncHandler(async (req, res) => {
   res.setHeader('Content-Type', asset.mimeType);
   res.setHeader('Content-Length', asset.sizeBytes);
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  const inline = asset.mimeType.startsWith('image/') || asset.mimeType === 'application/pdf';
+  // SVG is never rendered inline from this origin (script execution); everything else that browsers render safely is.
+  const inline = (asset.mimeType.startsWith('image/') && asset.mimeType !== 'image/svg+xml') || asset.mimeType === 'application/pdf';
   res.setHeader(
     'Content-Disposition',
     `${inline && !req.query.download ? 'inline' : 'attachment'}; filename="${encodeURIComponent(asset.originalName)}"`
