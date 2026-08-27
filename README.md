@@ -49,7 +49,8 @@ Teachers cannot touch other teachers' courses; admins cannot touch the owner or 
 - **Protected video pipeline** — chunked resumable uploads → AES-256-CTR encryption at rest (per-video keys wrapped by a master key) → signed, expiring stream URLs with HTTP Range support → moving identity watermark in the player. No file is ever publicly reachable.
 - **Quiz engine** — six question types (MCQ, true/false, short answer, essay, fill-blanks, image), pools, shuffling, negative marking, timed attempts with server-side deadlines, retake limits, scheduling and locking, auto + manual grading, leaderboards, per-question explanations.
 - **Anti-cheat proctoring** — tab/window switches, devtools heuristics, copy/paste, right-click, blocked shortcuts, multi-tab detection, fullscreen exits, idle time, refresh, offline events → server-side weighted risk score, auto-submit past threshold, teacher/admin reports. *(See `docs/SECURITY.md` for honest limitations.)*
-- **Operations** — audit trail for every security-relevant action, login history with device/browser breakdown, structured log files (`server/logs/`), background jobs (session sweep, enrollment expiry, overdue attempt auto-submit, deadline reminders), maintenance mode.
+- **Operations** — audit trail for every security-relevant action, login history with device/browser breakdown, structured log files (`server/logs/`, secrets redacted), background jobs (session sweep, enrollment expiry, overdue attempt auto-submit, idempotent deadline reminders), maintenance mode.
+- **Owner Security Center** — sessions, failed logins, locked accounts, platform-wide authorized devices with revoke, self-service device-reset requests reviewed by administrators, and the owner-only security policy. Uploads pass extension + MIME + magic-byte checks and an optional ClamAV daemon (fail-closed).
 
 ## Repository layout
 
@@ -88,5 +89,5 @@ docs/
 2. Point `MONGODB_URI` at a replica set; the dev in-memory fallback is disabled in production.
 3. Configure SMTP (`SMTP_HOST` …) for real email delivery; without it, mails are logged.
 4. Serve behind HTTPS (the app sets `trust proxy` and secure cookies in production).
-5. Set `STORAGE_ROOT` to a dedicated volume; wire `scanBuffer()` in `src/middleware/uploads.js` to a real antivirus engine (ClamAV daemon or a cloud API).
+5. Set `STORAGE_ROOT` to a dedicated volume; run a ClamAV daemon and set `CLAMAV_HOST` (uploads fail closed if it is down). Keep `JWT_SECRET`, `JWT_REFRESH_SECRET` and `MEDIA_MASTER_KEY` distinct — the server refuses to start otherwise. Rotate the media key only via `MEDIA_MASTER_KEY_PREVIOUS` + `MEDIA_KEY_VERSION` + `npm run migrate` (see `docs/SECURITY.md`).
 6. For multi-instance scale-out, move background jobs to a worker (see `docs/ARCHITECTURE.md`).
