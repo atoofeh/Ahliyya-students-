@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { UAParser } = require('ua-parser-js');
 const env = require('../../config/env');
 const ApiError = require('../../core/ApiError');
@@ -9,6 +10,12 @@ const { getSettings } = require('../../config/settingsCache');
 const User = require('../../models/User');
 const Session = require('../../models/Session');
 const LoginHistory = require('../../models/LoginHistory');
+const DeviceService = require('./device.service');
+
+// Compared against when the username is unknown so response timing does not reveal account existence.
+const DUMMY_HASH = bcrypt.hashSync('timing-equalizer-password', 12);
+const GENERIC_CREDENTIALS_MESSAGE = 'Invalid username or password';
+const DEVICE_NOT_AUTHORIZED_MESSAGE = 'This account is already linked to another device. Contact an administrator or request a device reset.';
 
 const parseDevice = (userAgent = '') => {
   const ua = new UAParser(userAgent).getResult();
@@ -32,46 +39,56 @@ class AuthService {
   }
 
   /**
-   * Login. Enforces: lockout after N failed attempts, status checks, and the
-   * single-active-session policy (all other sessions are terminated).
+   * Login, in enumeration-safe order:
+   *   password → (only then) lock / ban / suspension → device binding → session.
+   * A wrong password always yields the generic message, whatever the account state.
+   * The single-active-session policy still applies: a new login ends other sessions.
    */
-  static async login({ username, password, deviceId, fingerprint, rememberMe, userAgent, ip }) {
+  static async login({ username, password, deviceId, fingerprint, rememberMe, userAgent, ip, platform = 'web', appVersion = '' }) {
     const settings = await getSettings();
     const device = parseDevice(userAgent);
     const historyBase = { username, ip, userAgent, deviceId: deviceId || '', fingerprint: fingerprint || '', ...device };
 
-    const fail = async (user, reason, message, status = 401) => {
+    const fail = async (user, reason, message, status = 401, code, extraAudit) => {
       await LoginHistory.create({ ...historyBase, user: user?._id, success: false, reason });
       await audit({ user: user?._id, action: 'LOGIN_FAILED', ip, deviceId, meta: { username, reason } });
-      throw new ApiError(status, message, reason === 'locked' ? 'ACCOUNT_LOCKED' : undefined);
+      if (extraAudit) await audit({ user: user?._id, action: extraAudit, targetUser: user?._id, ip, deviceId, meta: { reason } });
+      throw new ApiError(status, message, code);
     };
+
+    if (!deviceId) throw ApiError.badRequest('Device ID is required', 'DEVICE_REQUIRED');
 
     const user = await User.findOne({ username: username.toLowerCase(), deletedAt: null })
       .select('+password +failedLoginAttempts +lockedUntil');
 
-    if (!user) return fail(null, 'unknown_user', 'Invalid username or password');
-    if (user.status === 'banned') return fail(user, 'banned', 'This account has been banned', 403);
-    if (user.status === 'suspended') return fail(user, 'suspended', 'This account is suspended', 403);
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
-      const mins = Math.ceil((user.lockedUntil - Date.now()) / 60000);
-      return fail(user, 'locked', `Account locked. Try again in ${mins} minute(s).`, 423);
+    if (!user) {
+      await bcrypt.compare(password, DUMMY_HASH);
+      return fail(null, 'unknown_user', GENERIC_CREDENTIALS_MESSAGE);
     }
 
     const ok = await user.comparePassword(password);
     if (!ok) {
       user.failedLoginAttempts += 1;
+      let reason = 'bad_password';
       if (user.failedLoginAttempts >= (settings.maxLoginAttempts || 5)) {
         user.lockedUntil = new Date(Date.now() + (settings.lockoutMinutes || 15) * 60000);
         user.failedLoginAttempts = 0;
+        reason = 'locked';
         await user.save();
         await audit({ user: user._id, action: 'ACCOUNT_LOCKED', ip, deviceId });
-        return fail(user, 'locked', 'Too many failed attempts. Account temporarily locked.', 423);
+      } else {
+        await user.save();
       }
-      await user.save();
-      return fail(user, 'bad_password', 'Invalid username or password');
+      return fail(user, reason, GENERIC_CREDENTIALS_MESSAGE);
     }
 
-    if (!deviceId) throw ApiError.badRequest('Device ID is required', 'DEVICE_REQUIRED');
+    // Password is correct — account state may now be disclosed.
+    if (user.status === 'banned') return fail(user, 'banned', 'This account has been banned', 403, 'ACCOUNT_BANNED');
+    if (user.status === 'suspended') return fail(user, 'suspended', 'This account is suspended', 403, 'ACCOUNT_SUSPENDED');
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const mins = Math.ceil((user.lockedUntil - Date.now()) / 60000);
+      return fail(user, 'locked', `Account locked. Try again in ${mins} minute(s).`, 423, 'ACCOUNT_LOCKED');
+    }
 
     // Reset lockout counters, stamp login.
     user.failedLoginAttempts = 0;
@@ -79,19 +96,31 @@ class AuthService {
     user.lastLoginAt = new Date();
     await user.save();
 
+    // ONE ACCOUNT, ONE AUTHORIZED DEVICE.
+    let boundDevice = null;
+    if (settings.deviceBindingEnabled !== false) {
+      const result = await DeviceService.bindOrVerify({ user, deviceId, fingerprint, ip, ua: device, platform, appVersion });
+      if (result.rejected) {
+        return fail(user, 'device_not_authorized', DEVICE_NOT_AUTHORIZED_MESSAGE, 403, 'DEVICE_NOT_AUTHORIZED', 'DEVICE_LOGIN_REJECTED');
+      }
+      boundDevice = result.device;
+    }
+
     // SINGLE ACTIVE SESSION: terminate every other session for this user.
     const terminated = await Session.updateMany(
       { user: user._id, isActive: true },
       { $set: { isActive: false, endedAt: new Date(), endReason: 'new_device_login' } }
     );
     if (terminated.modifiedCount > 0) {
-      await audit({ user: user._id, action: 'SESSION_TERMINATED', ip, deviceId, meta: { count: terminated.modifiedCount, cause: 'new_device_login' } });
+      await audit({ user: user._id, action: 'SESSION_TERMINATED', ip, deviceId, meta: { count: terminated.modifiedCount, cause: 'new_login' } });
     }
 
     const session = await Session.create({
       user: user._id,
       refreshTokenHash: 'pending',
       deviceId,
+      device: boundDevice?._id || null,
+      deviceKeyHash: DeviceService.hashDeviceId(deviceId),
       fingerprint: fingerprint || null,
       userAgent,
       ip,

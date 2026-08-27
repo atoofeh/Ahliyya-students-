@@ -1,5 +1,6 @@
 const asyncHandler = require('../../core/asyncHandler');
 const AuthService = require('./auth.service');
+const DeviceService = require('./device.service');
 const env = require('../../config/env');
 
 /**
@@ -28,6 +29,8 @@ const login = asyncHandler(async (req, res) => {
     rememberMe,
     userAgent: req.headers['user-agent'] || '',
     ip: clientIp(req),
+    platform: DeviceService.normalizePlatform(req.headers['x-client-platform']),
+    appVersion: String(req.headers['x-app-version'] || '').slice(0, 40),
   });
   res.cookie(REFRESH_COOKIE, result.refreshToken, cookieOptions(rememberMe));
   res.json({ user: result.user, accessToken: result.accessToken, refreshToken: result.refreshToken });
