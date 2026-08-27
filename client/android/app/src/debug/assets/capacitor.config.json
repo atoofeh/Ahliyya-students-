@@ -1,0 +1,31 @@
+{
+  "appId": "com.alahliyya.lms",
+  "appName": "Students Alahliyya",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SystemBars": {
+      "style": "DEFAULT",
+      "insetsHandling": "css"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    },
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#122A4E",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": false,
+      "splashImmersive": false
+    }
+  },
+  "//": "DEBUG VARIANT ONLY. Identical to capacitor.config.json except allowMixedContent, so a debug build served from https://localhost can call the plain-http development API. Release builds use the main config, where mixed content stays blocked and the network config permits no cleartext at all."
+}

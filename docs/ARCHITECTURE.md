@@ -52,6 +52,25 @@ Conventions: soft deletes (`deletedAt`) on user-facing entities; compound indexe
 - `npm run seed` — idempotent: creates the owner (`SUPER_ADMIN_*`), the default admin (`DEFAULT_ADMIN_*`) and, outside production, the legacy `admin` (`ADMIN_PASSWORD`). Development startup runs it automatically; production startup only verifies an owner exists and exits otherwise.
 - `npm run migrate [-- --dry-run] [-- --force-relogin]` — applies `src/migrations/*` not yet recorded in `_migrations`. `--force-relogin` bumps every `tokenVersion` and ends every session so the institution re-binds under the device policy.
 
+## Android client
+
+The Android app is the same Vite build, wrapped with Capacitor 8 and loaded from `https://localhost` inside a WebView. Nothing is forked: one codebase, one bundle, one set of pages.
+
+```
+client/src/api/native.js        the only importer of @capacitor/*  ──┐
+client/src/api/download.js      authenticated blob -> save or open  │  the rest of the client
+client/src/app/shell.js         back button, keyboard, system bars  │  asks these three
+                                                                    ┘
+client/android/…/LmsNativePlugin.java
+    secureSet/secureGet/secureRemove   AndroidKeyStore AES-256-GCM
+    deviceId                           SHA-256 of ANDROID_ID, hashed on-device
+    openFile                           FileProvider intent
+```
+
+The seam is deliberate. `isNative` is false in a browser and every native path short-circuits, so the web client's behaviour is unchanged and the Capacitor plugin modules are dynamically imported — the web bundle never carries them. Adding iOS later means adding a Swift sibling to `LmsNativePlugin`, not touching the React tree.
+
+The only server-side difference is transport: a client presenting `x-client-platform: android` also receives the refresh token in the response body, because the WebView's origin makes the httpOnly cookie unreliable. That contract predates the app (`auth.controller.js`) and is covered by `tests/auth.test.js`.
+
 ## Scaling path (thousands of concurrent users)
 
 Already in place: stateless auth (any instance can serve any request — session state is in MongoDB), pagination everywhere, lean queries with tight projections, aggregate-pipeline analytics, settings cache, throttled session writes, compression, Range-based streaming (players fetch only what they watch).

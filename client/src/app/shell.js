@@ -70,7 +70,6 @@ export function installShell({ onExitHint } = {}) {
 
     // resize:'body' (capacitor.config.json) shrinks the webview, so fixed bottom
     // bars ride above the keyboard; the class drops their gesture-bar padding.
-    Keyboard.setAccessoryBarVisible({ isVisible: false }).catch(() => {});
     track(Keyboard.addListener('keyboardWillShow', () => {
       document.documentElement.classList.add('keyboard-open');
     }));

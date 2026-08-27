@@ -42,6 +42,42 @@ dependencies {
     implementation project(':capacitor-cordova-android-plugins')
 }
 
+
+// Release signing. The keystore and its passwords never enter the repository:
+// put them in android/keystore.properties (gitignored) or set the same names as
+// environment variables in CI. Without them, assembleRelease still builds an
+// unsigned APK, so a clean checkout is never blocked.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+def ksStoreFile = keystoreProps['storeFile'] ?: System.getenv('LMS_KEYSTORE_FILE')
+def ksStorePassword = keystoreProps['storePassword'] ?: System.getenv('LMS_KEYSTORE_PASSWORD')
+def ksKeyAlias = keystoreProps['keyAlias'] ?: System.getenv('LMS_KEY_ALIAS')
+def ksKeyPassword = keystoreProps['keyPassword'] ?: System.getenv('LMS_KEY_PASSWORD')
+def hasSigningConfig = ksStoreFile != null && ksStorePassword != null && ksKeyAlias != null && ksKeyPassword != null
+
+android {
+    if (hasSigningConfig) {
+        signingConfigs {
+            release {
+                storeFile file(ksStoreFile)
+                storePassword ksStorePassword
+                keyAlias ksKeyAlias
+                keyPassword ksKeyPassword
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (hasSigningConfig) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+
 apply from: 'capacitor.build.gradle'
 
 try {

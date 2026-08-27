@@ -26,7 +26,8 @@ Every account is bound to a single authorized device.
 - **Revocation.** An administrator (`devices.reset`) revokes a device with a reason: all sessions end, `tokenVersion` is bumped, `DEVICE_REVOKED` is audited, and the next login from any device binds fresh (`DEVICE_CHANGED`). A user may also "forget this device" on logout. Admins cannot reset the owner's device; only the owner can reset an admin's.
 - **Lost device.** A student who is blocked can submit a public *device-reset request* (`POST /auth/device/reset-request`): the reply is identical whether or not the account exists, the endpoint is rate-limited (3 / hour per IP, 3 / day per account), only requests for real accounts are stored, and administrators approve (revoke) or dismiss them in the Security Center — approval goes through the same owner-protection guard as a direct revoke.
 - **Policy switch.** `deviceBindingEnabled` (owner-only) turns the one-device rule off platform-wide; session pinning stays on.
-- **Honest limit.** On the web, the device id lives in the browser's storage. Someone with both the password *and* a copy of that storage can sign in as the user; the design forces an attacker to obtain two secrets instead of one and makes every attempt visible in the audit log. Hardware-bound identity (WebAuthn/attestation) is the next step and is out of scope here. On Android the id is kept in Keystore-backed storage.
+- **Honest limit.** On the web, the device id lives in the browser's storage. Someone with both the password *and* a copy of that storage can sign in as the user; the design forces an attacker to obtain two secrets instead of one and makes every attempt visible in the audit log. Hardware-bound identity (WebAuthn/attestation) is the next step and is out of scope here.
+- **On Android** the device id is not stored at all: it is the SHA-256 of `Settings.Secure.ANDROID_ID`, computed inside the native plugin, so the raw platform id never crosses the JavaScript bridge or the network. It is derived rather than generated so that **reinstalling the app keeps the same binding** — otherwise every reinstall would lock the student out until an administrator reset them. A factory reset changes it, and does require a reset request.
 
 ## Authorization
 
@@ -71,6 +72,20 @@ We implement every feasible deterrent:
 - PrintScreen and known screenshot/devtools shortcuts are intercepted **during quizzes**, with clipboard overwrite as a best effort.
 
 **What no website can do**, and what we therefore do not claim: prevent OS-level recorders (OBS, Xbox Game Bar, macOS capture), hardware capture cards, or a phone pointed at the screen. Browser DRM (EME/Widevine L1) can raise the bar further but requires licensing a DRM provider and still does not stop camera capture. The platform's protection model is *identification and deterrence* (watermarks + audit trail + short-lived, per-user streams), which remains effective even when capture technically succeeds.
+
+**The Android app is the exception.** Its window carries `FLAG_SECURE`, so the operating system itself refuses screenshots, screen recording and casting for the whole app — the control a browser cannot offer. It still does not stop a camera pointed at the screen, and a rooted device can bypass it. Students who need to capture course material legitimately should be told to use the web client.
+
+## Android application
+
+`docs/ANDROID.md` covers the build; this is the security posture.
+
+- **Refresh token in the Keystore.** An AES-256-GCM key is generated inside the AndroidKeyStore and cannot be exported; the refresh token is stored as `base64(iv):base64(ciphertext)` in private SharedPreferences. Pulling the preferences file off a rooted device yields ciphertext that only that device's hardware key can unwrap. The access token stays in memory, exactly as on the web.
+- **Cookies are not used on native.** The WebView runs on its own origin (`https://localhost`), so the refresh cookie is cross-site and unreliable there. The server's existing native contract sends a body copy of the refresh token to clients presenting `x-client-platform: android`, and only to those clients — the web client still gets the httpOnly cookie and nothing in JavaScript.
+- **No cleartext in release.** The release network-security config permits TLS only, with no exceptions and no user-added CA trust. The debug variant alone allows cleartext, and only to the LAN dev host, the emulator loopback and localhost.
+- **No certificate pinning, on purpose.** The app has no in-app update channel; a certificate rotation would brick every installed copy until users manually reinstalled. Pinning becomes appropriate once an update path exists.
+- **`allowBackup=false`** so the encrypted store and app data are excluded from cloud and adb backups.
+- **One permission: `INTERNET`.** No storage, camera, location or contacts access is requested.
+- **No secret ships in the package.** An APK is world-readable; `scripts/scan-apk-secrets.mjs` unpacks every entry and fails the build if any value from `server/.env` appears in it. Run it before every release — the CI workflow does this automatically whenever an APK is present.
 
 ## Auditability
 

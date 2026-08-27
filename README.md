@@ -16,6 +16,10 @@ npm run dev          # http://localhost:5000
 cd client
 npm install
 npm run dev          # http://localhost:5173
+
+# Android APK (needs JDK 21 and the Android SDK — see docs/ANDROID.md)
+cd client
+npm run android:apk  # -> android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 Accounts are bootstrapped from `server/.env` by `npm run seed` (run automatically in development): the **owner** (`SUPER_ADMIN_*`), the default **administrator** Abdullah Dabbas (`DEFAULT_ADMIN_*`) and, in development only, `admin` (`ADMIN_PASSWORD`). Every bootstrapped account must change its password at first login. There is no default password — copy `server/.env.example` and fill it in.
@@ -72,15 +76,22 @@ server/
   storage/             encrypted videos + documents (never publicly served)
 client/
   src/
-    api/               axios + refresh rotation, device fingerprint
+    api/               axios + refresh rotation, device identity, native bridge, downloads
+    app/shell.js       Android back button, keyboard, system bars, splash
     context/           auth, theme (dark/light/system), toasts
     components/        UI kit, protected VideoPlayer, ChunkedUploader, search, notifications
     hooks/useAntiCheat.js
     pages/             student / teacher / admin page trees
+  public/fonts/        self-hosted brand faces (no third-party request at first paint)
+  resources/           launcher icon + splash sources
+  android/             Capacitor project: LmsNativePlugin (Keystore, device id, file open)
+scripts/
+  scan-apk-secrets.mjs fails if a built APK contains any server secret
 docs/
   ARCHITECTURE.md      module map, data model, scaling path
   SECURITY.md          threat model + honest browser-limitation disclosure
   API.md               endpoint reference
+  ANDROID.md           build, signing, release, and what the native layer does
 ```
 
 ## Production checklist

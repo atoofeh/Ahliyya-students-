@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  server:
+    name: Server tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+        working-directory: server
+      # The suite boots its own in-memory MongoDB and a temp STORAGE_ROOT.
+      # It never touches a real database or the encrypted media on disk.
+      - run: npm test
+        working-directory: server
+
+  client:
+    name: Client lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+        working-directory: client
+      # Zero problems is the standard; no eslint-disable is added to reach it.
+      - run: npm run lint
+        working-directory: client
+      - run: npm run build
+        working-directory: client
+
+  android:
+    name: Android build and secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+        working-directory: client
+      - run: npm run build:android
+        working-directory: client
+      - run: ./gradlew assembleDebug --no-daemon
+        working-directory: client/android
+
+      # An APK is world-readable. Nothing from the server environment may be in it.
+      # The scanner needs an env file to know what to look for; in CI that is the
+      # example file plus any secrets the workflow itself defines.
+      - name: Scan the APK for server secrets
+        run: node scripts/scan-apk-secrets.mjs client/android/app/build/outputs/apk/debug/app-debug.apk server/.env.example
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: client/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

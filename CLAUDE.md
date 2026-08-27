@@ -23,9 +23,21 @@ npm run migrate -- --dry-run [--force-relogin]
 npm run dev        # Vite, http://localhost:5173
 npm run build
 npm run lint       # eslint . — must stay at 0 problems; never add an eslint-disable, fix the cause
+
+# Android (from client/) — see docs/ANDROID.md
+npm run build:android   # vite build --mode android (reads .env.android) && cap sync android
+npm run android:apk     # the above, then gradlew assembleDebug
+                        # JAVA_HOME must point at JDK 21; Gradle will not run on Java 24
+
+# Repo root
+node scripts/scan-apk-secrets.mjs   # fails if any server secret is inside a built APK
 ```
 
 Bootstrap accounts come from `server/.env` (`SUPER_ADMIN_*`, `DEFAULT_ADMIN_*`, dev-only `ADMIN_PASSWORD`) via `server/src/seed.js`; production never seeds a default password. Copy `server/.env.example`. The client reads `VITE_API_URL` from `client/.env` (default `http://localhost:5000/api/v1`); there is no Vite dev proxy — the client calls the API origin directly with CORS.
+
+## Android (client/android)
+
+Capacitor 8 wraps the same Vite build. `client/src/api/native.js` is the **only** module that imports `@capacitor/*`; everything else asks it questions, and the plugin modules are imported dynamically so the web bundle never carries them. One first-party Java plugin, `LmsNativePlugin`, provides AndroidKeyStore storage for the refresh token, a reinstall-stable device id derived from `ANDROID_ID`, and FileProvider-based file opening. The activity carries `FLAG_SECURE`. Release builds permit no cleartext; only the debug variant reaches the LAN dev server. Never let a server secret into the package — `scripts/scan-apk-secrets.mjs` enforces that, and CI runs it.
 
 ## Backend architecture (server/src)
 

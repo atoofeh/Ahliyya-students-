@@ -23,6 +23,7 @@ client/android/app/release/
 client/android/capacitor-cordova-android-plugins/build/
 *.keystore
 *.jks
+client/android/keystore.properties
 
 # editor / OS
 .vscode/
