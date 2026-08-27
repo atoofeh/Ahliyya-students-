@@ -36,6 +36,7 @@ const envSchema = z.object({
   SMTP_FROM: z.string().default('LMS Platform <no-reply@lms.local>'),
 
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'http', 'debug']).default('info'),
+  LOG_DIR: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -66,5 +67,6 @@ if (!env.MEDIA_MASTER_KEY) {
 
 const path = require('path');
 env.STORAGE_ROOT = env.STORAGE_ROOT || path.join(__dirname, '..', '..', 'storage');
+env.LOG_DIR = env.LOG_DIR || path.join(__dirname, '..', '..', 'logs');
 
 module.exports = env;

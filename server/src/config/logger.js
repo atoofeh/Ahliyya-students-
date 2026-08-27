@@ -3,7 +3,7 @@ const fs = require('fs');
 const winston = require('winston');
 const env = require('./env');
 
-const logDir = path.join(__dirname, '..', '..', 'logs');
+const logDir = env.LOG_DIR;
 fs.mkdirSync(logDir, { recursive: true });
 
 const baseFormat = winston.format.combine(

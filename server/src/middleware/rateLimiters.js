@@ -1,9 +1,13 @@
 const rateLimit = require('express-rate-limit');
+const env = require('../config/env');
+
+// The suite fires dozens of logins from 127.0.0.1; production limits stay as written.
+const TEST_MULTIPLIER = env.NODE_ENV === 'test' ? 100 : 1;
 
 const build = (windowMs, max, message, options = {}) =>
   rateLimit({
     windowMs,
-    max,
+    max: max * TEST_MULTIPLIER,
     standardHeaders: true,
     legacyHeaders: false,
     message: { message, code: 'RATE_LIMITED' },
