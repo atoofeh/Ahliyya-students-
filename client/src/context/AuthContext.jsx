@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AuthContext } from '../hooks/useAuth';
 import api, { bootstrapSession } from '../api/axios';
-import { setAccessToken, clearAccessToken } from '../api/token';
-import { getDeviceId, getFingerprint } from '../api/fingerprint';
+import { setAccessToken, clearAccessToken, saveRefreshToken, clearRefreshToken } from '../api/token';
+import { resolveDeviceId, getFingerprint } from '../api/fingerprint';
 
 
 
@@ -25,17 +25,21 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const applyAuth = useCallback((data) => {
+  // On native the server also returns the refresh token in the body; it goes
+  // straight into the Keystore. On web the field is absent — there the refresh
+  // token is an httpOnly cookie the page never sees.
+  const applyAuth = useCallback(async (data) => {
     setAccessToken(data.accessToken);
+    if (data.refreshToken) await saveRefreshToken(data.refreshToken);
     localStorage.setItem('lms_user', JSON.stringify(data.user));
     setUser(data.user);
     return data.user;
   }, []);
 
   const login = useCallback(async (username, password, rememberMe) => {
-    const fingerprint = await getFingerprint();
+    const [deviceId, fingerprint] = await Promise.all([resolveDeviceId(), getFingerprint()]);
     const { data } = await api.post('/auth/login', {
-      username, password, rememberMe, deviceId: getDeviceId(), fingerprint,
+      username, password, rememberMe, deviceId, fingerprint,
     });
     return applyAuth(data);
   }, [applyAuth]);
@@ -50,6 +54,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async ({ forgetDevice = false } = {}) => {
     try { await api.post('/auth/logout', { forgetDevice }); } catch { /* session may already be gone */ }
     clearAccessToken();
+    await clearRefreshToken();
     localStorage.removeItem('lms_user');
     setUser(null);
   }, []);

@@ -5,6 +5,8 @@ node_modules/
 .env
 .env.*
 !.env.example
+# non-secret build configuration for the Android package (an API URL, nothing else)
+!client/.env.android
 
 # runtime data — encrypted media, temp chunks, logs (1.6 GB+, never commit)
 server/storage/
