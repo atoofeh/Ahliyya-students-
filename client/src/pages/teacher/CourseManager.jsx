@@ -11,6 +11,7 @@ import QuizzesTab from './tabs/QuizzesTab';
 import StudentsTab from './tabs/StudentsTab';
 import AssignmentsTab from './tabs/AssignmentsTab';
 import InsightsTab from './tabs/InsightsTab';
+import QaTab from './tabs/QaTab';
 
 const TABS = [
   { key: 'curriculum', label: 'Curriculum' },
@@ -19,6 +20,7 @@ const TABS = [
   { key: 'quizzes', label: 'Quizzes' },
   { key: 'assignments', label: 'Assignments' },
   { key: 'students', label: 'Students & codes' },
+  { key: 'qa', label: 'Q&A' },
   { key: 'insights', label: 'Insights' },
   { key: 'settings', label: 'Settings' },
 ];
@@ -102,6 +104,7 @@ export default function CourseManager() {
         {tab === 'quizzes' && <QuizzesTab courseId={courseId} />}
         {tab === 'assignments' && <AssignmentsTab courseId={courseId} />}
         {tab === 'students' && <StudentsTab courseId={courseId} />}
+        {tab === 'qa' && <QaTab courseId={courseId} />}
         {tab === 'insights' && <InsightsTab courseId={courseId} />}
 
         {tab === 'settings' && (

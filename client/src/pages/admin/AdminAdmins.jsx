@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { Plus, KeyRound, LogOut, Smartphone, ShieldCheck } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
-import { Card, Button, Modal, Input, Badge, Spinner, EmptyState, PageHeader } from '../../components/ui';
+import { Card, Button, Modal, Input, Badge, EmptyState, PageIntro } from '../../components/ui';
+import { SkeletonRows } from '../../components/Skeletons';
 
 const STATUS_COLORS = { active: 'green', suspended: 'amber', banned: 'red' };
 
@@ -48,10 +49,10 @@ export default function AdminAdmins() {
     setRevokeModal(null); setReason('');
   }, 'Device revoked');
 
-  if (!rows) return <Spinner full />;
+  if (!rows) return <SkeletonRows />;
   return (
     <div className="space-y-5">
-      <PageHeader title="Administrators" subtitle="Operational admins. Only you can create, suspend or reset them." gold
+      <PageIntro title="Administrators" subtitle="Operational admins. Only you can create, suspend or reset them."
         actions={<Button variant="gold" onClick={() => setCreateModal(true)}><Plus size={15} /> New administrator</Button>} />
 
       <Card className="overflow-x-auto">

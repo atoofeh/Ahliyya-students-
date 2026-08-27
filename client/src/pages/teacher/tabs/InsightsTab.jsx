@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Megaphone, ShieldAlert, MessageSquareText, Send } from 'lucide-react';
+import { Megaphone, ShieldAlert, Send } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
-import { Card, Button, Input, Textarea, Badge, EmptyState, Spinner, Tabs } from '../../../components/ui';
+import { Card, Button, Input, Textarea, Badge, EmptyState, Tabs } from '../../../components/ui';
+import { SkeletonCard } from '../../../components/Skeletons';
+import QaTab from './QaTab';
 
 export default function InsightsTab({ courseId }) {
   const toast = useToast();
@@ -11,15 +13,12 @@ export default function InsightsTab({ courseId }) {
   const [analytics, setAnalytics] = useState(null);
   const [cheat, setCheat] = useState(null);
   const [announcements, setAnnouncements] = useState(null);
-  const [threads, setThreads] = useState(null);
   const [annForm, setAnnForm] = useState({ title: '', body: '' });
-  const [reply, setReply] = useState({});
 
   const loadAll = useCallback(() => {
     api.get(`/analytics/courses/${courseId}`).then(({ data }) => setAnalytics(data)).catch(() => setAnalytics({}));
     api.get(`/anticheat/courses/${courseId}`).then(({ data }) => setCheat(data)).catch(() => setCheat({}));
     api.get(`/announcements/courses/${courseId}`).then(({ data }) => setAnnouncements(data.items)).catch(() => setAnnouncements([]));
-    api.get(`/qa/courses/${courseId}`).then(({ data }) => setThreads(data.items)).catch(() => setThreads([]));
   }, [courseId]);
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -28,16 +27,6 @@ export default function InsightsTab({ courseId }) {
       await api.post(`/announcements/courses/${courseId}`, annForm);
       toast.success('Announcement sent to all enrolled students');
       setAnnForm({ title: '', body: '' });
-      loadAll();
-    } catch (err) { toast.error(apiError(err)); }
-  };
-
-  const sendReply = async (threadId) => {
-    const body = reply[threadId]?.trim();
-    if (!body) return;
-    try {
-      await api.post(`/qa/${threadId}/replies`, { body });
-      setReply((r) => ({ ...r, [threadId]: '' }));
       loadAll();
     } catch (err) { toast.error(apiError(err)); }
   };
@@ -51,7 +40,7 @@ export default function InsightsTab({ courseId }) {
         { key: 'qa', label: 'Q&A' },
       ]} />
 
-      {sub === 'analytics' && (!analytics ? <Spinner full /> : (
+      {sub === 'analytics' && (!analytics ? <SkeletonCard lines={6} /> : (
         <div className="grid gap-4 lg:grid-cols-2">
           <Card className="p-4">
             <p className="mb-3 text-sm font-semibold text-surface-800 dark:text-surface-100">Student progress distribution</p>
@@ -100,7 +89,7 @@ export default function InsightsTab({ courseId }) {
         </div>
       ))}
 
-      {sub === 'anticheat' && (!cheat ? <Spinner full /> : (
+      {sub === 'anticheat' && (!cheat ? <SkeletonCard lines={6} /> : (
         <div className="space-y-4">
           <Card className="p-4">
             <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-surface-800 dark:text-surface-100">
@@ -153,7 +142,7 @@ export default function InsightsTab({ courseId }) {
             </Button>
           </Card>
           <div className="space-y-3">
-            {!announcements ? <Spinner /> : announcements.length === 0 ? (
+            {!announcements ? <SkeletonCard /> : announcements.length === 0 ? (
               <Card><EmptyState title="No announcements yet" /></Card>
             ) : announcements.map((a) => (
               <Card key={a._id} className="p-4">
@@ -166,33 +155,7 @@ export default function InsightsTab({ courseId }) {
         </div>
       )}
 
-      {sub === 'qa' && (!threads ? <Spinner full /> : threads.length === 0 ? (
-        <Card><EmptyState icon={<MessageSquareText size={24} />} title="No student questions yet" /></Card>
-      ) : (
-        <div className="space-y-3">
-          {threads.map((t) => (
-            <Card key={t._id} className="p-4">
-              <div className="flex items-center justify-between">
-                <p className="font-medium text-surface-900 dark:text-white">{t.title}</p>
-                {t.resolved ? <Badge color="green">Resolved</Badge> : <Badge color="amber">Open</Badge>}
-              </div>
-              <p className="mt-1 text-sm text-surface-600 dark:text-surface-300">{t.body}</p>
-              <p className="mt-1 text-xs text-surface-400">{t.author?.name} · {new Date(t.createdAt).toLocaleString()}</p>
-              {t.replies.map((r) => (
-                <div key={r._id} className="mt-2 rounded-lg bg-surface-50 dark:bg-surface-700/40 p-2.5 text-sm">
-                  <p className="text-surface-700 dark:text-surface-200">{r.body}</p>
-                  <p className="mt-0.5 text-xs text-surface-400">{r.author?.name}</p>
-                </div>
-              ))}
-              <div className="mt-2 flex gap-2">
-                <Input placeholder="Reply as instructor (marks resolved)..." value={reply[t._id] || ''}
-                  onChange={(e) => setReply((r) => ({ ...r, [t._id]: e.target.value }))} />
-                <Button size="sm" onClick={() => sendReply(t._id)}><Send size={14} /></Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      ))}
+      {sub === 'qa' && <QaTab courseId={courseId} />}
     </div>
   );
 }

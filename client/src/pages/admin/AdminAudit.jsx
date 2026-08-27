@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { ScrollText } from 'lucide-react';
 import api from '../../api/axios';
-import { Card, Badge, Spinner, Pagination, EmptyState, Input, Tabs } from '../../components/ui';
+import { Card, Badge, Pagination, EmptyState, Input, Tabs } from '../../components/ui';
+import { SkeletonRows } from '../../components/Skeletons';
 
 const ACTION_COLOR = (a) => {
   if (/FAILED|BANNED|LOCKED|MISMATCH|DELETED|INVALIDATED|CHEAT/.test(a)) return 'red';
@@ -43,7 +44,7 @@ export default function AdminAudit() {
         </div>
       )}
 
-      {!result ? <Spinner full /> : (
+      {!result ? <SkeletonRows /> : (
         <>
           <Card>
             {result.items.length === 0 ? <EmptyState icon={<ScrollText size={24} />} title="No log entries" /> : (

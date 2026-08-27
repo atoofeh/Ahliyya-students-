@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { MonitorSmartphone, LogOut } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
-import { Card, Button, Badge, Spinner, Pagination, EmptyState } from '../../components/ui';
+import { Card, Button, Badge, Pagination, EmptyState } from '../../components/ui';
+import { SkeletonRows } from '../../components/Skeletons';
 
 export default function AdminSessions() {
   const toast = useToast();
@@ -22,7 +23,7 @@ export default function AdminSessions() {
     } catch (err) { toast.error(apiError(err)); }
   };
 
-  if (!result) return <Spinner full />;
+  if (!result) return <SkeletonRows />;
 
   return (
     <div className="space-y-5">

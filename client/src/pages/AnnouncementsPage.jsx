@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Megaphone, Pin } from 'lucide-react';
 import api from '../api/axios';
-import { Card, Spinner, EmptyState, Badge, PageHeader, Avatar } from '../components/ui';
+import { Card, EmptyState, Badge, PageIntro, Avatar } from '../components/ui';
+import { SkeletonCard } from '../components/Skeletons';
 
 export default function AnnouncementsPage() {
   const [items, setItems] = useState(null);
@@ -10,11 +11,11 @@ export default function AnnouncementsPage() {
     api.get('/announcements/feed').then(({ data }) => setItems(data)).catch(() => setItems([]));
   }, []);
 
-  if (!items) return <Spinner full />;
+  if (!items) return <SkeletonCard />;
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <PageHeader title="Announcements" subtitle="Platform news and updates from your courses." />
+      <PageIntro title="Announcements" subtitle="Platform news and updates from your courses." />
       {items.length === 0 ? (
         <Card><EmptyState icon={<Megaphone size={26} />} title="Nothing here yet" /></Card>
       ) : (

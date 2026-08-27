@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Award, BadgeCheck, CalendarDays } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, Spinner, EmptyState, PageHeader, Badge } from '../../components/ui';
+import { Card, EmptyState, PageIntro, Badge } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 import { LogoMark } from '../../components/Logo';
 
 export default function CertificatesPage() {
@@ -13,11 +14,11 @@ export default function CertificatesPage() {
     api.get('/enrollments/certificates/mine').then(({ data }) => setCerts(data)).catch(() => setCerts([]));
   }, []);
 
-  if (!certs) return <Spinner full />;
+  if (!certs) return <SkeletonCard />;
 
   return (
     <div className="space-y-5">
-      <PageHeader gold title="Certificates"
+      <PageIntro title="Certificates"
         subtitle="Earned by completing courses — every serial is publicly verifiable." />
       {certs.length === 0 ? (
         <Card><EmptyState icon={<Award size={28} />} title="No certificates yet"

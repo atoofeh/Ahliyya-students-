@@ -3,7 +3,8 @@ import { Save, ShieldCheck, Timer, Video, Wrench, Lock } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, Button, Input, Select, Toggle, Spinner } from '../../components/ui';
+import { Card, Button, Input, Select, Toggle } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 
 export default function AdminSettings() {
   const toast = useToast();
@@ -40,7 +41,7 @@ export default function AdminSettings() {
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
   };
 
-  if (!settings) return <Spinner full />;
+  if (!settings) return <SkeletonCard />;
   const set = (k) => (e) => setSettings((s) => ({ ...s, [k]: e.target.value }));
   const setBool = (k) => (v) => setSettings((s) => ({ ...s, [k]: v }));
   const lock = (k) => !isOwner && ownerOnly.includes(k);

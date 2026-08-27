@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { Plus, BookOpen } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
-import { Card, Button, Spinner, EmptyState, Badge, Pagination, Modal, Input, Textarea, Select } from '../../components/ui';
+import { Card, Button, EmptyState, Badge, Pagination, Modal, Input, Textarea, Select } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'].map((d) => ({ value: d, label: d }));
 const VISIBILITIES = [
@@ -41,7 +42,7 @@ export default function TeacherCourses() {
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
   };
 
-  if (!result) return <Spinner full />;
+  if (!result) return <SkeletonCard />;
 
   return (
     <div className="space-y-5">

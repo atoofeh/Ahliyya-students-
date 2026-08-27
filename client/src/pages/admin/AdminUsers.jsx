@@ -5,6 +5,7 @@ import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
 import { ROLE_LABEL } from '../../utils/roles';
 import { Card, Button, Modal, Input, Select, Badge, Spinner, Pagination, EmptyState, Tabs } from '../../components/ui';
+import { SkeletonRows } from '../../components/Skeletons';
 
 const ROLE_COLORS = { super_admin: 'gold', admin: 'primary', teacher: 'blue', student: 'gray' };
 const STATUS_COLORS = { active: 'green', suspended: 'amber', banned: 'red', pending: 'gray' };
@@ -129,7 +130,7 @@ export default function AdminUsers() {
           options={[{ value: '', label: 'All statuses' }, { value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }, { value: 'banned', label: 'Banned' }]} />
       </div>
 
-      {!result ? <Spinner full /> : (
+      {!result ? <SkeletonRows /> : (
         <>
           <Card className="overflow-x-auto">
             {result.items.length === 0 ? <EmptyState title="No users match" /> : (

@@ -1,42 +1,78 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Users, ClipboardCheck, ShieldAlert, Video, Eye } from 'lucide-react';
-import api from '../../api/axios';
-import { Card, StatCard, Spinner, EmptyState, Badge, Button, ProgressBar, PageHeader, SectionTitle } from '../../components/ui';
+import { ClipboardCheck, ShieldAlert, BookOpen } from 'lucide-react';
+import api, { apiError } from '../../api/axios';
+import { Card, EmptyState, Badge, Button, ProgressBar, PageIntro, SectionTitle } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
+import ErrorState from '../../components/ErrorState';
 import CourseCover from '../../components/CourseCover';
+
+const CHIP = {
+  amber: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/25 dark:text-amber-200',
+  rose: 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-700/60 dark:bg-rose-900/25 dark:text-rose-200',
+};
 
 export default function TeacherDashboard() {
   const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    api.get('/analytics/teacher').then(({ data }) => setData(data)).catch(() => {});
+  const load = useCallback(async () => {
+    try {
+      const { data: d } = await api.get('/analytics/teacher');
+      setError(null);
+      setData(d);
+    } catch (err) {
+      setError({ code: err.response?.data?.code, message: apiError(err) });
+    }
   }, []);
+  useEffect(() => { const t = setTimeout(load, 0); return () => clearTimeout(t); }, [load]);
 
-  if (!data) return <Spinner full />;
+  if (error) return <ErrorState code={error.code} message={error.message} onRetry={load} />;
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <SkeletonCard lines={1} />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
+      </div>
+    );
+  }
+
   const { stats, courses } = data;
+  const attention = [
+    { key: 'grade', label: 'awaiting grading', value: stats.pendingGrading, icon: ClipboardCheck, tone: 'amber' },
+    { key: 'cheat', label: 'cheat events this week', value: stats.cheatEventsThisWeek, icon: ShieldAlert, tone: 'rose' },
+  ].filter((a) => a.value > 0);
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageIntro
         title="Instructor dashboard"
-        subtitle="Your courses, students and performance at a glance."
-        actions={<Link to="/teacher/courses"><Button variant="gold">Manage courses</Button></Link>}
+        subtitle="Your courses, your students, and what needs you today."
+        actions={<Link to="/teacher/courses"><Button>Manage courses</Button></Link>}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
-        <StatCard icon={<BookOpen size={20} />} label="Courses" value={stats.courses} sub={`${stats.publishedCourses} published`} />
-        <StatCard icon={<Users size={20} />} label="Students" value={stats.totalStudents} color="sky" />
-        <StatCard icon={<ClipboardCheck size={20} />} label="To grade" value={stats.pendingGrading} color="amber" />
-        <StatCard icon={<ShieldAlert size={20} />} label="Cheat events (7d)" value={stats.cheatEventsThisWeek} color="rose" />
-        <StatCard icon={<Video size={20} />} label="Videos" value={stats.totalVideos} color="green" />
-        <StatCard icon={<Eye size={20} />} label="Video views" value={stats.totalVideoViews} color="primary" />
-      </div>
+      {attention.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {attention.map(({ key, label, value, icon: Icon, tone }) => (
+            <Link key={key} to="/teacher/courses"
+              className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition-opacity hover:opacity-90 ${CHIP[tone]}`}>
+              <Icon size={15} />
+              <span className="font-bold tabular-nums">{value}</span> {label}
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-surface-500">Nothing needs your attention right now.</p>
+      )}
 
       <div>
         <SectionTitle title="Course performance" subtitle="Students, attempts and progress per course" />
         {courses.length === 0 ? (
-          <Card><EmptyState title="No courses yet" subtitle="Create your first course to start teaching."
-            action={<Link to="/teacher/courses"><Button>Create course</Button></Link>} /></Card>
+          <Card>
+            <EmptyState icon={<BookOpen size={26} />} title="No courses yet"
+              subtitle="Create your first course to start teaching."
+              action={<Link to="/teacher/courses"><Button>Create course</Button></Link>} />
+          </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {courses.map((c) => (
@@ -56,7 +92,8 @@ export default function TeacherDashboard() {
                     </div>
                     <div className="mt-3">
                       <div className="mb-1 flex justify-between text-xs text-surface-400">
-                        <span>Avg progress</span><span className="font-semibold text-surface-600 dark:text-surface-300">{c.avgProgress}%</span>
+                        <span>Avg progress</span>
+                        <span className="font-semibold text-surface-600 dark:text-surface-300">{c.avgProgress}%</span>
                       </div>
                       <ProgressBar value={c.avgProgress} />
                     </div>

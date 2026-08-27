@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { BookOpen, Clock, BarChart3, Search, CheckCircle2 } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
-import { Card, Button, Spinner, EmptyState, Badge, Pagination, PageHeader } from '../../components/ui';
+import { Card, Button, EmptyState, Badge, Pagination, PageIntro } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 import CourseCover from '../../components/CourseCover';
 
 const DIFFICULTY_COLOR = { beginner: 'green', intermediate: 'amber', advanced: 'red' };
@@ -40,7 +41,7 @@ export default function CourseCatalog() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
+      <PageIntro
         title="Course catalog"
         subtitle="Public courses open for enrollment — private courses need an access code."
         actions={
@@ -56,7 +57,7 @@ export default function CourseCatalog() {
         }
       />
 
-      {!result ? <Spinner full /> : result.items.length === 0 ? (
+      {!result ? <SkeletonCard /> : result.items.length === 0 ? (
         <Card><EmptyState icon={<BookOpen size={28} />} title="No public courses found"
           subtitle="Ask your teacher for an access code, or check back later." /></Card>
       ) : (

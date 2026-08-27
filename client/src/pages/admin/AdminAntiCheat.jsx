@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../../api/axios';
-import { Card, Badge, Spinner, Pagination, EmptyState } from '../../components/ui';
+import { Card, Badge, Pagination, EmptyState } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 
 export default function AdminAntiCheat() {
   const [data, setData] = useState(null);
@@ -13,7 +14,7 @@ export default function AdminAntiCheat() {
   }, [page]);
   useEffect(() => { load(); }, [load]);
 
-  if (!data) return <Spinner full />;
+  if (!data) return <SkeletonCard />;
 
   return (
     <div className="space-y-5">

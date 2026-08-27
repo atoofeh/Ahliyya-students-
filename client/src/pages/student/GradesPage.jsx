@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
-import { Card, Spinner, Badge, EmptyState, Pagination, PageHeader } from '../../components/ui';
+import { Card, Badge, EmptyState, Pagination, PageIntro } from '../../components/ui';
+import { SkeletonRows } from '../../components/Skeletons';
 
 const scoreTone = (p) =>
   p >= 85 ? 'bg-emerald-500' : p >= 60 ? 'bg-brand-500' : p >= 40 ? 'bg-amber-500' : 'bg-rose-500';
@@ -15,11 +16,11 @@ export default function GradesPage() {
       .then(({ data }) => setResult(data)).catch(() => {});
   }, [page]);
 
-  if (!result) return <Spinner full />;
+  if (!result) return <SkeletonRows />;
 
   return (
     <div className="space-y-5">
-      <PageHeader title="My grades" subtitle="All quiz attempts across your courses." />
+      <PageIntro title="My grades" subtitle="All quiz attempts across your courses." />
       <Card className="overflow-hidden">
         {result.items.length === 0 ? <EmptyState title="No graded work yet" /> : (
           <div className="overflow-x-auto">

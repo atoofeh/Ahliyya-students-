@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bookmark, Trash2, ArrowRight } from 'lucide-react';
 import api from '../../api/axios';
-import { Card, Spinner, EmptyState, Button, PageHeader } from '../../components/ui';
+import { Card, EmptyState, Button, PageIntro } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 
 export default function BookmarksPage() {
   const [bookmarks, setBookmarks] = useState(null);
@@ -15,11 +16,11 @@ export default function BookmarksPage() {
     load();
   };
 
-  if (!bookmarks) return <Spinner full />;
+  if (!bookmarks) return <SkeletonCard />;
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Bookmarks" subtitle="Lessons you saved for later." />
+      <PageIntro title="Bookmarks" subtitle="Lessons you saved for later." />
       {bookmarks.length === 0 ? (
         <Card><EmptyState icon={<Bookmark size={26} />} title="No bookmarks yet"
           subtitle="Use the bookmark button inside any lesson to save it here." /></Card>

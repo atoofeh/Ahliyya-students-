@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MonitorSmartphone, LogIn, Lock, Smartphone, Inbox, ShieldCheck } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
-import { Card, Button, Modal, Input, Select, Badge, Spinner, Pagination, EmptyState, StatCard, Tabs, Toggle, PageHeader } from '../../components/ui';
+import { Card, Button, Modal, Input, Select, Badge, Pagination, EmptyState, StatCard, Tabs, Toggle, PageIntro } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -21,7 +22,7 @@ export default function AdminSecurity() {
   const navigate = useNavigate();
   return (
     <div className="space-y-5">
-      <PageHeader title="Security Center" subtitle="Sessions, authorized devices, reset requests and the owner-only security policy." gold />
+      <PageIntro title="Security Center" subtitle="Sessions, authorized devices, reset requests and the owner-only security policy." />
       <Tabs tabs={TABS} active={tab} onChange={(k) => navigate(`/admin/security/${k}`)} />
       {tab === 'overview' && <Overview />}
       {tab === 'devices' && <Devices />}
@@ -34,7 +35,7 @@ export default function AdminSecurity() {
 function Overview() {
   const [data, setData] = useState(null);
   useEffect(() => { api.get('/admin/security/overview').then((r) => setData(r.data)).catch(() => {}); }, []);
-  if (!data) return <Spinner full />;
+  if (!data) return <SkeletonCard />;
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -123,7 +124,7 @@ function Devices() {
         <Select value={status} onChange={(e) => { setPage(1); setStatus(e.target.value); }}
           options={[{ value: '', label: 'Active and revoked' }, { value: 'active', label: 'Active' }, { value: 'revoked', label: 'Revoked' }]} />
       </div>
-      {!result ? <Spinner full /> : (
+      {!result ? <SkeletonCard /> : (
         <>
           <Card className="overflow-x-auto">
             {result.items.length === 0 ? <EmptyState icon={<Smartphone size={22} />} title="No devices match" /> : (
@@ -194,7 +195,7 @@ function Requests() {
     <div className="space-y-4">
       <Tabs tabs={[{ key: 'open', label: 'Open' }, { key: 'resolved', label: 'Resolved' }, { key: 'dismissed', label: 'Dismissed' }]}
         active={status} onChange={(k) => { setPage(1); setStatus(k); }} />
-      {!result ? <Spinner full /> : result.items.length === 0 ? <EmptyState icon={<Inbox size={22} />} title={`No ${status} requests`} /> : (
+      {!result ? <SkeletonCard /> : result.items.length === 0 ? <EmptyState icon={<Inbox size={22} />} title={`No ${status} requests`} /> : (
         <>
           <Card className="divide-y divide-surface-100 dark:divide-surface-700/60">
             {result.items.map((req) => (
@@ -241,7 +242,7 @@ function Policies() {
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
   };
 
-  if (!settings) return <Spinner full />;
+  if (!settings) return <SkeletonCard />;
   const set = (k) => (e) => setSettings((s) => ({ ...s, [k]: e.target.value }));
   const setBool = (k) => (v) => setSettings((s) => ({ ...s, [k]: v }));
   return (

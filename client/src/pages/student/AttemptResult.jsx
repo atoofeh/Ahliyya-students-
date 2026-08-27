@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { CheckCircle2, XCircle, MinusCircle, Trophy, ArrowLeft } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
-import { Card, Spinner, Badge, Button } from '../../components/ui';
+import { Card, Badge, Button } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 
 export default function AttemptResult() {
   const { attemptId } = useParams();
@@ -16,7 +17,7 @@ export default function AttemptResult() {
       .catch((err) => toast.error(apiError(err)));
   }, [attemptId, toast]);
 
-  if (!attempt) return <Spinner full />;
+  if (!attempt) return <SkeletonCard />;
 
   if (attempt.message) {
     return (

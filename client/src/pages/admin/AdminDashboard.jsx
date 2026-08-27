@@ -3,7 +3,8 @@ import { Users, BookOpen, MonitorSmartphone, LogIn, FileWarning, HardDrive } fro
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, AreaChart, Area } from 'recharts';
 import api from '../../api/axios';
 import { useTheme } from '../../hooks/useTheme';
-import { Card, StatCard, Spinner, EmptyState, Badge, PageHeader, SectionTitle } from '../../components/ui';
+import { Card, StatCard, EmptyState, Badge, PageIntro, SectionTitle } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 
 /* Chart series colors — CVD-validated pairs (dataviz six-checks) per surface. */
 const CHART = {
@@ -48,7 +49,7 @@ export default function AdminDashboard() {
     api.get('/analytics/admin').then(({ data }) => setData(data)).catch(() => {});
   }, []);
 
-  if (!data) return <Spinner full />;
+  if (!data) return <SkeletonCard />;
   const { users, courses, activity, storage, popularCourses, loginTrend, deviceStats } = data;
 
   // Build login trend series: day → { success, failed }
@@ -64,7 +65,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Platform overview" subtitle="Live operational metrics across Students_Alahliyya." />
+      <PageIntro title="Platform overview" subtitle="Live operational metrics across Students_Alahliyya." />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
         <StatCard icon={<Users size={20} />} label="Users" value={users.total}

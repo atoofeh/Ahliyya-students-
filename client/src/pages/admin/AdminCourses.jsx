@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { BookOpen, Pencil, Trash2 } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
-import { Card, Button, Badge, Spinner, Pagination, EmptyState, Input } from '../../components/ui';
+import { Card, Button, Badge, Pagination, EmptyState, Input } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 
 export default function AdminCourses() {
   const toast = useToast();
@@ -27,7 +28,7 @@ export default function AdminCourses() {
     } catch (err) { toast.error(apiError(err)); }
   };
 
-  if (!result) return <Spinner full />;
+  if (!result) return <SkeletonCard />;
 
   return (
     <div className="space-y-5">
