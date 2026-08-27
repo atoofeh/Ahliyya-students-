@@ -51,6 +51,7 @@ Teachers cannot touch other teachers' courses; admins cannot touch the owner or 
 - **Anti-cheat proctoring** — tab/window switches, devtools heuristics, copy/paste, right-click, blocked shortcuts, multi-tab detection, fullscreen exits, idle time, refresh, offline events → server-side weighted risk score, auto-submit past threshold, teacher/admin reports. *(See `docs/SECURITY.md` for honest limitations.)*
 - **Operations** — audit trail for every security-relevant action, login history with device/browser breakdown, structured log files (`server/logs/`, secrets redacted), background jobs (session sweep, enrollment expiry, overdue attempt auto-submit, idempotent deadline reminders), maintenance mode.
 - **Owner Security Center** — sessions, failed logins, locked accounts, platform-wide authorized devices with revoke, self-service device-reset requests reviewed by administrators, and the owner-only security policy. Uploads pass extension + MIME + magic-byte checks and an optional ClamAV daemon (fail-closed).
+- **Task-first study experience** — the student home opens on *continue learning* and what is due next; the course player puts the lesson first with the curriculum in a rail (a bottom sheet on phones) and a reachable action bar; quizzes keep unsent answers on the device and resend them when the connection returns; choices are keyboard-operable and dialogs trap focus.
 
 ## Repository layout
 

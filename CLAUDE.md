@@ -22,7 +22,7 @@ npm run migrate -- --dry-run [--force-relogin]
 # Frontend (client/)
 npm run dev        # Vite, http://localhost:5173
 npm run build
-npm run lint       # eslint . — 13 pre-existing react-hooks v7 errors in ThemeContext/ToastContext/VideoPlayer/useAntiCheat (UI spec)
+npm run lint       # eslint . — must stay at 0 problems; never add an eslint-disable, fix the cause
 ```
 
 Bootstrap accounts come from `server/.env` (`SUPER_ADMIN_*`, `DEFAULT_ADMIN_*`, dev-only `ADMIN_PASSWORD`) via `server/src/seed.js`; production never seeds a default password. Copy `server/.env.example`. The client reads `VITE_API_URL` from `client/.env` (default `http://localhost:5000/api/v1`); there is no Vite dev proxy — the client calls the API origin directly with CORS.
@@ -50,7 +50,11 @@ security stack (helmet/cors/sanitize/hpp) → rate limit → /api/v1 router (rou
 
 ## Frontend architecture (client/src)
 
-- **`api/axios.js`** — the single axios instance; access token lives in memory (`api/token.js`), refresh comes from the httpOnly cookie (`bootstrapSession()` on load), device headers from `api/fingerprint.js`. All API calls go through it. `utils/roles.js` mirrors the server's role rules for routing.
+- **`api/axios.js`** — the single axios instance; access token lives in memory (`api/token.js`), refresh comes from the httpOnly cookie (`bootstrapSession()` on load), device headers from `api/fingerprint.js`. All API calls go through it. `utils/roles.js` mirrors the server's role rules for routing and owns the sidebar nav lists.
+- **`hooks/`** — `useAuth`, `useTheme`, `useToast` (each also owns its `createContext`, so `context/*.jsx` export only providers and stay fast-refreshable), plus `useNetworkStatus`, `useFocusTrap`, `useAntiCheat`.
+- **Shared UI** — `components/ui.jsx` (kit; `PageIntro` is the default page header, `PageHeader`'s gradient band is reserved for the student-home hero, `Modal` traps focus and closes on Escape), `Skeletons.jsx` (never a centred spinner for page content), `ErrorState.jsx` + `errorCopy.js` (server code → plain language), `Choice.jsx` (accessible quiz radio/checkbox groups), `OfflineBanner.jsx`.
+- **Routing** — `App.jsx` lazy-loads every page except the auth screens, with a `SkeletonPage` fallback; recharts therefore ships only with the chart pages.
+- **Effects** — the react-hooks v7 rules forbid setting state synchronously in an effect body; the codebase idiom is `useEffect(() => { const t = setTimeout(load, 0); return () => clearTimeout(t); }, [load])`.
 - **`context/`** — auth, theme (dark/light/system), toasts.
 - **`pages/`** — separate page trees per role: `student/`, `teacher/`, `admin/`, plus `auth/`. Routing via react-router-dom v7; role layouts in `layouts/`.
 - **`hooks/useAntiCheat.js`** — quiz proctoring event capture (tab switches, devtools, copy/paste…) posted to `/anticheat/events`; server computes the weighted risk score.
