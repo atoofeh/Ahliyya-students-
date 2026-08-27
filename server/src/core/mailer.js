@@ -25,7 +25,8 @@ if (env.SMTP_HOST) {
 const sendMail = async ({ to, subject, html, text }) => {
   try {
     const info = await transporter.sendMail({ from: env.SMTP_FROM, to, subject, html, text });
-    if (!env.SMTP_HOST) {
+    // Development convenience only: message bodies carry verification/reset codes and must never reach production logs.
+    if (!env.SMTP_HOST && env.NODE_ENV !== 'production') {
       logger.info(`📧 [dev mail] to=${to} subject="${subject}"`, { preview: (text || '').slice(0, 200) });
     }
     return info;

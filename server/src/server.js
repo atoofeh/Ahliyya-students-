@@ -7,6 +7,9 @@ const { startJobs } = require('./jobs');
 
 const start = async () => {
   await connectDB();
+  if (env.NODE_ENV === 'production' && !env.SMTP_HOST) {
+    logger.warn('SMTP is not configured — verification and password-reset emails cannot be delivered.');
+  }
   if (env.NODE_ENV === 'production') {
     const User = require('./models/User');
     const hasOwner = await User.exists({ role: 'super_admin', deletedAt: null });

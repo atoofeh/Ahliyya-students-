@@ -14,6 +14,7 @@ process.env.MONGODB_URI = 'mongodb://127.0.0.1:1/unreachable-forces-memory';
 process.env.STORAGE_ROOT = path.join(tmpDir, 'storage');
 process.env.LOG_DIR = path.join(tmpDir, 'logs');
 process.env.LOG_LEVEL = 'error';
+process.env.RATE_LIMIT_MULTIPLIER = process.env.RATE_LIMIT_MULTIPLIER || '100';
 process.env.JWT_SECRET = 'test-jwt-secret-0123456789';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-0123456789';
 process.env.CLIENT_URL = 'http://localhost:5173';

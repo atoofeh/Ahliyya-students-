@@ -31,6 +31,17 @@ const envSchema = z.object({
   CLIENT_URL: z.string().default('http://localhost:5173'),
   ALLOWED_ORIGINS: z.string().default(''),
   REFRESH_COOKIE_SAMESITE: z.enum(['lax', 'none', 'strict']).default('lax'),
+  RATE_LIMIT_MULTIPLIER: z.coerce.number().min(1).default(1),
+
+  // Media key rotation: new videos wrap with MEDIA_MASTER_KEY (MEDIA_KEY_VERSION);
+  // videos wrapped under the previous version unwrap with MEDIA_MASTER_KEY_PREVIOUS.
+  MEDIA_KEY_VERSION: z.coerce.number().int().min(1).default(1),
+  MEDIA_MASTER_KEY_PREVIOUS: optional(z.string().min(32)),
+
+  // Optional ClamAV daemon (fail-closed when set but unreachable).
+  CLAMAV_HOST: optional(z.string()),
+  CLAMAV_PORT: z.coerce.number().int().default(3310),
+  CLAMAV_TIMEOUT_MS: z.coerce.number().int().default(15000),
 
   // Owner (super_admin) bootstrap — created once by `npm run seed` / dev startup.
   SUPER_ADMIN_NAME: z.string().min(2).max(100).default('Platform Owner'),
@@ -83,6 +94,20 @@ if (!env.MEDIA_MASTER_KEY) {
     .createHash('sha256')
     .update(`media:${env.JWT_SECRET}`)
     .digest('hex');
+}
+
+// Production: every secret must be its own random value.
+if (env.NODE_ENV === 'production') {
+  const pairs = [
+    ['JWT_SECRET', 'JWT_REFRESH_SECRET'], ['JWT_SECRET', 'MEDIA_MASTER_KEY'],
+    ['JWT_REFRESH_SECRET', 'MEDIA_MASTER_KEY'], ['MEDIA_MASTER_KEY', 'MEDIA_MASTER_KEY_PREVIOUS'],
+  ];
+  for (const [a, b] of pairs) {
+    if (env[a] && env[b] && env[a] === env[b]) {
+      console.error(`❌ ${a} and ${b} must be different values.`);
+      process.exit(1);
+    }
+  }
 }
 
 const path = require('path');

@@ -5,6 +5,7 @@ const { applySecurity } = require('./middleware/security');
 const { generalLimiter } = require('./middleware/rateLimiters');
 const errorHandler = require('./middleware/errorHandler');
 const ApiError = require('./core/ApiError');
+const { redactUrl } = require('./core/redact');
 
 const app = express();
 
@@ -17,7 +18,7 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
-    logger.http?.(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+    logger.http?.(`${req.method} ${redactUrl(req.originalUrl)} ${res.statusCode} ${Date.now() - start}ms`);
   });
   next();
 });
