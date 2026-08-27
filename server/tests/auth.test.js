@@ -75,3 +75,105 @@ test('refresh and logout enforce the Origin allowlist', async () => {
   const badLogout = await api('POST', '/auth/logout', { deviceId: 'dev-cookie', token: good.data.accessToken, headers: { Origin: 'https://evil.example' } });
   assert.equal(badLogout.status, 403);
 });
+
+const mk = (username, extra = {}) => app.createUser(admin.token, { name: username, username, password: 'Learn@1234', role: 'student', ...extra }, 'dev-admin');
+const setStatus = (id, status) => api('POST', `/admin/users/${id}/status`, { token: admin.token, deviceId: 'dev-admin', body: { status } });
+
+test('suspended / banned: wrong password is generic, right password is specific', async () => {
+  const sus = await mk('sus');
+  await setStatus(sus.id, 'suspended');
+  const wrong = await login('sus', 'WrongPass1', 'dev-sus-01');
+  assert.equal(wrong.status, 401);
+  assert.equal(wrong.data.message, 'Invalid username or password');
+  const right = await login('sus', 'Learn@1234', 'dev-sus-01');
+  assert.equal(right.status, 403);
+  assert.equal(right.data.code, 'ACCOUNT_SUSPENDED');
+
+  const ban = await mk('ban');
+  await setStatus(ban.id, 'banned');
+  const rightBan = await login('ban', 'Learn@1234', 'dev-ban-01');
+  assert.equal(rightBan.status, 403);
+  assert.equal(rightBan.data.code, 'ACCOUNT_BANNED');
+});
+
+test('lockout after N failures; a wrong password never reveals the lock', async () => {
+  await mk('lock');
+  for (let i = 0; i < 5; i++) {
+    const r = await login('lock', 'WrongPass1', 'dev-lock');
+    assert.equal(r.status, 401);
+    assert.equal(r.data.message, 'Invalid username or password');
+  }
+  const locked = await login('lock', 'Learn@1234', 'dev-lock');
+  assert.equal(locked.status, 423);
+  assert.equal(locked.data.code, 'ACCOUNT_LOCKED');
+  const wrongWhileLocked = await login('lock', 'WrongPass1', 'dev-lock');
+  assert.equal(wrongWhileLocked.status, 401);
+  assert.equal(wrongWhileLocked.data.message, 'Invalid username or password');
+});
+
+test('forced password change gates everything except onboarding', async () => {
+  await mk('onboard', { mustChangePassword: true });
+  const r = await login('onboard', 'Learn@1234', 'dev-onb-01');
+  assert.equal(r.status, 200);
+  assert.equal(r.data.user.mustChangePassword, true);
+  const t = r.data.accessToken;
+  const catalog = await api('GET', '/courses/catalog', { token: t, deviceId: 'dev-onb-01' });
+  assert.equal(catalog.status, 403);
+  assert.equal(catalog.data.code, 'ONBOARDING_REQUIRED');
+  const me = await api('GET', '/auth/me', { token: t, deviceId: 'dev-onb-01' });
+  assert.equal(me.status, 200);
+  // Admin-created accounts are not email-verified; verification is required by default.
+  const tooEarly = await api('POST', '/auth/set-password', { token: t, deviceId: 'dev-onb-01', body: { password: 'Newpass@123' } });
+  assert.equal(tooEarly.status, 403);
+  assert.equal(tooEarly.data.code, 'EMAIL_UNVERIFIED');
+});
+
+test('logout ends the session', async () => {
+  await mk('bye');
+  const r = await login('bye', 'Learn@1234', 'dev-bye-01');
+  const out = await api('POST', '/auth/logout', { token: r.data.accessToken, deviceId: 'dev-bye-01', body: {} });
+  assert.equal(out.status, 200);
+  const me = await api('GET', '/auth/me', { token: r.data.accessToken, deviceId: 'dev-bye-01' });
+  assert.equal(me.status, 401);
+});
+
+test('password change re-issues tokens and revokes the old ones', async () => {
+  await mk('chg');
+  const r = await login('chg', 'Learn@1234', 'dev-chg-01');
+  const changed = await api('POST', '/auth/change-password', { token: r.data.accessToken, deviceId: 'dev-chg-01', body: { currentPassword: 'Learn@1234', newPassword: 'Learn@5678' } });
+  assert.equal(changed.status, 200, JSON.stringify(changed.data));
+  assert.ok(changed.data.accessToken);
+  assert.equal(changed.data.refreshToken, undefined);
+  const old = await api('GET', '/auth/me', { token: r.data.accessToken, deviceId: 'dev-chg-01' });
+  assert.equal(old.status, 401, 'tokenVersion bumped');
+  const fresh = await api('GET', '/auth/me', { token: changed.data.accessToken, deviceId: 'dev-chg-01' });
+  assert.equal(fresh.status, 200);
+  const relogin = await login('chg', 'Learn@5678', 'dev-chg-01');
+  assert.equal(relogin.status, 200);
+});
+
+test('admin password reset forces onboarding and kills the session', async () => {
+  const u = await mk('rst');
+  const r = await login('rst', 'Learn@1234', 'dev-rst-01');
+  const reset = await api('POST', `/admin/users/${u.id}/reset-password`, { token: admin.token, deviceId: 'dev-admin', body: { password: 'Temp@12345' } });
+  assert.equal(reset.status, 200);
+  const dead = await api('GET', '/auth/me', { token: r.data.accessToken, deviceId: 'dev-rst-01' });
+  assert.equal(dead.status, 401);
+  const again = await login('rst', 'Temp@12345', 'dev-rst-01');
+  assert.equal(again.status, 200);
+  assert.equal(again.data.user.mustChangePassword, true);
+});
+
+test('role change kills sessions; delete blocks login', async () => {
+  const u = await mk('rol');
+  const r = await login('rol', 'Learn@1234', 'dev-rol-01');
+  const change = await api('PUT', `/admin/users/${u.id}`, { token: admin.token, deviceId: 'dev-admin', body: { role: 'teacher' } });
+  assert.equal(change.status, 200, JSON.stringify(change.data));
+  const dead = await api('GET', '/auth/me', { token: r.data.accessToken, deviceId: 'dev-rol-01' });
+  assert.equal(dead.status, 401);
+
+  const del = await api('DELETE', `/admin/users/${u.id}`, { token: admin.token, deviceId: 'dev-admin' });
+  assert.equal(del.status, 200);
+  const gone = await login('rol', 'Learn@1234', 'dev-rol-01');
+  assert.equal(gone.status, 401);
+});
