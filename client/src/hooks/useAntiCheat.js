@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import api from '../api/axios';
+import { getAccessToken } from '../api/token';
+import { getDeviceId } from '../api/fingerprint';
 
 /**
  * Client-side quiz proctor. Detects and reports to the server:
@@ -106,12 +108,12 @@ export default function useAntiCheat({ attemptId, enabled, requireFullscreen, bl
       report('page_refresh', 'Page unload during attempt');
       // sendBeacon so the event survives navigation
       try {
-        const token = localStorage.getItem('lms_access_token');
+        const token = getAccessToken();
         const payload = JSON.stringify({ attemptId, events: queue.current.splice(0, 50) });
         if (payload.length > 30 && token) {
           fetch(`${api.defaults.baseURL}/anticheat/events`, {
             method: 'POST', keepalive: true,
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'x-device-id': getDeviceId(), 'x-client-platform': 'web' },
             body: payload,
           }).catch(() => {});
         }

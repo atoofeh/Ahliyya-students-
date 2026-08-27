@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Button, Input, Card } from '../../components/ui';
 import Logo from '../../components/Logo';
+import { homeFor } from '../../utils/roles';
 
 /**
  * First-login flow for admin-created accounts:
@@ -42,7 +43,7 @@ export default function OnboardingPage() {
     await api.post('/auth/set-password', { password });
     const profile = await refreshProfile();
     toast.success('All set — welcome!');
-    navigate(profile.role === 'admin' ? '/admin' : profile.role === 'teacher' ? '/teacher' : '/student');
+    navigate(homeFor(profile.role));
   });
 
   const steps = [

@@ -1,35 +1,31 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api from '../api/axios';
+import api, { bootstrapSession } from '../api/axios';
+import { setAccessToken, clearAccessToken } from '../api/token';
 import { getDeviceId, getFingerprint } from '../api/fingerprint';
 
 const AuthContext = createContext(null);
 
+const readCachedUser = () => {
+  try { return JSON.parse(localStorage.getItem('lms_user')) || null; } catch { return null; }
+};
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('lms_user')) || null; } catch { return null; }
-  });
+  // Cached profile paints immediately; the cookie refresh below re-validates it.
+  const [user, setUser] = useState(readCachedUser);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('lms_access_token');
-    if (!token) { setLoading(false); return; }
-    api.get('/auth/me')
-      .then(({ data }) => {
-        setUser(data);
-        localStorage.setItem('lms_user', JSON.stringify(data));
-      })
-      .catch(() => {
-        setUser(null);
-        localStorage.removeItem('lms_user');
-        localStorage.removeItem('lms_access_token');
-        localStorage.removeItem('lms_refresh_token');
+    bootstrapSession()
+      .then((u) => {
+        setUser(u);
+        if (u) localStorage.setItem('lms_user', JSON.stringify(u));
+        else localStorage.removeItem('lms_user');
       })
       .finally(() => setLoading(false));
   }, []);
 
   const applyAuth = useCallback((data) => {
-    localStorage.setItem('lms_access_token', data.accessToken);
-    if (data.refreshToken) localStorage.setItem('lms_refresh_token', data.refreshToken);
+    setAccessToken(data.accessToken);
     localStorage.setItem('lms_user', JSON.stringify(data.user));
     setUser(data.user);
     return data.user;
@@ -50,10 +46,9 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const logout = useCallback(async () => {
-    try { await api.post('/auth/logout'); } catch { /* session may already be gone */ }
-    localStorage.removeItem('lms_access_token');
-    localStorage.removeItem('lms_refresh_token');
+  const logout = useCallback(async ({ forgetDevice = false } = {}) => {
+    try { await api.post('/auth/logout', { forgetDevice }); } catch { /* session may already be gone */ }
+    clearAccessToken();
     localStorage.removeItem('lms_user');
     setUser(null);
   }, []);

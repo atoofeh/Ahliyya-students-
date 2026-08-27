@@ -29,13 +29,14 @@ import AdminAntiCheat from './pages/admin/AdminAntiCheat';
 import AdminAnnouncements from './pages/admin/AdminAnnouncements';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import { Spinner } from './components/ui';
+import { roleMatches, homeFor } from './utils/roles';
 
 function Protected({ roles, children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="flex h-screen items-center justify-center"><Spinner full /></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (user.mustChangePassword) return <Navigate to="/onboarding" replace />;
-  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  if (roles && !roleMatches(user.role, roles)) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -44,7 +45,7 @@ function HomeRedirect() {
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (user.mustChangePassword) return <Navigate to="/onboarding" replace />;
-  return <Navigate to={user.role === 'admin' ? '/admin' : user.role === 'teacher' ? '/teacher' : '/student'} replace />;
+  return <Navigate to={homeFor(user.role)} replace />;
 }
 
 export default function App() {

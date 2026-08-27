@@ -11,6 +11,7 @@ import { useTheme } from '../context/ThemeContext';
 import NotificationsBell from '../components/NotificationsBell';
 import GlobalSearch from '../components/GlobalSearch';
 import { LogoMark } from '../components/Logo';
+import { isAdminRole, ROLE_LABEL } from '../utils/roles';
 
 const NAV = {
   student: [
@@ -39,7 +40,6 @@ const NAV = {
 };
 
 const THEME_ICON = { light: Sun, dark: Moon, system: Laptop };
-const ROLE_LABEL = { student: 'Student', teacher: 'Instructor', admin: 'Administrator' };
 
 export default function MainLayout() {
   const { user, logout } = useAuth();
@@ -47,7 +47,7 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const ThemeIcon = THEME_ICON[theme] || Laptop;
-  const nav = NAV[user?.role] || [];
+  const nav = NAV[isAdminRole(user?.role) ? 'admin' : user?.role] || [];
 
   const doLogout = async () => {
     await logout();

@@ -6,6 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import api, { apiError } from '../../api/axios';
 import { Button, Input } from '../../components/ui';
 import Logo, { LogoMark } from '../../components/Logo';
+import { homeFor } from '../../utils/roles';
 
 const MODES = { LOGIN: 'login', FORGOT: 'forgot', RESET: 'reset' };
 
@@ -13,7 +14,7 @@ const FEATURES = [
   { icon: PlayCircle, title: 'HD lectures, protected', text: 'Encrypted streaming with resume — your lessons, anywhere.' },
   { icon: BarChart3, title: 'Smart quizzes & analytics', text: 'Instant grading, explanations, and progress you can see.' },
   { icon: Award, title: 'Verified certificates', text: 'Earn certificates with publicly verifiable serials.' },
-  { icon: ShieldCheck, title: 'One secure session', text: 'Your account works on one device at a time — always safe.' },
+  { icon: ShieldCheck, title: 'One authorized device', text: 'Your account is linked to one authorized device — nobody else can sign in as you.' },
 ];
 
 export default function LoginPage() {
@@ -24,6 +25,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ username: '', password: '', email: '', code: '', rememberMe: false });
   const [logoutReason, setLogoutReason] = useState(null);
+  const [deviceBlocked, setDeviceBlocked] = useState(false);
 
   useEffect(() => {
     const reason = sessionStorage.getItem('lms_logout_reason');
@@ -34,7 +36,7 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (user) navigate(user.role === 'admin' ? '/admin' : user.role === 'teacher' ? '/teacher' : '/student', { replace: true });
+    if (user) navigate(homeFor(user.role), { replace: true });
   }, [user, navigate]);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target?.type === 'checkbox' ? e.target.checked : e.target.value }));
@@ -42,6 +44,7 @@ export default function LoginPage() {
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
+    setDeviceBlocked(false);
     try {
       if (mode === MODES.LOGIN) {
         const u = await login(form.username, form.password, form.rememberMe);
@@ -56,7 +59,11 @@ export default function LoginPage() {
         setMode(MODES.LOGIN);
       }
     } catch (err) {
-      toast.error(apiError(err));
+      if (err.response?.data?.code === 'DEVICE_NOT_AUTHORIZED') {
+        setDeviceBlocked(true);
+      } else {
+        toast.error(apiError(err));
+      }
     } finally {
       setBusy(false);
     }
@@ -127,6 +134,15 @@ export default function LoginPage() {
             </div>
           )}
 
+          {deviceBlocked && (
+            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-rose-300/70 bg-rose-50 px-4 py-3 text-[13px] text-rose-800 dark:border-rose-700/60 dark:bg-rose-900/20 dark:text-rose-200">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <span>
+                <strong>This account is already linked to another device.</strong> Contact an administrator or request a device reset.
+              </span>
+            </div>
+          )}
+
           <form onSubmit={submit} className="mt-7 space-y-4">
             {mode === MODES.LOGIN && (
               <Input label="Username" value={form.username} onChange={set('username')} required minLength={3}
@@ -171,7 +187,7 @@ export default function LoginPage() {
 
           <div className="mt-10 flex items-center justify-center gap-2 text-[11px] text-surface-400">
             <ShieldCheck size={13} className="text-gold-500" />
-            One active session per account · Protected content · Encrypted media
+            One authorized device per account · Protected content · Encrypted media
           </div>
         </div>
       </div>
