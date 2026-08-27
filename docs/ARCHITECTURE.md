@@ -7,7 +7,7 @@ A **modular monolith**: one deployable API with 15 self-contained feature module
 ```
 Request → security stack → rate limit → /api/v1 router
         → module router → validate(zod) → authenticate (session-bound)
-        → authorize(role) / courseAccess(resource) → controller → service → models
+        → authorize(role) / requirePermission(perm) / courseAccess(resource) → controller → service → models
         → errorHandler (single serialization point)
 ```
 
@@ -15,8 +15,8 @@ Request → security stack → rate limit → /api/v1 router
 
 | Module | Responsibility |
 |---|---|
-| `auth` | login/refresh/logout, registration, email verification, password lifecycle, own sessions & login history |
-| `admin` | user CRUD + status + password resets, session control, platform settings, audit/login logs |
+| `auth` | login/refresh/logout, device binding & revocation, email verification, password lifecycle, own sessions & login history |
+| `admin` | user CRUD + status + password resets, owner protections, authorized devices, session control, platform settings, audit/login logs |
 | `courses` | courses, sections, lessons, curriculum ordering, catalog |
 | `enrollments` | access codes, enrollment (code/public/assigned), roster, progress, certificates |
 | `videos` | chunked uploads, encryption, signed streaming, watch progress, watermark data |
@@ -31,15 +31,26 @@ Request → security stack → rate limit → /api/v1 router
 | `qa` | student questions, threaded replies, resolution |
 | `bookmarks` | lesson bookmarks with video timestamps |
 
-## Data model (18 collections)
+## Data model (26 collections)
 
-- **Identity**: `User` (soft-delete, status, lockout, tokenVersion), `Session` (single-active enforcement, device identity, refresh hash), `LoginHistory`.
+- **Identity**: `User` (soft-delete, four roles, status, lockout, tokenVersion), `Session` (single-active enforcement, device pinning, refresh hash), `Device` (one active per user — partial unique index), `LoginHistory`.
 - **Content**: `Course` → `Section` → `Lesson` (typed: video/pdf/document/text/quiz/assignment), `Video` (upload state + encryption metadata), `FileAsset`.
 - **Learning**: `Enrollment` (status, expiry, denormalized progress), `LessonProgress` (resume positions), `Certificate` (verifiable serials), `Bookmark`.
 - **Assessment**: `Question` (bank, answer keys `select:false`), `Quiz` (policy + scheduling + pool), `QuizAttempt` (question snapshots, grading state, risk score), `Assignment`, `Submission`.
 - **Platform**: `Notification` (TTL-indexed), `Announcement`, `AuditLog`, `CheatEvent`, `PlatformSetting` (singleton, cached 15 s).
+- **Community**: `QAThread`, `Bookmark`, `AccessCode`.
+- **Ops**: `Migration` (`_migrations` — applied data migrations).
 
 Conventions: soft deletes (`deletedAt`) on user-facing entities; compound indexes on every hot path (unique `student+course`, `student+lesson`, leaderboard `quiz+percent`); text indexes for search; denormalized aggregates (course lesson counts, enrollment progress) recomputed by the owning service.
+
+## Roles & permissions
+
+`super_admin` (owner) > `admin` > `teacher` > `student`. `src/core/permissions.js` maps roles to named permissions; routes declare needs with `requirePermission()`, legacy routes use `authorize()` (the owner satisfies any `admin` check). Target-level rules — nobody mutates the owner but the owner, admins cannot manage admins, nobody mutates their own account through admin routes, `super_admin` is never assignable — live in `AdminService.assertCanManage`. Course ownership stays in `courseAccess`.
+
+## Bootstrap & migrations
+
+- `npm run seed` — idempotent: creates the owner (`SUPER_ADMIN_*`), the default admin (`DEFAULT_ADMIN_*`) and, outside production, the legacy `admin` (`ADMIN_PASSWORD`). Development startup runs it automatically; production startup only verifies an owner exists and exits otherwise.
+- `npm run migrate [-- --dry-run] [-- --force-relogin]` — applies `src/migrations/*` not yet recorded in `_migrations`. `--force-relogin` bumps every `tokenVersion` and ends every session so the institution re-binds under the device policy.
 
 ## Scaling path (thousands of concurrent users)
 

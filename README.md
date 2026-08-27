@@ -18,31 +18,34 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
-Default administrator: **admin / Admin@12345** (change via `server/.env` → `ADMIN_PASSWORD`).
+Accounts are bootstrapped from `server/.env` by `npm run seed` (run automatically in development): the **owner** (`SUPER_ADMIN_*`), the default **administrator** Abdullah Dabbas (`DEFAULT_ADMIN_*`) and, in development only, `admin` (`ADMIN_PASSWORD`). Every bootstrapped account must change its password at first login. There is no default password — copy `server/.env.example` and fill it in.
 
-Run the API test suite: `cd server && npm test` (boots an isolated in-memory instance and walks the full admin → teacher → student journey; 26 assertions).
+Run the API test suite: `cd server && npm test` (six `node:test` files against an isolated in-memory MongoDB and temp storage: smoke journey, permissions, RBAC, owner protections, device binding, authentication, bootstrap/migrations). Lint with `npm run lint` in each package.
 
 Optional: install **ffmpeg** on the server host to enable automatic video duration probing and thumbnail generation. Without it, videos are stored and streamed as uploaded.
 
 ## Roles
 
-| Capability | Student | Teacher | Admin |
-|---|---|---|---|
-| Enroll (code / public catalog), watch videos, read PDFs | ✔ | — | — |
-| Take quizzes, submit assignments, earn certificates | ✔ | — | — |
-| Bookmarks, favorites, progress, Q&A, notifications | ✔ | reply | ✔ |
-| Create/edit **own** courses, curriculum, videos, quizzes | — | ✔ | ✔ (any) |
-| Grade essays & assignments, view stats, cheat reports | — | own courses | all |
-| Access codes, roster, per-student access expiry | — | own courses | all |
-| Create users, suspend/ban/delete, reset passwords | — | — | ✔ |
-| Force logout, session monitor, platform settings, audit logs | — | — | ✔ |
-| Maintenance mode, announcements, global documents | — | — | ✔ |
+| Capability | Student | Teacher | Admin | Owner |
+|---|---|---|---|---|
+| Enroll (code / public catalog), watch videos, read PDFs | ✔ | — | — | — |
+| Take quizzes, submit assignments, earn certificates | ✔ | — | — | — |
+| Bookmarks, favorites, progress, Q&A, notifications | ✔ | reply | ✔ | ✔ |
+| Create/edit **own** courses, curriculum, videos, quizzes | — | ✔ | ✔ (any) | ✔ (any) |
+| Grade essays & assignments, view stats, cheat reports | — | own courses | all | all |
+| Roster: view, remove a student, set per-student expiry | — | own courses | all | all |
+| Access codes, assign students directly | — | — | ✔ | ✔ |
+| Create students & teachers, suspend/ban/delete, reset passwords | — | — | ✔ | ✔ |
+| Revoke a user's authorized device | — | — | students & teachers | anyone |
+| Force logout, session monitor, audit logs, announcements | — | — | ✔ | ✔ |
+| Platform settings, maintenance mode | — | — | ✔ | ✔ |
+| Create/suspend administrators, security policy (timeouts, lockout, device binding) | — | — | — | ✔ |
 
-Teachers cannot touch other teachers' courses (enforced server-side on every course-scoped route).
+Teachers cannot touch other teachers' courses; admins cannot touch the owner or other admins (all enforced server-side).
 
 ## Key features
 
-- **Single active session** — logging in on a second device instantly terminates the first (session-bound JWTs validated on every request). Admin-configurable inactivity timeout.
+- **One account, one authorized device** — the first login binds the device; a second device is refused until an administrator revokes the first. Sessions are pinned to their device, refresh tokens rotate, and the web client never stores a token in JavaScript-readable storage. Owner-configurable inactivity timeout and lockout.
 - **Protected video pipeline** — chunked resumable uploads → AES-256-CTR encryption at rest (per-video keys wrapped by a master key) → signed, expiring stream URLs with HTTP Range support → moving identity watermark in the player. No file is ever publicly reachable.
 - **Quiz engine** — six question types (MCQ, true/false, short answer, essay, fill-blanks, image), pools, shuffling, negative marking, timed attempts with server-side deadlines, retake limits, scheduling and locking, auto + manual grading, leaderboards, per-question explanations.
 - **Anti-cheat proctoring** — tab/window switches, devtools heuristics, copy/paste, right-click, blocked shortcuts, multi-tab detection, fullscreen exits, idle time, refresh, offline events → server-side weighted risk score, auto-submit past threshold, teacher/admin reports. *(See `docs/SECURITY.md` for honest limitations.)*
@@ -57,11 +60,13 @@ server/
     config/            env validation, db, logger, constants, settings cache
     core/              ApiError, mailer, crypto (media encryption), signed URLs, audit
     middleware/        authenticate (session-bound), authorize, validation, security stack, uploads
-    models/            18 Mongoose models
+    models/            26 Mongoose models
     modules/           15 feature modules (auth, admin, courses, videos, quizzes, …)
     routes/v1.js       versioned API composition
     jobs/              background maintenance jobs
-  tests/smoke.test.js  end-to-end API suite
+    scripts/           seed.js, migrate.js
+    migrations/        numbered data migrations
+  tests/               node:test suites + helpers/harness.js
   storage/             encrypted videos + documents (never publicly served)
 client/
   src/
@@ -78,6 +83,7 @@ docs/
 
 ## Production checklist
 
+0. Set `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_INITIAL_PASSWORD` (and `DEFAULT_ADMIN_*`), then run `npm run seed` once. The server refuses to start in production without an owner account.
 1. Set real `JWT_SECRET`, `JWT_REFRESH_SECRET`, and `MEDIA_MASTER_KEY` (32+ random bytes each) — the server refuses to start in production without a media key.
 2. Point `MONGODB_URI` at a replica set; the dev in-memory fallback is disabled in production.
 3. Configure SMTP (`SMTP_HOST` …) for real email delivery; without it, mails are logged.

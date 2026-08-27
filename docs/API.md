@@ -1,22 +1,24 @@
 # API Reference (v1)
 
-Base URL: `/api/v1`. All endpoints return JSON. Authenticated endpoints require `Authorization: Bearer <accessToken>` plus an `x-device-id` header (and optional `x-fingerprint`). Errors use `{ message, code?, errors? }`.
+Base URL: `/api/v1`. All endpoints return JSON. Authenticated endpoints require `Authorization: Bearer <accessToken>` plus an `x-device-id` header that must match the device the session was created from (optional `x-fingerprint`, `x-client-platform`, `x-app-version`). Errors use `{ message, code?, errors? }`.
 
-Roles: **P** public · **A** any authenticated · **S** student · **T** teacher (course owner where course-scoped) · **AD** admin. Course-scoped teacher routes also allow admins.
+Roles: **P** public · **A** any authenticated · **S** student · **T** teacher (course owner where course-scoped) · **AD** admin · **O** owner (`super_admin`). Course-scoped teacher routes also allow admins; admin routes admit the owner.
 
 ## Auth — `/auth`
 | Method | Path | Access | Notes |
 |---|---|---|---|
-| POST | `/login` | P | `{username, password, deviceId, fingerprint?, rememberMe?}` → tokens; terminates other sessions |
-| POST | `/refresh` | P | rotating refresh (cookie or body); reuse detection kills session |
+| POST | `/login` | P | `{username, password, deviceId, fingerprint?, rememberMe?}` → `{user, accessToken}` + httpOnly refresh cookie (body also includes `refreshToken` when `x-client-platform` is `android`/`ios`). `403 DEVICE_NOT_AUTHORIZED` from a second device. Ends other sessions. |
+| POST | `/refresh` | P | cookie (or body for native clients); rotates; reuse or device mismatch ends the session. Checks `Origin`. |
 | POST | `/forgot-password`, `/reset-password` | P | 6-digit emailed code |
-| POST | `/logout` | A | ends current session |
+| POST | `/logout` | A | `{forgetDevice?: boolean}` — ends the session; with `forgetDevice` also revokes the authorized device. Checks `Origin`. |
+| GET | `/device` | A | caller's authorized device (public fields) |
 | GET/PATCH | `/me` | A | profile + preferences (theme, email notifications) |
 | POST | `/resend-verification`, `/verify-email`, `/set-password`, `/change-password` | A | onboarding + credential lifecycle |
 | GET | `/sessions`, `/login-history` | A | own device/session history |
 
-## Admin — `/admin` (all AD)
-`POST/GET /users`, `GET/PUT /users/:id`, `POST /users/:id/status` (active/suspended/banned), `POST /users/:id/reset-password`, `POST /users/:id/force-logout`, `DELETE /users/:id` (soft), `GET /sessions`, `POST /sessions/:id/terminate`, `GET/PUT /settings`, `GET /audit-logs`, `GET /login-history`.
+## Admin — `/admin` (permission-gated; AD and O)
+`POST/GET /users` (creating an `admin` is O only; `super_admin` is never creatable), `GET/PUT /users/:id`, `POST /users/:id/status` (active/suspended/banned), `POST /users/:id/reset-password`, `POST /users/:id/force-logout`, `DELETE /users/:id` (soft), `GET /users/:id/device`, `POST /users/:id/device/revoke {reason}`, `GET /sessions`, `POST /sessions/:id/terminate`, `GET/PUT /settings` (owner-only keys → `403 OWNER_PROTECTED` for AD), `GET /audit-logs`, `GET /login-history`.
+Mutations targeting the owner, or an admin by a non-owner, return `403 OWNER_PROTECTED` / `403 FORBIDDEN`; targeting yourself returns `400 SELF_ACTION`.
 
 ## Courses — `/courses`
 | Method | Path | Access |
@@ -32,7 +34,7 @@ Roles: **P** public · **A** any authenticated · **S** student · **T** teacher
 | POST | `/:courseId/reorder` | owner/AD |
 
 ## Enrollments — `/enrollments`
-`POST /redeem` (S, access code) · `POST /courses/:id/enroll` (S, public courses) · `GET /mine` (S) · `POST /courses/:id/favorite` (S) · `POST /courses/:id/lessons/:lid/complete` (S) · `GET /certificates/mine` (S) · `GET /certificates/verify/:serial` (**public**) · codes & roster (owner/AD): `POST/GET /courses/:id/codes`, `POST /courses/:id/codes/:codeId/revoke`, `GET/POST /courses/:id/students`, `DELETE /courses/:id/students/:sid`, `POST /courses/:id/students/:sid/expire`.
+`POST /redeem` (S, access code) · `POST /courses/:id/enroll` (S, public courses) · `GET /mine` (S) · `POST /courses/:id/favorite` (S) · `POST /courses/:id/lessons/:lid/complete` (S) · `GET /certificates/mine` (S) · `GET /certificates/verify/:serial` (**public**) · codes (AD/O only): `POST/GET /courses/:id/codes`, `POST /courses/:id/codes/:codeId/revoke` · roster (course owner/AD/O): `GET /courses/:id/students`, `DELETE /courses/:id/students/:sid`, `POST /courses/:id/students/:sid/expire` · direct assignment (AD/O only): `POST /courses/:id/students`.
 
 ## Videos — `/videos`
 | Method | Path | Access | Notes |
