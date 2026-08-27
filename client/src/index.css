@@ -75,3 +75,30 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+  Safe areas. Android 15+ forces edge-to-edge, so the WebView draws behind the
+  status and gesture bars. Capacitor's SystemBars plugin sets
+  --safe-area-inset-* on <html>; env() covers browsers and notched iPhones.
+  Everything that touches a screen edge pads with these.
+*/
+:root {
+  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  --safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+}
+
+@layer utilities {
+  /* Additive: --*-safe-extra carries whatever padding the element already wanted.
+     These land after Tailwind's own p-* rules in the utilities layer, so a plain
+     .pb-safe would otherwise zero out p-4 on every device with no inset. */
+  .pt-safe { padding-top: calc(var(--safe-top) + var(--pt-safe-extra, 0px)); }
+  .pb-safe { padding-bottom: calc(var(--safe-bottom) + var(--pb-safe-extra, 0px)); }
+}
+
+/*
+  While the soft keyboard is up the webview body is already resized; a fixed
+  bottom bar would otherwise reserve gesture-bar space that no longer exists.
+*/
+.keyboard-open .pb-safe { padding-bottom: var(--pb-safe-extra, 0px); }

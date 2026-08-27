@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { ToastContext } from '../hooks/useToast';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
@@ -22,12 +22,15 @@ export function ToastProvider({ children }) {
     if (duration) setTimeout(() => remove(id), duration);
   }, [remove]);
 
-  const value = {
+  // Memoised: consumers keep it in effect dependency lists (NativeShell installs
+  // the Android back-button handler once), and every consumer re-rendered on each
+  // provider render without it.
+  const value = useMemo(() => ({
     toast,
     success: (m) => toast(m, 'success'),
     error: (m) => toast(m, 'error', 6000),
     info: (m) => toast(m, 'info'),
-  };
+  }), [toast]);
 
   return (
     <ToastContext.Provider value={value}>

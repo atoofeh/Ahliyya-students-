@@ -1,6 +1,7 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Loader2, X, Inbox } from 'lucide-react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { pushBackHandler } from '../app/shell';
 
 /**
  * Students_Alahliyya design system primitives.
@@ -168,6 +169,8 @@ export function Spinner({ full }) {
 export function Modal({ open, onClose, title, children, wide }) {
   const panelRef = useRef(null);
   useFocusTrap(panelRef, { active: open, onEscape: onClose });
+  // Android back closes the dialog instead of leaving the page behind it.
+  useEffect(() => (open ? pushBackHandler(onClose) : undefined), [open, onClose]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

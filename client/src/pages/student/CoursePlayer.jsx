@@ -13,6 +13,7 @@ import { SkeletonCard } from '../../components/Skeletons';
 import ErrorState from '../../components/ErrorState';
 import DocumentViewer from '../../components/DocumentViewer';
 import DownloadButton from '../../components/DownloadButton';
+import { pushBackHandler } from '../../app/shell';
 
 const LESSON_ICONS = {
   video: PlayCircle, pdf: FileText, document: FileText, quiz: HelpCircle,
@@ -64,6 +65,9 @@ export default function CoursePlayer() {
     setOpenSections(Object.fromEntries(data.curriculum.map((s) => [s._id, true])));
     return data;
   }, [courseId]);
+
+  // The curriculum sheet is a layer: Android back should close it, not leave the course.
+  useEffect(() => (sheetOpen ? pushBackHandler(() => setSheetOpen(false)) : undefined), [sheetOpen]);
 
   const openLesson = useCallback(async (lessonId) => {
     try {
@@ -463,7 +467,7 @@ export default function CoursePlayer() {
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-brand-950/50 backdrop-blur-sm" onClick={() => setSheetOpen(false)} />
           <div role="dialog" aria-label="Course content"
-            className="absolute inset-x-0 bottom-0 max-h-[75vh] animate-slide-up overflow-y-auto rounded-t-2xl bg-white shadow-float dark:bg-surface-900">
+            className="pb-safe absolute inset-x-0 bottom-0 max-h-[75vh] animate-slide-up overflow-y-auto rounded-t-2xl bg-white shadow-float dark:bg-surface-900">
             <div className="sticky top-0 flex items-center justify-between border-b border-surface-200 bg-white px-4 py-3 dark:border-surface-700 dark:bg-surface-900">
               <p className="font-display text-sm font-bold text-surface-900 dark:text-white">Course content</p>
               <button onClick={() => setSheetOpen(false)} aria-label="Close course content"
@@ -475,7 +479,8 @@ export default function CoursePlayer() {
       )}
 
       {/* Mobile: the actions you need while studying, always in reach */}
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-surface-200 bg-white/95 px-3 py-2 backdrop-blur dark:border-surface-800 dark:bg-surface-900/95 lg:hidden">
+      <div className="pb-safe fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-surface-200 bg-white/95 px-3 py-2 backdrop-blur dark:border-surface-800 dark:bg-surface-900/95 lg:hidden"
+        style={{ ['--pb-safe-extra']: '0.5rem' }}>
         <Button size="sm" variant="ghost" onClick={() => goRelative(-1)} disabled={!prevLesson} aria-label="Previous lesson"><ChevronLeft size={16} /></Button>
         <Button size="sm" variant="ghost" onClick={() => setBookmarkModal(true)} aria-label="Bookmark this lesson"><Bookmark size={16} /></Button>
         {lesson && lesson.type !== 'quiz' && (

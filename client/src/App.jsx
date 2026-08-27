@@ -5,6 +5,7 @@ import { useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import MainLayout from './layouts/MainLayout';
+import NativeShell from './components/NativeShell';
 import LoginPage from './pages/auth/LoginPage';
 import OnboardingPage from './pages/auth/OnboardingPage';
 
@@ -57,6 +58,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
+        <NativeShell />
         <BrowserRouter>
           <AuthProvider>
             <Suspense fallback={<div className="p-6"><SkeletonPage /></div>}>

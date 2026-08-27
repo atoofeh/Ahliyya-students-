@@ -9,7 +9,6 @@
  * Web:    blob -> object URL -> a[download] -> revoke.
  * Native: blob -> base64 -> Filesystem cache -> system viewer via LmsNative.
  */
-import { Directory, Filesystem } from '@capacitor/filesystem';
 import api from './axios';
 import { isNative, openFile } from './native';
 
@@ -51,6 +50,8 @@ export async function downloadFile(fileId, filename) {
     return;
   }
 
+  // Imported here, not at module scope, so the web bundle never carries it.
+  const { Directory, Filesystem } = await import('@capacitor/filesystem');
   const base64 = await blobToBase64(blob);
   // Cache, not Documents: course material stays inside the app sandbox, and the
   // OS reclaims it. The FileProvider grants the viewer read access for one intent.

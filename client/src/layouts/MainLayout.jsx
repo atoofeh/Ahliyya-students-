@@ -35,7 +35,7 @@ export default function MainLayout() {
   };
 
   const sidebar = (
-    <div className="relative flex h-full flex-col bg-brand-gradient text-white">
+    <div className="pt-safe pb-safe relative flex h-full flex-col bg-brand-gradient text-white">
       <div className="pointer-events-none absolute inset-0 bg-brand-radial opacity-60" />
 
       {/* Brand */}
@@ -100,7 +100,9 @@ export default function MainLayout() {
   );
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
+    // Side insets sit here, once, so no px-* utility anywhere below has to fight them.
+    <div className="min-h-screen bg-surface-50 dark:bg-surface-950"
+      style={{ paddingLeft: 'var(--safe-left)', paddingRight: 'var(--safe-right)' }}>
       {/* Mobile sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
@@ -118,7 +120,8 @@ export default function MainLayout() {
 
       <div className="lg:pl-[268px]">
         <OfflineBanner />
-        <header className="glass sticky top-0 z-20 flex items-center gap-3 border-b border-surface-200/70 px-4 py-2.5 dark:border-surface-800">
+        <header className="glass pt-safe sticky top-0 z-20 flex items-center gap-3 border-b border-surface-200/70 px-4 py-2.5 dark:border-surface-800"
+          style={{ ['--pt-safe-extra']: '0.625rem' }}>
           <button className="rounded-xl p-2 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800 lg:hidden"
             onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
             <Menu size={20} />
@@ -134,6 +137,8 @@ export default function MainLayout() {
         </header>
         <main className="mx-auto max-w-7xl p-4 md:p-6 lg:p-7 animate-fade-in">
           <Outlet />
+          {/* Clears the Android gesture bar without fighting the responsive padding above. */}
+          <div aria-hidden="true" style={{ height: 'var(--safe-bottom)' }} />
         </main>
       </div>
     </div>
