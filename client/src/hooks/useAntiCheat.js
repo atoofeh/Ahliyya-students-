@@ -19,16 +19,8 @@ export default function useAntiCheat({ attemptId, enabled, requireFullscreen, bl
   const queue = useRef([]);
   const [violations, setViolations] = useState(0);
   const idleTimer = useRef(null);
-  const lastMouse = useRef(Date.now());
+  const lastMouse = useRef(0); // seeded on mount; Date.now() during render is impure
   const flushing = useRef(false);
-
-  const report = useCallback((type, detail = '', severe = false) => {
-    if (!enabled || !attemptId) return;
-    queue.current.push({ type, detail, occurredAt: new Date().toISOString() });
-    setViolations((v) => v + 1);
-    onWarning?.(type, detail);
-    if (severe) flush(); // eslint-disable-line no-use-before-define
-  }, [enabled, attemptId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flush = useCallback(async () => {
     if (flushing.current || !queue.current.length || !attemptId) return;
@@ -41,8 +33,17 @@ export default function useAntiCheat({ attemptId, enabled, requireFullscreen, bl
     flushing.current = false;
   }, [attemptId, onAutoSubmit]);
 
+  const report = useCallback((type, detail = '', severe = false) => {
+    if (!enabled || !attemptId) return;
+    queue.current.push({ type, detail, occurredAt: new Date().toISOString() });
+    setViolations((v) => v + 1);
+    onWarning?.(type, detail);
+    if (severe) flush();
+  }, [enabled, attemptId, onWarning, flush]);
+
   useEffect(() => {
     if (!enabled || !attemptId) return undefined;
+    lastMouse.current = Date.now();
 
     const cleanups = [];
     const on = (target, event, handler, opts) => {

@@ -29,10 +29,10 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     return `${API_BASE}/videos/${videoId}/stream?token=${encodeURIComponent(data.token)}`;
   }, [videoId]);
 
-  // Initial token + watermark payload
+  // Initial token + watermark payload. State is only set from the async
+  // continuation; callers remount the player with key={videoId} to reset it.
   useEffect(() => {
     let cancelled = false;
-    setSrc(null); setError(null);
     Promise.all([fetchToken(), api.get('/videos/watermark/me')])
       .then(([url, wm]) => {
         if (cancelled) return;
