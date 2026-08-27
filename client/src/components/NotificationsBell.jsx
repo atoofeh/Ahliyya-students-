@@ -60,7 +60,7 @@ export default function NotificationsBell() {
 
   return (
     <div className="relative" ref={ref}>
-      <button onClick={openPanel}
+      <button onClick={openPanel} aria-label="Notifications"
         className="relative rounded-lg p-2 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-700 dark:text-surface-300">
         <Bell size={19} />
         {count > 0 && (

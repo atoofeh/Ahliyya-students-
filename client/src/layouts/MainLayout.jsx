@@ -11,6 +11,7 @@ import { useTheme } from '../hooks/useTheme';
 import NotificationsBell from '../components/NotificationsBell';
 import GlobalSearch from '../components/GlobalSearch';
 import { LogoMark } from '../components/Logo';
+import OfflineBanner from '../components/OfflineBanner';
 import { ROLE_LABEL, navFor } from '../utils/roles';
 
 const ICONS = {
@@ -89,7 +90,7 @@ export default function MainLayout() {
             <p className="truncate text-[13px] font-semibold text-white">{user?.name}</p>
             <p className="truncate text-[11px] text-brand-200/70">{user?.email || `@${user?.username}`}</p>
           </div>
-          <button onClick={doLogout} title="Sign out"
+          <button onClick={doLogout} title="Sign out" aria-label="Sign out"
             className="rounded-lg p-2 text-brand-200/70 transition-colors hover:bg-white/10 hover:text-rose-300">
             <LogOut size={16} />
           </button>
@@ -116,14 +117,15 @@ export default function MainLayout() {
       </aside>
 
       <div className="lg:pl-[268px]">
+        <OfflineBanner />
         <header className="glass sticky top-0 z-20 flex items-center gap-3 border-b border-surface-200/70 px-4 py-2.5 dark:border-surface-800">
           <button className="rounded-xl p-2 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800 lg:hidden"
-            onClick={() => setSidebarOpen(true)}>
+            onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
             <Menu size={20} />
           </button>
           <GlobalSearch />
           <div className="ml-auto flex items-center gap-1">
-            <button onClick={cycle} title={`Theme: ${theme}`}
+            <button onClick={cycle} title={`Theme: ${theme}`} aria-label={`Theme: ${theme}. Change theme`}
               className="rounded-xl p-2 text-surface-500 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800">
               <ThemeIcon size={18} />
             </button>
