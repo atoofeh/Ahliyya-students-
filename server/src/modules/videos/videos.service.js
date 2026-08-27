@@ -207,7 +207,8 @@ class VideoService {
     });
 
     video.storagePath = encryptedPath;
-    video.encryption = { wrappedKey: wrapKey(key), iv: iv.toString('hex'), algorithm: 'aes-256-ctr' };
+    const { wrapped, keyVersion } = wrapKey(key);
+    video.encryption = { wrappedKey: wrapped, iv: iv.toString('hex'), algorithm: 'aes-256-ctr', keyVersion };
     video.sizeBytes = stat.size;
     video.status = 'ready';
     await video.save();
@@ -254,7 +255,7 @@ class VideoService {
     if (!video || video.status !== 'ready') throw ApiError.notFound('Video not available');
     if (!session || !session.isActive) throw ApiError.unauthorized('Session ended', 'SESSION_TERMINATED');
 
-    const key = unwrapKey(video.encryption.wrappedKey);
+    const key = unwrapKey(video.encryption.wrappedKey, video.encryption.keyVersion || 1);
     const iv = Buffer.from(video.encryption.iv, 'hex');
     const totalSize = video.sizeBytes;
 

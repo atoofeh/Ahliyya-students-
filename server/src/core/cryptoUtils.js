@@ -1,7 +1,22 @@
 const crypto = require('crypto');
 const env = require('../config/env');
 
-const MASTER_KEY = crypto.createHash('sha256').update(env.MEDIA_MASTER_KEY).digest(); // 32 bytes
+/**
+ * Master keys by version. New videos wrap with the current version; a video
+ * wrapped under the previous version still unwraps while MEDIA_MASTER_KEY_PREVIOUS
+ * is configured (rotation window — run `npm run migrate` to re-wrap and retire it).
+ */
+const deriveMaster = (secret) => crypto.createHash('sha256').update(secret).digest(); // 32 bytes
+const MASTER_KEYS = new Map([[env.MEDIA_KEY_VERSION, deriveMaster(env.MEDIA_MASTER_KEY)]]);
+if (env.MEDIA_MASTER_KEY_PREVIOUS && env.MEDIA_KEY_VERSION > 1) {
+  MASTER_KEYS.set(env.MEDIA_KEY_VERSION - 1, deriveMaster(env.MEDIA_MASTER_KEY_PREVIOUS));
+}
+
+const masterKeyFor = (version) => {
+  const key = MASTER_KEYS.get(Number(version));
+  if (!key) throw new Error(`MEDIA_KEY_UNAVAILABLE: no master key for version ${version}`);
+  return key;
+};
 
 /**
  * Media crypto utilities.
@@ -18,22 +33,22 @@ const generateVideoKey = () => ({
   iv: crypto.randomBytes(16),
 });
 
-/** Wrap a per-video key with the master key for DB storage. */
+/** Wrap a per-video key with the CURRENT master key. Returns the wrapped blob and its key version. */
 const wrapKey = (keyBuffer) => {
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', MASTER_KEY, iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', masterKeyFor(env.MEDIA_KEY_VERSION), iv);
   const wrapped = Buffer.concat([cipher.update(keyBuffer), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, wrapped]).toString('base64');
+  return { wrapped: Buffer.concat([iv, tag, wrapped]).toString('base64'), keyVersion: env.MEDIA_KEY_VERSION };
 };
 
-/** Unwrap a stored per-video key. */
-const unwrapKey = (wrappedB64) => {
+/** Unwrap a stored per-video key with the master key of the version it was wrapped under. */
+const unwrapKey = (wrappedB64, keyVersion = 1) => {
   const raw = Buffer.from(wrappedB64, 'base64');
   const iv = raw.subarray(0, 12);
   const tag = raw.subarray(12, 28);
   const wrapped = raw.subarray(28);
-  const decipher = crypto.createDecipheriv('aes-256-gcm', MASTER_KEY, iv);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', masterKeyFor(keyVersion), iv);
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(wrapped), decipher.final()]);
 };
@@ -79,6 +94,7 @@ const randomToken = (bytes = 32) => crypto.randomBytes(bytes).toString('hex');
 
 module.exports = {
   generateVideoKey,
+  masterKeyFor,
   wrapKey,
   unwrapKey,
   createEncryptStream,

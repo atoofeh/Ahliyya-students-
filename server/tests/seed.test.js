@@ -90,7 +90,8 @@ test('migration --force-relogin bumps every tokenVersion and ends sessions, once
   const before = Object.fromEntries((await User().find().select('tokenVersion').lean()).map((u) => [String(u._id), u.tokenVersion]));
 
   const first = await runMigrations({ forceRelogin: true, log: () => {} });
-  assert.deepEqual(first.applied, ['001-roles-and-devices']);
+  assert.ok(first.applied.includes('001-roles-and-devices'));
+  assert.ok(first.applied.includes('002-rewrap-media-keys'), 'every pending migration runs');
   assert.equal(await Migration.countDocuments({ name: '001-roles-and-devices' }), 1);
   for (const u of await User().find().select('tokenVersion').lean()) {
     assert.equal(u.tokenVersion, before[String(u._id)] + 1);

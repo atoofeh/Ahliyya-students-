@@ -43,8 +43,10 @@ const sweepOverdueAttempts = async () => {
   if (overdue.length) logger.info(`Attempt sweep: auto-submitted ${overdue.length} overdue attempt(s)`);
 };
 
-/** Remind students of assignments due within 24h (once per assignment). */
-const remindedAssignments = new Set();
+/**
+ * Remind students of assignments due within 24h. reminderSentAt is claimed
+ * atomically per assignment, so restarts and concurrent instances cannot double-send.
+ */
 const assignmentDeadlineReminders = async () => {
   const Assignment = require('../models/Assignment');
   const Enrollment = require('../models/Enrollment');
@@ -52,15 +54,13 @@ const assignmentDeadlineReminders = async () => {
   const { notifyMany } = require('../modules/notifications/notifications.service');
 
   const soon = new Date(Date.now() + 24 * 3600000);
-  const due = await Assignment.find({
-    deletedAt: null, isPublished: true,
-    dueAt: { $gte: new Date(), $lte: soon },
-  }).populate('course', 'title');
-
-  for (const assignment of due) {
-    const key = String(assignment._id);
-    if (remindedAssignments.has(key)) continue;
-    remindedAssignments.add(key);
+  for (;;) {
+    const assignment = await Assignment.findOneAndUpdate(
+      { deletedAt: null, isPublished: true, reminderSentAt: null, dueAt: { $gte: new Date(), $lte: soon } },
+      { $set: { reminderSentAt: new Date() } },
+      { new: true }
+    ).populate('course', 'title');
+    if (!assignment) break;
 
     const [enrollments, submissions] = await Promise.all([
       Enrollment.find({ course: assignment.course._id, status: 'active' }).select('student'),
@@ -88,4 +88,4 @@ const startJobs = () => {
   logger.info('Background jobs scheduled');
 };
 
-module.exports = { startJobs, sweepStaleSessions, sweepExpiredEnrollments, sweepOverdueAttempts };
+module.exports = { startJobs, sweepStaleSessions, sweepExpiredEnrollments, sweepOverdueAttempts, assignmentDeadlineReminders };

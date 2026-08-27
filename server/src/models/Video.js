@@ -32,6 +32,7 @@ const videoSchema = new mongoose.Schema(
       wrappedKey: { type: String, default: null, select: false },
       iv: { type: String, default: null, select: false }, // hex
       algorithm: { type: String, default: 'aes-256-ctr' },
+      keyVersion: { type: Number, default: 1 }, // which MEDIA_MASTER_KEY generation wrapped this key
     },
 
     // Renditions produced when ffmpeg is available on the host

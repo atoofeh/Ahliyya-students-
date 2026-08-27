@@ -11,6 +11,7 @@ const assignmentSchema = new mongoose.Schema(
     maxPoints: { type: Number, default: 100, min: 0 },
     allowLateSubmission: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: true },
+    reminderSentAt: { type: Date, default: null }, // claimed atomically by the deadline-reminder job
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
