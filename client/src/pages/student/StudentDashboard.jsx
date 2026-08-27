@@ -31,9 +31,10 @@ export default function StudentDashboard() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    setError(null);
     try {
+      // State is only touched after the first await, so the effect body stays synchronous-free.
       const { data: d } = await api.get('/analytics/student');
+      setError(null);
       setData(d);
       const courseId = d.continueLearning?.course?._id;
       if (!courseId) { setUpNext([]); return; }
@@ -54,7 +55,8 @@ export default function StudentDashboard() {
       setError({ code: err.response?.data?.code, message: apiError(err) });
     }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  // Deferred by a task so the effect body itself never sets state (see AdminUsers for the same idiom).
+  useEffect(() => { const t = setTimeout(load, 0); return () => clearTimeout(t); }, [load]);
 
   const redeem = async () => {
     setBusy(true);

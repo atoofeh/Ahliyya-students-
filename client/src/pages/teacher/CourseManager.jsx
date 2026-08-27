@@ -46,7 +46,10 @@ export default function CourseManager() {
     return data;
   }, [courseId]);
 
-  useEffect(() => { load().catch((err) => toast.error(apiError(err))); }, [load, toast]);
+  useEffect(() => {
+    const t = setTimeout(() => load().catch((err) => toast.error(apiError(err))), 0);
+    return () => clearTimeout(t);
+  }, [load, toast]);
 
   const saveSettings = async () => {
     setBusy(true);
