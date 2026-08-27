@@ -7,6 +7,7 @@ const { validate, paginationSchema, objectId } = require('../../middleware/valid
 const { passwordRule } = require('../auth/auth.validators');
 const { PERMISSIONS: P } = require('../../core/permissions');
 const AdminService = require('./admin.service');
+const SecurityService = require('./security.service');
 
 const createUserSchema = z.object({
   name: z.string().min(2).max(100).trim(),
@@ -77,6 +78,24 @@ router.get('/users/:userId/device', requirePermission(P.DEVICES_VIEW), asyncHand
 }));
 router.post('/users/:userId/device/revoke', requirePermission(P.DEVICES_RESET), validate(revokeDeviceSchema), asyncHandler(async (req, res) => {
   res.json(await AdminService.revokeUserDevice(req.user, req.params.userId, req.body.reason, req.ip));
+}));
+
+// Security Center
+const resolveSchema = z.object({ action: z.enum(['revoke', 'dismiss']), resolution: z.string().trim().max(300).optional() });
+const deviceListQuery = paginationSchema.extend({ status: z.enum(['active', 'revoked']).optional() });
+const requestListQuery = paginationSchema.extend({ status: z.enum(['open', 'resolved', 'dismissed']).optional() });
+
+router.get('/security/overview', requirePermission(P.AUDIT_VIEW), asyncHandler(async (req, res) => {
+  res.json(await SecurityService.overview());
+}));
+router.get('/devices', requirePermission(P.DEVICES_VIEW), validate(deviceListQuery, 'query'), asyncHandler(async (req, res) => {
+  res.json(await SecurityService.listDevices(req.query));
+}));
+router.get('/device-requests', requirePermission(P.DEVICES_VIEW), validate(requestListQuery, 'query'), asyncHandler(async (req, res) => {
+  res.json(await SecurityService.listResetRequests(req.query));
+}));
+router.post('/device-requests/:requestId/resolve', requirePermission(P.DEVICES_RESET), validate(resolveSchema), asyncHandler(async (req, res) => {
+  res.json(await SecurityService.resolveResetRequest(req.user, req.params.requestId, req.body, req.ip));
 }));
 
 // Sessions

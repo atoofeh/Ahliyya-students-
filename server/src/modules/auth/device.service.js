@@ -109,6 +109,17 @@ class DeviceService {
     return { revoked: revoked.modifiedCount };
   }
 
+  /** Store a reset request only when the account exists; the caller's reply is identical either way. */
+  static async requestReset({ username, note, ip, userAgent }) {
+    const DeviceResetRequest = require('../../models/DeviceResetRequest');
+    const user = await User.findOne({ username: String(username).toLowerCase(), deletedAt: null }).select('_id');
+    await audit({ user: user?._id, action: 'DEVICE_RESET_REQUESTED', targetUser: user?._id, ip, meta: { username, known: !!user } });
+    if (!user) return null;
+    const open = await DeviceResetRequest.findOne({ user: user._id, status: 'open' });
+    if (open) return open; // one open request per account
+    return DeviceResetRequest.create({ username, user: user._id, note, ip, userAgent });
+  }
+
   static async activeFor(userId) {
     const device = await Device.findOne({ user: userId, status: 'active' });
     return device ? device.toPublicJSON() : null;

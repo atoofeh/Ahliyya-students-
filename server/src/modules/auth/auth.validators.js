@@ -19,6 +19,10 @@ const loginSchema = z.object({
 
 const refreshSchema = z.object({ refreshToken: z.string().optional() });
 const logoutSchema = z.object({ forgetDevice: z.boolean().optional().default(false) });
+const resetRequestSchema = z.object({
+  username: z.string().min(3).max(50).trim().toLowerCase(),
+  note: z.string().max(300).trim().optional().default(''),
+});
 
 const sendVerificationSchema = z.object({ email: z.string().email().max(200).optional() });
 const verifyEmailSchema = z.object({ code: z.string().length(6) });
@@ -42,6 +46,7 @@ module.exports = {
   loginSchema,
   refreshSchema,
   logoutSchema,
+  resetRequestSchema,
   sendVerificationSchema,
   verifyEmailSchema,
   setPasswordSchema,

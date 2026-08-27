@@ -63,6 +63,12 @@ const myDevice = asyncHandler(async (req, res) => {
   res.json({ active: await DeviceService.activeFor(req.user.id) });
 });
 
+/** Public "I lost my device" request. The reply never reveals whether the account exists. */
+const requestDeviceReset = asyncHandler(async (req, res) => {
+  await DeviceService.requestReset({ username: req.body.username, note: req.body.note, ip: clientIp(req), userAgent: req.headers['user-agent'] || '' });
+  res.status(202).json({ message: 'If the account exists, an administrator will review the request.' });
+});
+
 const me = asyncHandler(async (req, res) => {
   res.json(await AuthService.getProfile(req.user.id));
 });
@@ -113,7 +119,7 @@ const myLoginHistory = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  login, refresh, logout, myDevice, me, updateProfile,
+  login, refresh, logout, myDevice, requestDeviceReset, me, updateProfile,
   sendVerification, verifyEmail, setPassword, changePassword,
   forgotPassword, resetPassword, mySessions, myLoginHistory,
 };

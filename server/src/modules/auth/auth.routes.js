@@ -3,6 +3,7 @@ const authenticate = require('../../middleware/authenticate');
 const { validate } = require('../../middleware/validate');
 const {
   loginIpLimiter, loginAccountLimiter, refreshLimiter, passwordLimiter, verificationLimiter,
+  resetRequestIpLimiter, resetRequestAccountLimiter,
 } = require('../../middleware/rateLimiters');
 const { requireAllowedOrigin } = require('../../middleware/security');
 const v = require('./auth.validators');
@@ -13,6 +14,7 @@ router.post('/login', loginIpLimiter, loginAccountLimiter, validate(v.loginSchem
 router.post('/refresh', refreshLimiter, requireAllowedOrigin, validate(v.refreshSchema), c.refresh);
 router.post('/forgot-password', passwordLimiter, validate(v.forgotPasswordSchema), c.forgotPassword);
 router.post('/reset-password', passwordLimiter, validate(v.resetPasswordSchema), c.resetPassword);
+router.post('/device/reset-request', resetRequestIpLimiter, resetRequestAccountLimiter, validate(v.resetRequestSchema), c.requestDeviceReset);
 
 // Authenticated
 router.use(authenticate);
