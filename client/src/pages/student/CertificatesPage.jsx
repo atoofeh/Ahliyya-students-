@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Award, BadgeCheck, CalendarDays } from 'lucide-react';
 import api from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { Card, Spinner, EmptyState, PageHeader, Badge } from '../../components/ui';
 import { LogoMark } from '../../components/Logo';
 

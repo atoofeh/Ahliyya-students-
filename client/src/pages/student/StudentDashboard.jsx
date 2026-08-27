@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Trophy, Award, Target, Play, Star, KeyRound, ArrowRight, Library } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
 import { Card, StatCard, Spinner, EmptyState, Button, Input, Badge, Modal, PageHeader, SectionTitle, RingProgress } from '../../components/ui';
 import CourseCover from '../../components/CourseCover';
 

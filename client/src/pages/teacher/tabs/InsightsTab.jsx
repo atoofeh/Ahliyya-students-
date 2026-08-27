@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Megaphone, ShieldAlert, MessageSquareText, Send } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import api, { apiError } from '../../../api/axios';
-import { useToast } from '../../../context/ToastContext';
+import { useToast } from '../../../hooks/useToast';
 import { Card, Button, Input, Textarea, Badge, EmptyState, Spinner, Tabs } from '../../../components/ui';
 
 export default function InsightsTab({ courseId }) {

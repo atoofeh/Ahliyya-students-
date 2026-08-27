@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Lock, Unlock, BarChart3, Users, BellRing, HelpCircle } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
-import { useToast } from '../../../context/ToastContext';
+import { useToast } from '../../../hooks/useToast';
 import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState, Spinner } from '../../../components/ui';
 
 const emptyQuiz = () => ({

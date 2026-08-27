@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Pencil, Trash2 } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { Card, Button, Badge, Spinner, Pagination, EmptyState, Input } from '../../components/ui';
 
 export default function AdminCourses() {

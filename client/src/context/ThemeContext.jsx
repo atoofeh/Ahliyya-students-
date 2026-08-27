@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { ThemeContext } from '../hooks/useTheme';
 
-const ThemeContext = createContext(null);
+
 
 const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
 
@@ -32,4 +33,3 @@ export function ThemeProvider({ children }) {
   );
 }
 
-export const useTheme = () => useContext(ThemeContext);

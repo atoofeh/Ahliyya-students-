@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Plus, KeyRound, LogOut, Smartphone, ShieldCheck } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { Card, Button, Modal, Input, Badge, Spinner, EmptyState, PageHeader } from '../../components/ui';
 
 const STATUS_COLORS = { active: 'green', suspended: 'amber', banned: 'red' };

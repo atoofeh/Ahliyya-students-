@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Users, BookOpen, MonitorSmartphone, LogIn, FileWarning, HardDrive } from 'lucide-react';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, AreaChart, Area } from 'recharts';
 import api from '../../api/axios';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 import { Card, StatCard, Spinner, EmptyState, Badge, PageHeader, SectionTitle } from '../../components/ui';
 
 /* Chart series colors — CVD-validated pairs (dataviz six-checks) per surface. */

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Megaphone, Trash2, Send } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { Card, Button, Input, Textarea, Toggle, Badge, Spinner, EmptyState } from '../../components/ui';
 
 export default function AdminAnnouncements() {

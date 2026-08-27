@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Save, ShieldCheck, Timer, Video, Wrench, Lock } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
-import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../hooks/useToast';
+import { useAuth } from '../../hooks/useAuth';
 import { Card, Button, Input, Select, Toggle, Spinner } from '../../components/ui';
 
 export default function AdminSettings() {

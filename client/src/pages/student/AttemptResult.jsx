@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { CheckCircle2, XCircle, MinusCircle, Trophy, ArrowLeft } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { Card, Spinner, Badge, Button } from '../../components/ui';
 
 export default function AttemptResult() {

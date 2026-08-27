@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { ToastContext } from '../hooks/useToast';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
-const ToastContext = createContext(null);
+
 
 const ICONS = {
   success: <CheckCircle2 size={18} className="text-emerald-500" />,
@@ -47,4 +48,3 @@ export function ToastProvider({ children }) {
   );
 }
 
-export const useToast = () => useContext(ToastContext);

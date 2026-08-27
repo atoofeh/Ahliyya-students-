@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, PlayCircle, ShieldCheck, Award, BarChart3 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
 import api, { apiError } from '../../api/axios';
 import { Button, Input } from '../../components/ui';
 import Logo, { LogoMark } from '../../components/Logo';

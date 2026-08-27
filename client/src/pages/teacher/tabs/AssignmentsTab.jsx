@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Plus, Pencil, Trash2, ClipboardList, Inbox } from 'lucide-react';
 import api, { API_BASE, apiError } from '../../../api/axios';
-import { useToast } from '../../../context/ToastContext';
+import { useToast } from '../../../hooks/useToast';
 import { Card, Button, Modal, Input, Textarea, Toggle, Badge, EmptyState, Spinner } from '../../../components/ui';
 
 export default function AssignmentsTab({ courseId }) {

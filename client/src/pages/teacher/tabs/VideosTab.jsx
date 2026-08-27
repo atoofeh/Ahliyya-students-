@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Video, Trash2, Eye, FileUp, File as FileIcon } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
-import { useToast } from '../../../context/ToastContext';
+import { useToast } from '../../../hooks/useToast';
 import ChunkedUploader from '../../../components/ChunkedUploader';
 import { Card, Badge, Button, EmptyState, Spinner } from '../../../components/ui';
 

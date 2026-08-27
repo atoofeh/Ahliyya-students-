@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, PlayCircle, FileText, HelpCircle, ClipboardList, AlignLeft } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
-import { useToast } from '../../../context/ToastContext';
+import { useToast } from '../../../hooks/useToast';
 import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState } from '../../../components/ui';
 
 const LESSON_ICONS = { video: PlayCircle, pdf: FileText, document: FileText, quiz: HelpCircle, assignment: ClipboardList, text: AlignLeft };

@@ -5,7 +5,7 @@ import {
   Circle, Bookmark, ChevronDown, Megaphone, MessageSquareText, Send, Star, Lock,
 } from 'lucide-react';
 import api, { API_BASE, apiError } from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import VideoPlayer from '../../components/VideoPlayer';
 import { Card, Button, Spinner, Badge, ProgressBar, Tabs, EmptyState, Textarea, Input, Modal } from '../../components/ui';
 

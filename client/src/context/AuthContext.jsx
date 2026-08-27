@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { AuthContext } from '../hooks/useAuth';
 import api, { bootstrapSession } from '../api/axios';
 import { setAccessToken, clearAccessToken } from '../api/token';
 import { getDeviceId, getFingerprint } from '../api/fingerprint';
 
-const AuthContext = createContext(null);
+
 
 const readCachedUser = () => {
   try { return JSON.parse(localStorage.getItem('lms_user')) || null; } catch { return null; }
@@ -60,4 +61,3 @@ export function AuthProvider({ children }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext);

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, BookOpen } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { Card, Button, Spinner, EmptyState, Badge, Pagination, Modal, Input, Textarea, Select } from '../../components/ui';
 
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'].map((d) => ({ value: d, label: d }));

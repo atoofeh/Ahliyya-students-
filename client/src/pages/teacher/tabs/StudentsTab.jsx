@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { KeyRound, UserPlus, UserMinus, CalendarClock, Copy } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
-import { useToast } from '../../../context/ToastContext';
+import { useToast } from '../../../hooks/useToast';
 import { Card, Button, Modal, Input, Badge, EmptyState, Spinner, ProgressBar, Pagination } from '../../../components/ui';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../hooks/useAuth';
 
 export default function StudentsTab({ courseId }) {
   const toast = useToast();

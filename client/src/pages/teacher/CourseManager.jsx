@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
-import { useToast } from '../../context/ToastContext';
+import { useToast } from '../../hooks/useToast';
 import { Card, Button, Spinner, Badge, Tabs, Toggle, Input, Textarea, Select, ConfirmButton } from '../../components/ui';
 import CurriculumTab from './tabs/CurriculumTab';
 import VideosTab from './tabs/VideosTab';
