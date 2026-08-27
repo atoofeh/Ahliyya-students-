@@ -4,6 +4,7 @@ const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
 const { requireCourseAccess, requireCourseOwnership } = require('../../middleware/courseAccess');
 const { validate, paginationSchema } = require('../../middleware/validate');
+const { quizWriteLimiter } = require('../../middleware/rateLimiters');
 const v = require('./quizzes.validators');
 const c = require('./quizzes.controller');
 
@@ -12,8 +13,8 @@ router.use(authenticate);
 // Student: own attempt history (not course-scoped)
 router.get('/attempts/mine', authorize('student'), validate(paginationSchema, 'query'), c.myAttempts);
 router.get('/attempts/:attemptId', c.attemptResult);
-router.post('/attempts/:attemptId/answers', authorize('student'), validate(v.saveAnswersSchema), c.saveAnswers);
-router.post('/attempts/:attemptId/submit', authorize('student'), validate(v.saveAnswersSchema.partial()), c.submitAttempt);
+router.post('/attempts/:attemptId/answers', quizWriteLimiter, authorize('student'), validate(v.saveAnswersSchema), c.saveAnswers);
+router.post('/attempts/:attemptId/submit', quizWriteLimiter, authorize('student'), validate(v.saveAnswersSchema.partial()), c.submitAttempt);
 router.post('/attempts/:attemptId/grade', authorize('teacher', 'admin'), validate(v.gradeSchema), c.gradeAttempt);
 router.post('/attempts/:attemptId/invalidate', authorize('teacher', 'admin'),
   validate(z.object({ reason: z.string().max(500).optional() })), c.invalidateAttempt);

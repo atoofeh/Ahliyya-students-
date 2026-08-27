@@ -19,12 +19,21 @@ const build = (windowMs, max, message, options = {}) =>
 // general limiter so a long upload cannot starve normal app traffic.
 const CHUNK_UPLOAD_PATH = /^\/api\/v1\/videos\/uploads\/[^/]+\/chunks(\?|$)/;
 
+// Per-account buckets key on the submitted username (falls back to the IP when absent).
+const accountKey = (req) => `u:${String(req.body?.username || req.ip || '').toLowerCase()}`;
+const ACCOUNT_KEY = { keyGenerator: accountKey };
+
 module.exports = {
-  // Brute-force protection on credentials endpoints.
-  loginLimiter: build(15 * 60 * 1000, 10, 'Too many login attempts. Try again in 15 minutes.'),
+  // Login: a relaxed per-IP bucket (a lecture hall shares one NAT) plus a strict per-account bucket.
+  loginIpLimiter: build(15 * 60 * 1000, 30, 'Too many login attempts from this network. Try again in 15 minutes.'),
+  loginAccountLimiter: build(15 * 60 * 1000, 10, 'Too many login attempts for this account. Try again in 15 minutes.', ACCOUNT_KEY),
+  refreshLimiter: build(15 * 60 * 1000, 60, 'Too many session refreshes. Slow down.'),
   passwordLimiter: build(15 * 60 * 1000, 5, 'Too many password attempts. Try again later.'),
   verificationLimiter: build(15 * 60 * 1000, 20, 'Too many verification attempts. Try again later.'),
   codeRedemptionLimiter: build(15 * 60 * 1000, 10, 'Too many code attempts. Try again later.'),
+  resetRequestIpLimiter: build(60 * 60 * 1000, 3, 'Too many device-reset requests. Try again later.'),
+  resetRequestAccountLimiter: build(24 * 60 * 60 * 1000, 3, 'Too many device-reset requests for this account today.', ACCOUNT_KEY),
+  quizWriteLimiter: build(60 * 1000, 120, 'Too many quiz saves. Slow down.'),
   uploadLimiter: build(60 * 1000, 120, 'Upload rate exceeded. Slow down.'),
   chunkLimiter: build(60 * 1000, 900, 'Upload rate exceeded. Slow down.'),
   searchLimiter: build(60 * 1000, 60, 'Too many searches. Slow down.'),

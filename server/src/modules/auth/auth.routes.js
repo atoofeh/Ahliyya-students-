@@ -1,14 +1,16 @@
 const router = require('express').Router();
 const authenticate = require('../../middleware/authenticate');
 const { validate } = require('../../middleware/validate');
-const { loginLimiter, passwordLimiter, verificationLimiter } = require('../../middleware/rateLimiters');
+const {
+  loginIpLimiter, loginAccountLimiter, refreshLimiter, passwordLimiter, verificationLimiter,
+} = require('../../middleware/rateLimiters');
 const { requireAllowedOrigin } = require('../../middleware/security');
 const v = require('./auth.validators');
 const c = require('./auth.controller');
 
 // Public
-router.post('/login', loginLimiter, validate(v.loginSchema), c.login);
-router.post('/refresh', requireAllowedOrigin, validate(v.refreshSchema), c.refresh);
+router.post('/login', loginIpLimiter, loginAccountLimiter, validate(v.loginSchema), c.login);
+router.post('/refresh', refreshLimiter, requireAllowedOrigin, validate(v.refreshSchema), c.refresh);
 router.post('/forgot-password', passwordLimiter, validate(v.forgotPasswordSchema), c.forgotPassword);
 router.post('/reset-password', passwordLimiter, validate(v.resetPasswordSchema), c.resetPassword);
 
