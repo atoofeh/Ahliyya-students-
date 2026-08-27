@@ -3,8 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, ShieldAlert, ChevronLeft, ChevronRight, Send, Maximize } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import useAntiCheat from '../../hooks/useAntiCheat';
 import { Button, Card, Spinner, Badge, Modal } from '../../components/ui';
+import ChoiceGroup from '../../components/Choice';
+import OfflineBanner from '../../components/OfflineBanner';
 
 /**
  * Fullscreen proctored quiz runner. Autosaves every 15s, live countdown,
@@ -23,7 +26,11 @@ export default function QuizRunner() {
   const [warning, setWarning] = useState(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | offline
+  const [savedAgo, setSavedAgo] = useState(null);
+  const savedAtRef = useRef(null);
   const submittedRef = useRef(false);
+  const { online } = useNetworkStatus();
 
   const buildAnswerPayload = useCallback((ansMap, questions) =>
     questions.map((q) => ({
@@ -40,6 +47,7 @@ export default function QuizRunner() {
     try {
       const payload = buildAnswerPayload(answers, attempt.questions);
       const { data } = await api.post(`/quizzes/attempts/${attempt.attemptId}/submit`, { answers: payload });
+      try { sessionStorage.removeItem(`lms_attempt_${attempt.attemptId}`); } catch { /* private mode */ }
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       toast[auto ? 'info' : 'success'](auto ? 'Quiz auto-submitted' : 'Quiz submitted');
       navigate(`/student/attempts/${data._id || attempt.attemptId}`, { replace: true });
@@ -53,35 +61,50 @@ export default function QuizRunner() {
     }
   }, [attempt, answers, buildAnswerPayload, navigate, toast, courseId]);
 
+  // Stable callbacks — useAntiCheat re-subscribes when these change.
+  const onAntiCheatWarning = useCallback((type) => {
+    setWarning(type.replace(/_/g, ' '));
+    setTimeout(() => setWarning(null), 4000);
+  }, []);
+  const onAntiCheatAutoSubmit = useCallback(() => doSubmit(true), [doSubmit]);
+
   const { violations, enterFullscreen } = useAntiCheat({
     attemptId: attempt?.attemptId,
     enabled: !!attempt && attempt.quiz?.antiCheat?.enabled !== false,
     requireFullscreen: attempt?.quiz?.antiCheat?.requireFullscreen,
     blockCopyPaste: attempt?.quiz?.antiCheat?.blockCopyPaste !== false,
-    onWarning: (type) => {
-      setWarning(type.replace(/_/g, ' '));
-      setTimeout(() => setWarning(null), 4000);
-    },
-    onAutoSubmit: () => doSubmit(true),
+    onWarning: onAntiCheatWarning,
+    onAutoSubmit: onAntiCheatAutoSubmit,
   });
 
-  // Start attempt
+  // Start attempt. Server answers are the base; anything this device saved
+  // locally (a refresh, or an offline stretch) is layered on top.
   useEffect(() => {
-    api.post(`/quizzes/courses/${courseId}/${quizId}/start`)
-      .then(({ data }) => {
-        setAttempt(data);
-        // Rehydrate any autosaved answers when resuming.
-        const restored = {};
-        for (const a of data.answers || []) {
-          restored[a.questionId] = { selected: a.selectedOptionIds || [], text: a.textAnswer || '', blanks: a.blanks || [] };
-        }
-        setAnswers(restored);
-      })
-      .catch((err) => {
-        toast.error(apiError(err));
-        navigate(`/student/courses/${courseId}`, { replace: true });
-      });
+    const t = setTimeout(() => {
+      api.post(`/quizzes/courses/${courseId}/${quizId}/start`)
+        .then(({ data }) => {
+          const restored = {};
+          for (const a of data.answers || []) {
+            restored[a.questionId] = { selected: a.selectedOptionIds || [], text: a.textAnswer || '', blanks: a.blanks || [] };
+          }
+          let cached = null;
+          try { cached = JSON.parse(sessionStorage.getItem(`lms_attempt_${data.attemptId}`) || 'null'); } catch { /* private mode */ }
+          setAttempt(data);
+          setAnswers(cached ? { ...restored, ...cached } : restored);
+        })
+        .catch((err) => {
+          toast.error(apiError(err));
+          navigate(`/student/courses/${courseId}`, { replace: true });
+        });
+    }, 0);
+    return () => clearTimeout(t);
   }, [courseId, quizId, navigate, toast]);
+
+  // Mirror every keystroke to this device so a refresh or a dropped connection loses nothing.
+  useEffect(() => {
+    if (!attempt) return;
+    try { sessionStorage.setItem(`lms_attempt_${attempt.attemptId}`, JSON.stringify(answers)); } catch { /* private mode */ }
+  }, [answers, attempt]);
 
   // Countdown timer
   useEffect(() => {
@@ -96,16 +119,32 @@ export default function QuizRunner() {
     return () => clearInterval(interval);
   }, [attempt, doSubmit]);
 
-  // Autosave every 15s
+  // Autosave every 15s, and immediately when the connection comes back.
   useEffect(() => {
     if (!attempt) return undefined;
-    const interval = setInterval(() => {
-      const payload = buildAnswerPayload(answers, attempt.questions);
-      // clientSavedAt lets the server drop a slow, older save that arrives after a newer one.
-      api.post(`/quizzes/attempts/${attempt.attemptId}/answers`, { answers: payload, clientSavedAt: new Date().toISOString() }).catch(() => {});
-    }, 15000);
-    return () => clearInterval(interval);
+    const save = async () => {
+      if (!navigator.onLine) { setSaveState('offline'); return; }
+      setSaveState('saving');
+      try {
+        const payload = buildAnswerPayload(answers, attempt.questions);
+        // clientSavedAt lets the server drop a slow, older save that arrives after a newer one.
+        await api.post(`/quizzes/attempts/${attempt.attemptId}/answers`, { answers: payload, clientSavedAt: new Date().toISOString() });
+        savedAtRef.current = Date.now();
+        setSaveState('saved');
+      } catch { setSaveState('offline'); }
+    };
+    const interval = setInterval(save, 15000);
+    window.addEventListener('online', save);
+    return () => { clearInterval(interval); window.removeEventListener('online', save); };
   }, [attempt, answers, buildAnswerPayload]);
+
+  // Keep the "saved Ns ago" label honest without re-rendering on every tick of the clock.
+  useEffect(() => {
+    const t = setInterval(() => {
+      setSavedAgo(savedAtRef.current ? Math.max(1, Math.round((Date.now() - savedAtRef.current) / 1000)) : null);
+    }, 5000);
+    return () => clearInterval(t);
+  }, []);
 
   if (!attempt) return <div className="flex h-screen items-center justify-center bg-surface-50 dark:bg-surface-900"><Spinner full /></div>;
 
@@ -118,16 +157,6 @@ export default function QuizRunner() {
   }).length;
 
   const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-
-  const toggleOption = (optId) => {
-    if (q.multipleCorrect) {
-      const set = new Set(answer.selected);
-      set.has(optId) ? set.delete(optId) : set.add(optId);
-      setAnswer({ selected: [...set] });
-    } else {
-      setAnswer({ selected: [optId] });
-    }
-  };
 
   const renderQuestion = () => {
     const blanksCount = (q.text.match(/\{\{blank\}\}/g) || []).length;
@@ -149,33 +178,26 @@ export default function QuizRunner() {
         {['multiple_choice', 'true_false', 'image_choice'].includes(q.type) && (
           <div className="space-y-2">
             {q.multipleCorrect && <p className="text-xs text-surface-400">Select all that apply</p>}
-            {q.options.map((o) => (
-              <button key={o.id} onClick={() => toggleOption(o.id)}
-                className={`flex w-full items-center gap-3 rounded-xl border-2 p-3.5 text-left text-sm transition-colors ${
-                  answer.selected.includes(o.id)
-                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-800 dark:text-primary-200'
-                    : 'border-surface-200 dark:border-surface-600 hover:border-primary-300 text-surface-700 dark:text-surface-200'}`}>
-                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-${q.multipleCorrect ? 'md' : 'full'} border-2 ${
-                  answer.selected.includes(o.id) ? 'border-primary-500 bg-primary-500' : 'border-surface-300'}`}>
-                  {answer.selected.includes(o.id) && <span className="h-2 w-2 rounded-full bg-white" />}
-                </span>
-                {o.image && <img src={`${api.defaults.baseURL}/files/${o.image}/content`} alt="" className="h-16 rounded" />}
-                {o.text}
-              </button>
-            ))}
+            <ChoiceGroup
+              multiple={q.multipleCorrect}
+              options={q.options}
+              value={answer.selected}
+              onChange={(selected) => setAnswer({ selected })}
+              name={`Question ${index + 1}`}
+            />
           </div>
         )}
 
         {q.type === 'short_answer' && (
           <input value={answer.text} onChange={(e) => setAnswer({ text: e.target.value })}
-            placeholder="Type your answer..."
-            className="w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-900 px-4 py-3 text-surface-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            placeholder="Type your answer…" aria-label={`Answer for question ${index + 1}`}
+            className="w-full rounded-lg border border-surface-300 bg-white px-4 py-3 text-surface-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-surface-600 dark:bg-surface-900 dark:text-white" />
         )}
 
         {q.type === 'essay' && (
           <textarea value={answer.text} onChange={(e) => setAnswer({ text: e.target.value })}
-            placeholder="Write your essay answer..." rows={8}
-            className="w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-900 px-4 py-3 text-surface-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            placeholder="Write your essay answer…" rows={8} aria-label={`Answer for question ${index + 1}`}
+            className="w-full rounded-lg border border-surface-300 bg-white px-4 py-3 text-surface-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-surface-600 dark:bg-surface-900 dark:text-white" />
         )}
 
         {q.type === 'fill_blanks' && (
@@ -187,8 +209,8 @@ export default function QuizRunner() {
                   blanks[i] = e.target.value;
                   setAnswer({ blanks });
                 }}
-                placeholder={`Blank ${i + 1}`}
-                className="w-full rounded-lg border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-900 px-4 py-2.5 text-sm text-surface-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                placeholder={`Blank ${i + 1}`} aria-label={`Question ${index + 1}, blank ${i + 1}`}
+                className="w-full rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm text-surface-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-surface-600 dark:bg-surface-900 dark:text-white" />
             ))}
           </div>
         )}
@@ -206,6 +228,12 @@ export default function QuizRunner() {
             <p className="text-xs text-surface-400">Attempt #{attempt.attemptNumber} · {answeredCount}/{attempt.questions.length} answered</p>
           </div>
           <div className="flex items-center gap-3">
+            <span className="hidden text-xs text-surface-400 sm:inline">
+              {saveState === 'saving' ? 'Saving…'
+                : !online || saveState === 'offline' ? 'Offline — answers kept on this device'
+                : savedAgo ? `Saved ${savedAgo}s ago`
+                : 'Not saved yet'}
+            </span>
             {violations > 0 && (
               <Badge color="red"><ShieldAlert size={12} className="mr-1" /> {violations} violation{violations !== 1 && 's'}</Badge>
             )}
@@ -221,6 +249,8 @@ export default function QuizRunner() {
           </div>
         </div>
       </div>
+
+      <OfflineBanner />
 
       {warning && (
         <div className="sticky top-[57px] z-10 bg-rose-500 px-4 py-2 text-center text-sm font-medium text-white animate-fade-in">
