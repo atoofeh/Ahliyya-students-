@@ -70,3 +70,35 @@ test('legacy dev admin is only seeded when ADMIN_PASSWORD is set', async () => {
   await seed();
   assert.ok(await User().findOne({ username: 'admin' }));
 });
+
+test('migration dry-run records nothing and changes nothing', async () => {
+  const { runMigrations } = require('../src/scripts/migrate');
+  const Migration = require('../src/models/Migration');
+  const before = await User().find().select('tokenVersion').lean();
+  const result = await runMigrations({ dryRun: true, forceRelogin: true, log: () => {} });
+  assert.ok(result.skipped.includes('001-roles-and-devices'));
+  assert.equal(await Migration.countDocuments(), 0);
+  const after = await User().find().select('tokenVersion').lean();
+  assert.deepEqual(after, before);
+});
+
+test('migration --force-relogin bumps every tokenVersion and ends sessions, once', async () => {
+  const { runMigrations } = require('../src/scripts/migrate');
+  const Migration = require('../src/models/Migration');
+  const Session = require('../src/models/Session');
+  const admin = await app.loginAs('admin', 'Admin@12345', { deviceId: 'dev-admin-mig' });
+  const before = Object.fromEntries((await User().find().select('tokenVersion').lean()).map((u) => [String(u._id), u.tokenVersion]));
+
+  const first = await runMigrations({ forceRelogin: true, log: () => {} });
+  assert.deepEqual(first.applied, ['001-roles-and-devices']);
+  assert.equal(await Migration.countDocuments({ name: '001-roles-and-devices' }), 1);
+  for (const u of await User().find().select('tokenVersion').lean()) {
+    assert.equal(u.tokenVersion, before[String(u._id)] + 1);
+  }
+  assert.equal(await Session.countDocuments({ isActive: true }), 0);
+  const me = await app.api('GET', '/auth/me', { token: admin.token, deviceId: 'dev-admin-mig' });
+  assert.equal(me.status, 401);
+
+  const second = await runMigrations({ forceRelogin: true, log: () => {} });
+  assert.deepEqual(second.applied, []);
+});

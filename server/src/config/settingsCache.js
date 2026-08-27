@@ -14,6 +14,7 @@ const DEFAULTS = Object.freeze({
   maintenanceMessage: 'The platform is under scheduled maintenance. Please check back soon.',
   sessionTimeoutMinutes: 30,
   requireEmailVerification: true,
+  deviceBindingEnabled: true, // one account ↔ one authorized device (owner-only setting)
   maxLoginAttempts: 5,
   lockoutMinutes: 15,
   recordingProtection: true,

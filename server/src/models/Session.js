@@ -12,6 +12,10 @@ const sessionSchema = new mongoose.Schema(
     refreshTokenHash: { type: String, required: true, select: false },
     isActive: { type: Boolean, default: true },
 
+    // Authorized-device binding: the session is pinned to the device that created it.
+    device: { type: mongoose.Schema.Types.ObjectId, ref: 'Device', default: null },
+    deviceKeyHash: { type: String, default: null, select: false },
+
     // Device identity
     deviceId: { type: String, required: true },
     fingerprint: { type: String, default: null }, // client-computed browser fingerprint hash
@@ -27,7 +31,8 @@ const sessionSchema = new mongoose.Schema(
     endedAt: { type: Date, default: null },
     endReason: {
       type: String,
-      enum: [null, 'logout', 'new_device_login', 'admin_force_logout', 'inactivity_timeout', 'password_changed', 'refresh_rotated_reuse'],
+      enum: [null, 'logout', 'new_device_login', 'admin_force_logout', 'inactivity_timeout', 'password_changed',
+        'refresh_rotated_reuse', 'device_revoked', 'device_mismatch', 'policy_relogin'],
       default: null,
     },
   },
