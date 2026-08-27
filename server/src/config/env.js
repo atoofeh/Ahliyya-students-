@@ -6,6 +6,14 @@ const { z } = require('zod');
  * Centralized, validated environment configuration.
  * Every module reads config from here — never from process.env directly.
  */
+// '' in .env means "unset" for optional values.
+const blankToUndefined = (v) => (v === '' ? undefined : v);
+const optional = (schema) => z.preprocess(blankToUndefined, schema.optional());
+const passwordRule = z.string().min(8).max(128)
+  .regex(/[a-z]/, 'needs a lowercase letter')
+  .regex(/[A-Z]/, 'needs an uppercase letter')
+  .regex(/\d/, 'needs a digit');
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(5000),
@@ -18,25 +26,40 @@ const envSchema = z.object({
 
   // Master key used to wrap per-video encryption keys and sign stream URLs.
   // If absent in development, a deterministic key derived from JWT_SECRET is used.
-  MEDIA_MASTER_KEY: z.string().optional(),
+  MEDIA_MASTER_KEY: optional(z.string().min(32)),
 
   CLIENT_URL: z.string().default('http://localhost:5173'),
+  ALLOWED_ORIGINS: z.string().default(''),
+  REFRESH_COOKIE_SAMESITE: z.enum(['lax', 'none', 'strict']).default('lax'),
 
-  ADMIN_EMAIL: z.string().default('admin@lms.local'),
-  ADMIN_PASSWORD: z.string().default('Admin@12345'),
+  // Owner (super_admin) bootstrap — created once by `npm run seed` / dev startup.
+  SUPER_ADMIN_NAME: z.string().min(2).max(100).default('Platform Owner'),
+  SUPER_ADMIN_USERNAME: z.string().min(3).max(50).default('owner'),
+  SUPER_ADMIN_EMAIL: optional(z.string().email()),
+  SUPER_ADMIN_INITIAL_PASSWORD: optional(passwordRule),
 
-  STORAGE_ROOT: z.string().optional(),
+  // Default operational administrator (Abdullah Dabbas).
+  DEFAULT_ADMIN_NAME: z.string().min(2).max(100).default('Abdullah Dabbas'),
+  DEFAULT_ADMIN_USERNAME: z.string().min(3).max(50).default('abdullah.dabbas'),
+  DEFAULT_ADMIN_EMAIL: optional(z.string().email()),
+  DEFAULT_ADMIN_INITIAL_PASSWORD: optional(passwordRule),
+
+  // Legacy development admin — never seeded in production, no default password.
+  ADMIN_EMAIL: optional(z.string().email()),
+  ADMIN_PASSWORD: optional(passwordRule),
+
+  STORAGE_ROOT: optional(z.string()),
+  LOG_DIR: optional(z.string()),
   MAX_UPLOAD_MB: z.coerce.number().default(2048),
   CHUNK_SIZE_MB: z.coerce.number().default(8),
 
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.coerce.number().optional(),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
+  SMTP_HOST: optional(z.string()),
+  SMTP_PORT: optional(z.coerce.number()),
+  SMTP_USER: optional(z.string()),
+  SMTP_PASS: optional(z.string()),
   SMTP_FROM: z.string().default('LMS Platform <no-reply@lms.local>'),
 
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'http', 'debug']).default('info'),
-  LOG_DIR: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

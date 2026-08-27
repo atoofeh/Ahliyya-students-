@@ -7,7 +7,16 @@ const { startJobs } = require('./jobs');
 
 const start = async () => {
   await connectDB();
-  await seed();
+  if (env.NODE_ENV === 'production') {
+    const User = require('./models/User');
+    const hasOwner = await User.exists({ role: 'super_admin', deletedAt: null });
+    if (!hasOwner) {
+      logger.error('No owner account exists. Run: npm run seed (with SUPER_ADMIN_* configured) before starting in production.');
+      process.exit(1);
+    }
+  } else {
+    await seed();
+  }
   startJobs();
 
   const server = app.listen(env.PORT, () => {
