@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Flat brand navy as the background layer, not the generated inset bitmap: an
+  inset background leaves the icon transparent at the edges under launcher masks
+  that scale or parallax the layers. The foreground bitmap already sits inside
+  the adaptive-icon safe circle, so it needs no inset either.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
 </adaptive-icon>
