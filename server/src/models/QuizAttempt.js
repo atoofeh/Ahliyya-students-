@@ -53,6 +53,7 @@ const quizAttemptSchema = new mongoose.Schema(
 
     questionsSnapshot: { type: [questionSnapshotSchema], required: true },
     answers: { type: [answerSchema], default: [] },
+    answersSavedAt: { type: Date, default: null }, // client timestamp of the last accepted autosave
 
     status: { type: String, enum: ATTEMPT_STATUS, default: 'in_progress' },
     score: { type: Number, default: 0 }, // points earned

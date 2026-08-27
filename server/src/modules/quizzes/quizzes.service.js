@@ -257,8 +257,8 @@ class QuizService {
     };
   }
 
-  /** Autosave answers during the attempt. */
-  static async saveAnswers(attemptId, studentId, answers) {
+  /** Autosave answers during the attempt. A payload older than the last accepted one is ignored (slow request overtaken by a newer save). */
+  static async saveAnswers(attemptId, studentId, answers, clientSavedAt) {
     const attempt = await QuizAttempt.findOne({ _id: attemptId, student: studentId, status: 'in_progress' })
       .select('+questionsSnapshot.correctAnswers +questionsSnapshot.options.isCorrect');
     if (!attempt) throw ApiError.notFound('Active attempt not found');
@@ -266,10 +266,14 @@ class QuizService {
       await QuizService.#finalizeAttempt(attempt, { autoSubmitted: true });
       throw ApiError.forbidden('Time is up — attempt auto-submitted', 'TIME_UP');
     }
+    if (clientSavedAt && attempt.answersSavedAt && clientSavedAt < attempt.answersSavedAt) {
+      return { saved: false, stale: true, savedAt: attempt.answersSavedAt };
+    }
     const validIds = new Set(attempt.questionsSnapshot.map((q) => String(q.questionId)));
     attempt.answers = answers.filter((a) => validIds.has(String(a.questionId)));
+    attempt.answersSavedAt = clientSavedAt || new Date();
     await attempt.save();
-    return { saved: true, savedAt: new Date() };
+    return { saved: true, savedAt: attempt.answersSavedAt };
   }
 
   static async submitAttempt(attemptId, studentId, answers, ip) {

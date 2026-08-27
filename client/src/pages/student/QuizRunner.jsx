@@ -101,7 +101,8 @@ export default function QuizRunner() {
     if (!attempt) return undefined;
     const interval = setInterval(() => {
       const payload = buildAnswerPayload(answers, attempt.questions);
-      api.post(`/quizzes/attempts/${attempt.attemptId}/answers`, { answers: payload }).catch(() => {});
+      // clientSavedAt lets the server drop a slow, older save that arrives after a newer one.
+      api.post(`/quizzes/attempts/${attempt.attemptId}/answers`, { answers: payload, clientSavedAt: new Date().toISOString() }).catch(() => {});
     }, 15000);
     return () => clearInterval(interval);
   }, [attempt, answers, buildAnswerPayload]);

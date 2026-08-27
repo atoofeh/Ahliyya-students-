@@ -62,7 +62,7 @@ const answerSchema = z.object({
   blanks: z.array(z.string().max(500)).max(20).optional().default([]),
 });
 
-const saveAnswersSchema = z.object({ answers: z.array(answerSchema).max(500) });
+const saveAnswersSchema = z.object({ answers: z.array(answerSchema).max(500), clientSavedAt: z.coerce.date().optional() });
 
 const gradeSchema = z.object({
   grades: z.array(z.object({

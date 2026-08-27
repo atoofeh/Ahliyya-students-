@@ -36,7 +36,7 @@ const startAttempt = asyncHandler(async (req, res) => {
   res.status(201).json(await QuizService.startAttempt(req.params.quizId, req.course._id, req.user.id, req.ip));
 });
 const saveAnswers = asyncHandler(async (req, res) => {
-  res.json(await QuizService.saveAnswers(req.params.attemptId, req.user.id, req.body.answers));
+  res.json(await QuizService.saveAnswers(req.params.attemptId, req.user.id, req.body.answers, req.body.clientSavedAt));
 });
 const submitAttempt = asyncHandler(async (req, res) => {
   res.json(await QuizService.submitAttempt(req.params.attemptId, req.user.id, req.body.answers, req.ip));
