@@ -5,12 +5,14 @@ import {
   Circle, AlarmClock, Bookmark, ChevronDown, ChevronLeft, ChevronRight, Megaphone,
   MessageSquareText, Send, Star, Lock, ListTree, X,
 } from 'lucide-react';
-import api, { API_BASE, apiError } from '../../api/axios';
+import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import VideoPlayer from '../../components/VideoPlayer';
 import { Card, Button, Badge, ProgressBar, EmptyState, Textarea, Input, Modal, Skeleton } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 import ErrorState from '../../components/ErrorState';
+import DocumentViewer from '../../components/DocumentViewer';
+import DownloadButton from '../../components/DownloadButton';
 
 const LESSON_ICONS = {
   video: PlayCircle, pdf: FileText, document: FileText, quiz: HelpCircle,
@@ -204,19 +206,7 @@ export default function CoursePlayer() {
             : <Card className="p-6 text-center text-sm text-surface-500">This video is still processing — check back shortly.</Card>
         )}
         {(lesson.type === 'pdf' || lesson.type === 'document') && lesson.fileAsset && (
-          <Card className="overflow-hidden">
-            {lesson.fileAsset.mimeType === 'application/pdf' ? (
-              <iframe title={lesson.title} src={`${API_BASE}/files/${lesson.fileAsset._id}/content#toolbar=0`} className="h-[60vh] w-full lg:h-[75vh]" />
-            ) : (
-              <div className="p-6 text-center">
-                <FileText size={36} className="mx-auto mb-2 text-surface-400" />
-                <p className="mb-3 text-sm text-surface-500">{lesson.fileAsset.originalName}</p>
-                <a href={`${API_BASE}/files/${lesson.fileAsset._id}/content?download=1`} target="_blank" rel="noreferrer">
-                  <Button variant="outline">Open document</Button>
-                </a>
-              </div>
-            )}
-          </Card>
+          <DocumentViewer fileAsset={lesson.fileAsset} title={lesson.title} />
         )}
         {lesson.type === 'text' && (
           <Card className="max-w-none whitespace-pre-wrap p-6 text-[15px] leading-relaxed text-surface-700 dark:text-surface-200">
@@ -302,10 +292,12 @@ export default function CoursePlayer() {
               </p>
               {a.instructions && <p className="mt-2 whitespace-pre-wrap text-sm text-surface-600 dark:text-surface-300">{a.instructions}</p>}
               {a.attachment && (
-                <a className="mt-1 inline-block text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300"
-                  href={`${API_BASE}/files/${a.attachment._id || a.attachment}/content?download=1`} target="_blank" rel="noreferrer">
+                <DownloadButton
+                  className="mt-1 inline-block text-xs font-semibold text-brand-600 hover:underline disabled:opacity-60 dark:text-brand-300"
+                  fileId={a.attachment._id || a.attachment}
+                  filename={a.attachment.originalName || 'attachment'}>
                   Download attachment
-                </a>
+                </DownloadButton>
               )}
             </div>
             <div className="text-right">

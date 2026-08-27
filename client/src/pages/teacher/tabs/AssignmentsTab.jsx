@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Plus, Pencil, Trash2, ClipboardList, Inbox } from 'lucide-react';
-import api, { API_BASE, apiError } from '../../../api/axios';
+import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { Card, Button, Modal, Input, Textarea, Toggle, Badge, EmptyState, Spinner } from '../../../components/ui';
 import { SkeletonCard } from '../../../components/Skeletons';
+import DownloadButton from '../../../components/DownloadButton';
 
 export default function AssignmentsTab({ courseId }) {
   const toast = useToast();
@@ -142,10 +143,12 @@ export default function AssignmentsTab({ courseId }) {
                 <p className="mt-1 text-xs text-surface-400">Submitted {new Date(s.submittedAt).toLocaleString()}</p>
                 {s.text && <p className="mt-2 whitespace-pre-wrap rounded bg-surface-50 dark:bg-surface-700/40 p-2 text-sm text-surface-600 dark:text-surface-300">{s.text}</p>}
                 {s.attachment && (
-                  <a href={`${API_BASE}/files/${s.attachment._id || s.attachment}/content?download=1`} target="_blank" rel="noreferrer"
-                    className="mt-1 inline-block text-xs text-primary-600 hover:underline">
+                  <DownloadButton
+                    className="mt-1 inline-block text-xs text-brand-600 hover:underline disabled:opacity-60 dark:text-brand-300"
+                    fileId={s.attachment._id || s.attachment}
+                    filename={s.attachment.originalName || 'attachment'}>
                     Download attachment ({s.attachment.originalName})
-                  </a>
+                  </DownloadButton>
                 )}
                 <div className="mt-3 grid grid-cols-[110px_1fr_auto] items-end gap-2">
                   <Input label={`Points / ${subsModal.maxPoints}`} type="number" min="0" max={subsModal.maxPoints}
