@@ -4,6 +4,23 @@ const hpp = require('hpp');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const env = require('../config/env');
+const ApiError = require('../core/ApiError');
+
+/** Origins allowed to make credentialed requests: the SPA plus ALLOWED_ORIGINS (e.g. Capacitor origins). */
+const allowedOrigins = new Set(
+  [env.CLIENT_URL, ...env.ALLOWED_ORIGINS.split(',')].map((s) => s.trim()).filter(Boolean)
+);
+
+/**
+ * CSRF backstop for cookie-bearing auth routes. Browsers always send Origin
+ * on cross-site POSTs; a request with no Origin (native WebView, curl) is
+ * allowed — it is covered by the httpOnly cookie policy and device pinning.
+ */
+const requireAllowedOrigin = (req, _res, next) => {
+  const origin = req.headers.origin;
+  if (!origin || allowedOrigins.has(origin)) return next();
+  next(ApiError.forbidden('Origin not allowed', 'ORIGIN_NOT_ALLOWED'));
+};
 
 /**
  * Consolidated security middleware stack:
@@ -66,10 +83,10 @@ const applySecurity = (app) => {
 
   app.use(
     cors({
-      origin: env.CLIENT_URL,
+      origin: (origin, cb) => cb(null, !origin || allowedOrigins.has(origin)),
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'x-device-id', 'x-fingerprint'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-device-id', 'x-fingerprint', 'x-client-platform', 'x-app-version'],
     })
   );
 
@@ -79,4 +96,4 @@ const applySecurity = (app) => {
   app.use(sanitizeRequest);
 };
 
-module.exports = { applySecurity, sanitizeRequest };
+module.exports = { applySecurity, sanitizeRequest, requireAllowedOrigin, allowedOrigins };

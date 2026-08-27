@@ -2,18 +2,19 @@ const router = require('express').Router();
 const authenticate = require('../../middleware/authenticate');
 const { validate } = require('../../middleware/validate');
 const { loginLimiter, passwordLimiter, verificationLimiter } = require('../../middleware/rateLimiters');
+const { requireAllowedOrigin } = require('../../middleware/security');
 const v = require('./auth.validators');
 const c = require('./auth.controller');
 
 // Public
 router.post('/login', loginLimiter, validate(v.loginSchema), c.login);
-router.post('/refresh', validate(v.refreshSchema), c.refresh);
+router.post('/refresh', requireAllowedOrigin, validate(v.refreshSchema), c.refresh);
 router.post('/forgot-password', passwordLimiter, validate(v.forgotPasswordSchema), c.forgotPassword);
 router.post('/reset-password', passwordLimiter, validate(v.resetPasswordSchema), c.resetPassword);
 
 // Authenticated
 router.use(authenticate);
-router.post('/logout', c.logout);
+router.post('/logout', requireAllowedOrigin, c.logout);
 router.get('/me', c.me);
 router.patch('/me', validate(v.updateProfileSchema), c.updateProfile);
 router.post('/resend-verification', verificationLimiter, validate(v.sendVerificationSchema), c.sendVerification);

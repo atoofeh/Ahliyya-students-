@@ -4,20 +4,30 @@ const DeviceService = require('./device.service');
 const env = require('../../config/env');
 
 /**
- * Refresh tokens are delivered via httpOnly cookie (primary) and response
- * body (fallback for clients where third-party cookies are blocked).
+ * Refresh tokens travel in an httpOnly cookie. The web client never sees
+ * them in JavaScript; native apps (x-client-platform: android|ios) also get a
+ * body copy for Keystore-backed storage.
  */
 const REFRESH_COOKIE = 'lms_refresh';
+const NATIVE_PLATFORMS = new Set(['android', 'ios']);
+
+const isNativeClient = (req) => NATIVE_PLATFORMS.has(String(req.headers['x-client-platform'] || '').toLowerCase());
 
 const cookieOptions = (rememberMe) => ({
   httpOnly: true,
-  secure: env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  secure: env.NODE_ENV === 'production' || env.REFRESH_COOKIE_SAMESITE === 'none',
+  sameSite: env.REFRESH_COOKIE_SAMESITE,
   path: '/api/v1/auth',
   maxAge: (rememberMe ? 30 : 7) * 24 * 60 * 60 * 1000,
 });
 
 const clientIp = (req) => req.ip || req.socket?.remoteAddress || '';
+
+const authBody = (req, result) => ({
+  user: result.user,
+  accessToken: result.accessToken,
+  ...(isNativeClient(req) && { refreshToken: result.refreshToken }),
+});
 
 const login = asyncHandler(async (req, res) => {
   const { username, password, deviceId, fingerprint, rememberMe } = req.body;
@@ -33,14 +43,14 @@ const login = asyncHandler(async (req, res) => {
     appVersion: String(req.headers['x-app-version'] || '').slice(0, 40),
   });
   res.cookie(REFRESH_COOKIE, result.refreshToken, cookieOptions(rememberMe));
-  res.json({ user: result.user, accessToken: result.accessToken, refreshToken: result.refreshToken });
+  res.json(authBody(req, result));
 });
 
 const refresh = asyncHandler(async (req, res) => {
-  const token = req.cookies?.[REFRESH_COOKIE] || req.body?.refreshToken;
-  const result = await AuthService.refresh(token, { ip: clientIp(req) });
+  const token = req.cookies?.[REFRESH_COOKIE] || (isNativeClient(req) ? req.body?.refreshToken : undefined);
+  const result = await AuthService.refresh(token, { ip: clientIp(req), deviceId: req.headers['x-device-id'] });
   res.cookie(REFRESH_COOKIE, result.refreshToken, cookieOptions(false));
-  res.json(result);
+  res.json(authBody(req, result));
 });
 
 const logout = asyncHandler(async (req, res) => {
@@ -77,7 +87,7 @@ const changePassword = asyncHandler(async (req, res) => {
     req.user.id, req.body.currentPassword, req.body.newPassword, req.session._id, clientIp(req)
   );
   res.cookie(REFRESH_COOKIE, result.refreshToken, cookieOptions(false));
-  res.json(result);
+  res.json(authBody(req, result));
 });
 
 const forgotPassword = asyncHandler(async (req, res) => {

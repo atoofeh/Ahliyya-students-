@@ -5,7 +5,7 @@ const env = require('../../config/env');
 const ApiError = require('../../core/ApiError');
 const audit = require('../../core/audit');
 const { sendMail, templates } = require('../../core/mailer');
-const { sha256, safeEqual } = require('../../core/cryptoUtils');
+const { sha256, safeEqual, randomToken } = require('../../core/cryptoUtils');
 const { getSettings } = require('../../config/settingsCache');
 const User = require('../../models/User');
 const Session = require('../../models/Session');
@@ -32,7 +32,9 @@ class AuthService {
   static signTokens(user, sessionId, rememberMe) {
     const payload = { userId: user._id, role: user.role, tokenVersion: user.tokenVersion, sid: sessionId };
     const accessToken = jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
-    const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+    // jti makes every refresh token unique even when issued within the same second,
+    // so rotation always changes the stored hash and replay detection can work.
+    const refreshToken = jwt.sign({ ...payload, jti: randomToken(8) }, env.JWT_REFRESH_SECRET, {
       expiresIn: rememberMe ? '30d' : env.JWT_REFRESH_EXPIRES_IN,
     });
     return { accessToken, refreshToken };
@@ -142,7 +144,7 @@ class AuthService {
    * Refresh-token rotation with reuse detection: a refresh token may be used
    * exactly once. Reuse of a rotated token kills the session.
    */
-  static async refresh(refreshToken, { ip } = {}) {
+  static async refresh(refreshToken, { ip, deviceId } = {}) {
     if (!refreshToken) throw ApiError.unauthorized('Refresh token required', 'NO_REFRESH');
 
     let decoded;
@@ -154,7 +156,7 @@ class AuthService {
 
     const [user, session] = await Promise.all([
       User.findById(decoded.userId),
-      Session.findById(decoded.sid).select('+refreshTokenHash'),
+      Session.findById(decoded.sid).select('+refreshTokenHash +deviceKeyHash'),
     ]);
 
     if (!user || user.deletedAt || user.status !== 'active') {
@@ -167,12 +169,27 @@ class AuthService {
       throw ApiError.unauthorized('Session ended', 'SESSION_TERMINATED');
     }
 
+    // Device pinning: a refresh token presented from another device ends the session.
+    if (session.deviceKeyHash) {
+      try {
+        DeviceService.assertSessionDevice(session, deviceId);
+      } catch (err) {
+        session.isActive = false;
+        session.endedAt = new Date();
+        session.endReason = 'device_mismatch';
+        await session.save();
+        await audit({ user: user._id, action: 'DEVICE_MISMATCH', ip, meta: { sessionId: String(session._id), during: 'refresh' } });
+        throw err;
+      }
+    }
+
     if (!safeEqual(session.refreshTokenHash, sha256(refreshToken))) {
       // Rotated token replayed — likely theft. Kill the session.
       session.isActive = false;
       session.endedAt = new Date();
       session.endReason = 'refresh_rotated_reuse';
       await session.save();
+      await audit({ user: user._id, action: 'TOKEN_REUSE_DETECTED', ip, meta: { sessionId: String(session._id) } });
       await audit({ user: user._id, action: 'SESSION_TERMINATED', ip, meta: { cause: 'refresh_reuse_detected' } });
       throw ApiError.unauthorized('Refresh token reuse detected — session terminated', 'SESSION_TERMINATED');
     }
