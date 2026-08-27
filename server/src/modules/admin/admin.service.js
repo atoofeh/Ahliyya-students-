@@ -10,6 +10,7 @@ const LoginHistory = require('../../models/LoginHistory');
 const AuditLog = require('../../models/AuditLog');
 const PlatformSetting = require('../../models/PlatformSetting');
 const Enrollment = require('../../models/Enrollment');
+const DeviceService = require('../auth/device.service');
 
 /** Settings keys only the owner may change. */
 const OWNER_ONLY_SETTINGS = ['sessionTimeoutMinutes', 'maxLoginAttempts', 'lockoutMinutes', 'requireEmailVerification', 'deviceBindingEnabled'];
@@ -190,6 +191,20 @@ class AdminService {
     await user.save();
     await audit({ user: actor.id, action: 'FORCE_LOGOUT', targetUser: userId, ip, meta: { all: true } });
     return { message: 'All sessions for user terminated' };
+  }
+
+  // ── Authorized devices ─────────────────────────────────────────────
+
+  static async getUserDevice(userId) {
+    await AdminService.#loadTarget(userId);
+    const [active, history] = await Promise.all([DeviceService.activeFor(userId), DeviceService.historyFor(userId)]);
+    return { active, history };
+  }
+
+  static async revokeUserDevice(actor, userId, reason, ip) {
+    const user = await AdminService.#loadTarget(userId);
+    await AdminService.assertCanManage(actor, user, 'device_reset', ip);
+    return DeviceService.revoke({ targetUserId: userId, actor, reason, ip });
   }
 
   // ── Platform settings ──────────────────────────────────────────────

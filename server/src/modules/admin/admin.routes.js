@@ -69,6 +69,16 @@ router.delete('/users/:userId', requirePermission(P.USERS_DELETE), asyncHandler(
   res.json({ message: 'User deleted' });
 }));
 
+// Authorized devices
+const revokeDeviceSchema = z.object({ reason: z.string().trim().min(3).max(300) });
+
+router.get('/users/:userId/device', requirePermission(P.DEVICES_VIEW), asyncHandler(async (req, res) => {
+  res.json(await AdminService.getUserDevice(req.params.userId));
+}));
+router.post('/users/:userId/device/revoke', requirePermission(P.DEVICES_RESET), validate(revokeDeviceSchema), asyncHandler(async (req, res) => {
+  res.json(await AdminService.revokeUserDevice(req.user, req.params.userId, req.body.reason, req.ip));
+}));
+
 // Sessions
 router.get('/sessions', requirePermission(P.SESSIONS_VIEW), validate(paginationSchema, 'query'), asyncHandler(async (req, res) => {
   res.json(await AdminService.listActiveSessions(req.query));

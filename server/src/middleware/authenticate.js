@@ -2,7 +2,9 @@ const jwt = require('jsonwebtoken');
 const { isAdminRole } = require('../core/permissions');
 const env = require('../config/env');
 const ApiError = require('../core/ApiError');
+const audit = require('../core/audit');
 const { getSettings } = require('../config/settingsCache');
+const DeviceService = require('../modules/auth/device.service');
 
 /**
  * Access-token authentication with single-active-session enforcement.
@@ -37,7 +39,7 @@ const authenticate = async (req, _res, next) => {
 
     const [user, session, settings] = await Promise.all([
       User.findById(decoded.userId),
-      Session.findById(decoded.sid),
+      Session.findById(decoded.sid).select('+deviceKeyHash'),
       getSettings(),
     ]);
 
@@ -53,6 +55,21 @@ const authenticate = async (req, _res, next) => {
         'Your session was ended because this account signed in on another device.',
         'SESSION_TERMINATED'
       );
+    }
+
+    // Device pinning: the session only works from the device that created it.
+    if (session.deviceKeyHash) {
+      const presented = req.headers['x-device-id'];
+      try {
+        DeviceService.assertSessionDevice(session, presented);
+      } catch (err) {
+        session.isActive = false;
+        session.endedAt = new Date();
+        session.endReason = 'device_mismatch';
+        await session.save();
+        audit({ user: user._id, action: 'DEVICE_MISMATCH', ip: req.ip, meta: { sessionId: String(session._id) } });
+        throw err;
+      }
     }
 
     // Inactivity timeout (admin configurable).

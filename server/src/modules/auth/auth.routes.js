@@ -14,7 +14,8 @@ router.post('/reset-password', passwordLimiter, validate(v.resetPasswordSchema),
 
 // Authenticated
 router.use(authenticate);
-router.post('/logout', requireAllowedOrigin, c.logout);
+router.post('/logout', requireAllowedOrigin, validate(v.logoutSchema), c.logout);
+router.get('/device', c.myDevice);
 router.get('/me', c.me);
 router.patch('/me', validate(v.updateProfileSchema), c.updateProfile);
 router.post('/resend-verification', verificationLimiter, validate(v.sendVerificationSchema), c.sendVerification);

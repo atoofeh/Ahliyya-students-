@@ -102,3 +102,109 @@ test('fingerprint drift on the trusted device is logged, not rejected', async ()
   tokenA = r2.data.accessToken;
   assert.ok((await auditRows('DEVICE_FINGERPRINT_DRIFT', samId)).length >= 1);
 });
+
+test('an access token presented from another device ends the session', async () => {
+  const fresh = await login('sam', 'Learn@1234', 'dev-sam-A');
+  tokenA = fresh.data.accessToken;
+  const spoof = await api('GET', '/auth/me', { token: tokenA, deviceId: 'dev-sam-B' });
+  assert.equal(spoof.status, 401);
+  assert.equal(spoof.data.code, 'SESSION_TERMINATED');
+  const dead = await api('GET', '/auth/me', { token: tokenA, deviceId: 'dev-sam-A' });
+  assert.equal(dead.status, 401, 'the session was ended, not just the one request');
+  assert.ok((await auditRows('DEVICE_MISMATCH', samId)).length >= 1);
+});
+
+test('a device id alone (no token) is worthless', async () => {
+  const r = await api('GET', '/auth/me', { deviceId: 'dev-sam-A' });
+  assert.equal(r.status, 401);
+});
+
+test('refresh from another device ends the session', async () => {
+  const fresh = await login('sam', 'Learn@1234', 'dev-sam-A');
+  const bad = await api('POST', '/auth/refresh', { deviceId: 'dev-sam-B', cookie: fresh.cookies });
+  assert.equal(bad.status, 401);
+  assert.equal(bad.data.code, 'SESSION_TERMINATED');
+  const again = await api('POST', '/auth/refresh', { deviceId: 'dev-sam-A', cookie: fresh.cookies });
+  assert.equal(again.status, 401, 'session gone');
+});
+
+test('admin sees the authorized device; revoke needs a reason', async () => {
+  const fresh = await login('sam', 'Learn@1234', 'dev-sam-A');
+  tokenA = fresh.data.accessToken;
+  const view = await api('GET', `/admin/users/${samId}/device`, { token: admin.token, deviceId: 'dev-admin' });
+  assert.equal(view.status, 200, JSON.stringify(view.data));
+  assert.ok(view.data.active, 'active device present');
+  assert.equal(view.data.active.platform, 'web');
+  assert.equal(view.data.active.publicId.length, 8);
+  assert.equal(view.data.active.deviceKeyHash, undefined, 'hash never leaves the server');
+
+  const noReason = await api('POST', `/admin/users/${samId}/device/revoke`, { token: admin.token, deviceId: 'dev-admin', body: {} });
+  assert.equal(noReason.status, 400);
+});
+
+test('lost-device flow: revoke → old device dead → new device binds (DEVICE_CHANGED) → old device rejected', async () => {
+  const revoke = await api('POST', `/admin/users/${samId}/device/revoke`, { token: admin.token, deviceId: 'dev-admin', body: { reason: 'Student reported the laptop stolen' } });
+  assert.equal(revoke.status, 200, JSON.stringify(revoke.data));
+  assert.equal(revoke.data.revoked, 1);
+  assert.equal((await auditRows('DEVICE_REVOKED', samId)).length, 1);
+
+  const dead = await api('GET', '/auth/me', { token: tokenA, deviceId: 'dev-sam-A' });
+  assert.equal(dead.status, 401);
+
+  const b = await login('sam', 'Learn@1234', 'dev-sam-B');
+  assert.equal(b.status, 200, JSON.stringify(b.data));
+  assert.equal((await auditRows('DEVICE_CHANGED', samId)).length, 1);
+
+  const a = await login('sam', 'Learn@1234', 'dev-sam-A');
+  assert.equal(a.status, 403);
+  assert.equal(a.data.code, 'DEVICE_NOT_AUTHORIZED');
+
+  const hist = await api('GET', `/admin/users/${samId}/device`, { token: admin.token, deviceId: 'dev-admin' });
+  assert.equal(hist.data.history.length, 1);
+  assert.equal(hist.data.history[0].revocationReason, 'Student reported the laptop stolen');
+  assert.equal(hist.data.history[0].revokedBy.username, 'admin');
+});
+
+test('student can see their own device and forget it on logout', async () => {
+  await app.createUser(admin.token, { name: 'Forget', username: 'fgt', password: 'Learn@1234', role: 'student' }, 'dev-admin');
+  const g1 = await login('fgt', 'Learn@1234', 'dev-fg-1');
+  const mine = await api('GET', '/auth/device', { token: g1.data.accessToken, deviceId: 'dev-fg-1' });
+  assert.equal(mine.status, 200);
+  assert.equal(mine.data.active.status, 'active');
+
+  const out = await api('POST', '/auth/logout', { token: g1.data.accessToken, deviceId: 'dev-fg-1', body: { forgetDevice: true } });
+  assert.equal(out.status, 200);
+  const g2 = await login('fgt', 'Learn@1234', 'dev-fg-2');
+  assert.equal(g2.status, 200, 'a new device can bind after "forget this device"');
+});
+
+test('plain logout keeps the device authorization', async () => {
+  await app.createUser(admin.token, { name: 'Keep', username: 'kpt', password: 'Learn@1234', role: 'student' }, 'dev-admin');
+  const k1 = await login('kpt', 'Learn@1234', 'dev-kp-1');
+  const out = await api('POST', '/auth/logout', { token: k1.data.accessToken, deviceId: 'dev-kp-1', body: {} });
+  assert.equal(out.status, 200);
+  const other = await login('kpt', 'Learn@1234', 'dev-kp-2');
+  assert.equal(other.status, 403, 'still bound to dev-kp-1');
+  const same = await login('kpt', 'Learn@1234', 'dev-kp-1');
+  assert.equal(same.status, 200);
+});
+
+test('admin cannot reset the owner device; the owner can reset an admin device', async () => {
+  const blocked = await api('POST', `/admin/users/${owner.user.id}/device/revoke`, { token: admin.token, deviceId: 'dev-admin', body: { reason: 'attempt' } });
+  assert.equal(blocked.status, 403);
+  assert.equal(blocked.data.code, 'OWNER_PROTECTED');
+
+  const abdullah = await app.loginAndOnboard(CREDENTIALS.abdullah.username, CREDENTIALS.abdullah.password, { deviceId: 'dev-abdullah' });
+  const ok = await api('POST', `/admin/users/${abdullah.user.id}/device/revoke`, { token: owner.token, deviceId: 'dev-owner', body: { reason: 'Owner-initiated reset' } });
+  assert.equal(ok.status, 200, JSON.stringify(ok.data));
+  const dead = await api('GET', '/auth/me', { token: abdullah.token, deviceId: 'dev-abdullah' });
+  assert.equal(dead.status, 401);
+  const rebound = await login(CREDENTIALS.abdullah.username, CREDENTIALS.abdullah.password, 'dev-abd-new');
+  assert.equal(rebound.status, 200);
+});
+
+test('an admin cannot revoke another admin device', async () => {
+  const abdId = (await api('GET', '/admin/users?search=abdullah', { token: owner.token, deviceId: 'dev-owner' })).data.items[0]._id;
+  const r = await api('POST', `/admin/users/${abdId}/device/revoke`, { token: admin.token, deviceId: 'dev-admin', body: { reason: 'peer attempt' } });
+  assert.equal(r.status, 403);
+});

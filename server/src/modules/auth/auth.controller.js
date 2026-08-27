@@ -54,9 +54,13 @@ const refresh = asyncHandler(async (req, res) => {
 });
 
 const logout = asyncHandler(async (req, res) => {
-  await AuthService.logout(req.session._id, req.user.id, clientIp(req));
+  await AuthService.logout(req.session._id, req.user.id, clientIp(req), { forgetDevice: !!req.body?.forgetDevice });
   res.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });
-  res.json({ message: 'Logged out' });
+  res.json({ message: req.body?.forgetDevice ? 'Logged out and device forgotten' : 'Logged out' });
+});
+
+const myDevice = asyncHandler(async (req, res) => {
+  res.json({ active: await DeviceService.activeFor(req.user.id) });
 });
 
 const me = asyncHandler(async (req, res) => {
@@ -109,7 +113,7 @@ const myLoginHistory = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  login, refresh, logout, me, updateProfile,
+  login, refresh, logout, myDevice, me, updateProfile,
   sendVerification, verifyEmail, setPassword, changePassword,
   forgotPassword, resetPassword, mySessions, myLoginHistory,
 };

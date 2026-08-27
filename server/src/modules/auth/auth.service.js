@@ -202,7 +202,7 @@ class AuthService {
     return { user: user.toPublicJSON(), ...tokens };
   }
 
-  static async logout(sessionId, userId, ip) {
+  static async logout(sessionId, userId, ip, { forgetDevice = false } = {}) {
     const session = await Session.findById(sessionId);
     if (session && session.isActive) {
       session.isActive = false;
@@ -211,6 +211,9 @@ class AuthService {
       await session.save();
     }
     await audit({ user: userId, action: 'LOGOUT', ip });
+    if (forgetDevice) {
+      await DeviceService.revoke({ targetUserId: userId, actor: { id: userId }, reason: 'user_forget_device', ip, self: true });
+    }
   }
 
   // ── Email verification ─────────────────────────────────────────────
