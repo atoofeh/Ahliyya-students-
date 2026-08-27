@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Release posture: TLS only, no exceptions.
+
+  No certificate pinning on purpose: the app has no in-app update channel, so a
+  certificate rotation would brick every installed copy until users manually
+  reinstalled. See docs/SECURITY.md.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
