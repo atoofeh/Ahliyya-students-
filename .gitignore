@@ -13,11 +13,12 @@ server/logs/
 
 # build output
 client/dist/
-android/app/build/
-android/build/
-android/.gradle/
-android/local.properties
-android/app/release/
+client/android/app/build/
+client/android/build/
+client/android/.gradle/
+client/android/local.properties
+client/android/app/release/
+client/android/capacitor-cordova-android-plugins/build/
 *.keystore
 *.jks
 
