@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
@@ -7,31 +8,32 @@ import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/auth/LoginPage';
 import OnboardingPage from './pages/auth/OnboardingPage';
 
-import StudentDashboard from './pages/student/StudentDashboard';
-import CourseCatalog from './pages/student/CourseCatalog';
-import CoursePlayer from './pages/student/CoursePlayer';
-import QuizRunner from './pages/student/QuizRunner';
-import AttemptResult from './pages/student/AttemptResult';
-import GradesPage from './pages/student/GradesPage';
-import CertificatesPage from './pages/student/CertificatesPage';
-import BookmarksPage from './pages/student/BookmarksPage';
+const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'));
+const CourseCatalog = lazy(() => import('./pages/student/CourseCatalog'));
+const CoursePlayer = lazy(() => import('./pages/student/CoursePlayer'));
+const QuizRunner = lazy(() => import('./pages/student/QuizRunner'));
+const AttemptResult = lazy(() => import('./pages/student/AttemptResult'));
+const GradesPage = lazy(() => import('./pages/student/GradesPage'));
+const CertificatesPage = lazy(() => import('./pages/student/CertificatesPage'));
+const BookmarksPage = lazy(() => import('./pages/student/BookmarksPage'));
 
-import TeacherDashboard from './pages/teacher/TeacherDashboard';
-import TeacherCourses from './pages/teacher/TeacherCourses';
-import CourseManager from './pages/teacher/CourseManager';
+const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
+const TeacherCourses = lazy(() => import('./pages/teacher/TeacherCourses'));
+const CourseManager = lazy(() => import('./pages/teacher/CourseManager'));
 
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminCourses from './pages/admin/AdminCourses';
-import AdminSessions from './pages/admin/AdminSessions';
-import AdminSettings from './pages/admin/AdminSettings';
-import AdminAudit from './pages/admin/AdminAudit';
-import AdminAntiCheat from './pages/admin/AdminAntiCheat';
-import AdminAnnouncements from './pages/admin/AdminAnnouncements';
-import AdminSecurity from './pages/admin/AdminSecurity';
-import AdminAdmins from './pages/admin/AdminAdmins';
-import AnnouncementsPage from './pages/AnnouncementsPage';
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminCourses = lazy(() => import('./pages/admin/AdminCourses'));
+const AdminSessions = lazy(() => import('./pages/admin/AdminSessions'));
+const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminAudit = lazy(() => import('./pages/admin/AdminAudit'));
+const AdminAntiCheat = lazy(() => import('./pages/admin/AdminAntiCheat'));
+const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements'));
+const AdminSecurity = lazy(() => import('./pages/admin/AdminSecurity'));
+const AdminAdmins = lazy(() => import('./pages/admin/AdminAdmins'));
+const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'));
 import { Spinner } from './components/ui';
+import { SkeletonPage } from './components/Skeletons';
 import { roleMatches, homeFor } from './utils/roles';
 
 function Protected({ roles, children }) {
@@ -57,6 +59,7 @@ export default function App() {
       <ToastProvider>
         <BrowserRouter>
           <AuthProvider>
+            <Suspense fallback={<div className="p-6"><SkeletonPage /></div>}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/onboarding" element={<OnboardingPage />} />
@@ -102,6 +105,7 @@ export default function App() {
               <Route path="/" element={<HomeRedirect />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </Suspense>
           </AuthProvider>
         </BrowserRouter>
       </ToastProvider>
