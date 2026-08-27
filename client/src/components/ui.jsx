@@ -1,4 +1,6 @@
+import { useRef } from 'react';
 import { Loader2, X, Inbox } from 'lucide-react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 /**
  * Students_Alahliyya design system primitives.
@@ -164,18 +166,27 @@ export function Spinner({ full }) {
 }
 
 export function Modal({ open, onClose, title, children, wide }) {
+  const panelRef = useRef(null);
+  useFocusTrap(panelRef, { active: open, onEscape: onClose });
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-brand-950/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
-      <div className={cx(
-        'relative w-full rounded-2xl bg-white shadow-float dark:bg-surface-900 dark:border dark:border-surface-700/60',
-        'animate-scale-in max-h-[90vh] overflow-y-auto',
-        wide ? 'max-w-3xl' : 'max-w-lg'
-      )}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={typeof title === 'string' ? title : undefined}
+        tabIndex={-1}
+        className={cx(
+          'relative w-full rounded-2xl bg-white shadow-float dark:bg-surface-900 dark:border dark:border-surface-700/60',
+          'animate-scale-in max-h-[90vh] overflow-y-auto',
+          wide ? 'max-w-3xl' : 'max-w-lg'
+        )}
+      >
         <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl border-b border-surface-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-surface-700/60 dark:bg-surface-900/95">
           <h3 className="font-display text-[15px] font-bold text-surface-900 dark:text-white">{title}</h3>
-          <button onClick={onClose}
+          <button onClick={onClose} aria-label="Close dialog"
             className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200">
             <X size={17} />
           </button>
@@ -342,7 +353,23 @@ export function Skeleton({ className = '' }) {
   return <div className={cx('animate-pulse rounded-xl bg-surface-200/70 dark:bg-surface-800', className)} />;
 }
 
-/** Page header band used across dashboards for a consistent premium feel. */
+/** Quiet page header — the default for every page. */
+export function PageIntro({ title, subtitle, actions, className = '' }) {
+  return (
+    <div className={cx('flex flex-wrap items-end justify-between gap-3', className)}>
+      <div className="min-w-0">
+        <h1 className="font-display text-[22px] font-extrabold tracking-tight text-surface-900 dark:text-white md:text-[26px]"
+          style={{ textWrap: 'balance' }}>
+          {title}
+        </h1>
+        {subtitle && <p className="mt-1 max-w-2xl text-sm text-surface-500">{subtitle}</p>}
+      </div>
+      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** Gradient header band. Reserved for the student home hero — every other page uses PageIntro. */
 export function PageHeader({ title, subtitle, actions, gold = false }) {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-brand-gradient p-6 shadow-float sheen md:p-7">
