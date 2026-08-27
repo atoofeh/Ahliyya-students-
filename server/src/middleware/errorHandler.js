@@ -5,7 +5,6 @@ const env = require('../config/env');
  * Global error handler. Serializes ApiError, Mongoose, Zod, and multer errors
  * into a consistent envelope: { message, code?, errors? }.
  */
-// eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, _next) => {
   // Operational (expected) errors
   if (err.isOperational) {

@@ -3,7 +3,7 @@ const { z } = require('zod');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
 const { requireCourseAccess, requireCourseOwnership } = require('../../middleware/courseAccess');
-const { validate, paginationSchema, objectId } = require('../../middleware/validate');
+const { validate, paginationSchema } = require('../../middleware/validate');
 const { codeRedemptionLimiter } = require('../../middleware/rateLimiters');
 const c = require('./enrollments.controller');
 

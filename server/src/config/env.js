@@ -41,10 +41,8 @@ const envSchema = z.object({
 
 const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
-  // eslint-disable-next-line no-console
   console.error('❌ Invalid environment configuration:');
   for (const issue of parsed.error.issues) {
-    // eslint-disable-next-line no-console
     console.error(`   ${issue.path.join('.')}: ${issue.message}`);
   }
   process.exit(1);
@@ -55,7 +53,6 @@ const env = parsed.data;
 // Derive a media master key in development if none provided.
 if (!env.MEDIA_MASTER_KEY) {
   if (env.NODE_ENV === 'production') {
-    // eslint-disable-next-line no-console
     console.error('❌ MEDIA_MASTER_KEY is required in production.');
     process.exit(1);
   }
