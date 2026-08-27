@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# environment — real secrets never enter history
+.env
+.env.*
+!.env.example
+
+# runtime data — encrypted media, temp chunks, logs (1.6 GB+, never commit)
+server/storage/
+server/logs/
+*.log
+
+# build output
+client/dist/
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/release/
+*.keystore
+*.jks
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

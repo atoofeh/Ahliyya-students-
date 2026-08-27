@@ -1,0 +1,310 @@
+const jwt = require('jsonwebtoken');
+const { UAParser } = require('ua-parser-js');
+const env = require('../../config/env');
+const ApiError = require('../../core/ApiError');
+const audit = require('../../core/audit');
+const { sendMail, templates } = require('../../core/mailer');
+const { sha256, randomToken, safeEqual } = require('../../core/cryptoUtils');
+const { getSettings } = require('../../config/settingsCache');
+const User = require('../../models/User');
+const Session = require('../../models/Session');
+const LoginHistory = require('../../models/LoginHistory');
+
+const parseDevice = (userAgent = '') => {
+  const ua = new UAParser(userAgent).getResult();
+  return {
+    browser: [ua.browser.name, ua.browser.version].filter(Boolean).join(' '),
+    os: [ua.os.name, ua.os.version].filter(Boolean).join(' '),
+    deviceType: ua.device.type || 'desktop',
+  };
+};
+
+const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+
+class AuthService {
+  static signTokens(user, sessionId, rememberMe) {
+    const payload = { userId: user._id, role: user.role, tokenVersion: user.tokenVersion, sid: sessionId };
+    const accessToken = jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN });
+    const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+      expiresIn: rememberMe ? '30d' : env.JWT_REFRESH_EXPIRES_IN,
+    });
+    return { accessToken, refreshToken };
+  }
+
+  /**
+   * Login. Enforces: lockout after N failed attempts, status checks, and the
+   * single-active-session policy (all other sessions are terminated).
+   */
+  static async login({ username, password, deviceId, fingerprint, rememberMe, userAgent, ip }) {
+    const settings = await getSettings();
+    const device = parseDevice(userAgent);
+    const historyBase = { username, ip, userAgent, deviceId: deviceId || '', fingerprint: fingerprint || '', ...device };
+
+    const fail = async (user, reason, message, status = 401) => {
+      await LoginHistory.create({ ...historyBase, user: user?._id, success: false, reason });
+      await audit({ user: user?._id, action: 'LOGIN_FAILED', ip, deviceId, meta: { username, reason } });
+      throw new ApiError(status, message, reason === 'locked' ? 'ACCOUNT_LOCKED' : undefined);
+    };
+
+    const user = await User.findOne({ username: username.toLowerCase(), deletedAt: null })
+      .select('+password +failedLoginAttempts +lockedUntil');
+
+    if (!user) return fail(null, 'unknown_user', 'Invalid username or password');
+    if (user.status === 'banned') return fail(user, 'banned', 'This account has been banned', 403);
+    if (user.status === 'suspended') return fail(user, 'suspended', 'This account is suspended', 403);
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const mins = Math.ceil((user.lockedUntil - Date.now()) / 60000);
+      return fail(user, 'locked', `Account locked. Try again in ${mins} minute(s).`, 423);
+    }
+
+    const ok = await user.comparePassword(password);
+    if (!ok) {
+      user.failedLoginAttempts += 1;
+      if (user.failedLoginAttempts >= (settings.maxLoginAttempts || 5)) {
+        user.lockedUntil = new Date(Date.now() + (settings.lockoutMinutes || 15) * 60000);
+        user.failedLoginAttempts = 0;
+        await user.save();
+        await audit({ user: user._id, action: 'ACCOUNT_LOCKED', ip, deviceId });
+        return fail(user, 'locked', 'Too many failed attempts. Account temporarily locked.', 423);
+      }
+      await user.save();
+      return fail(user, 'bad_password', 'Invalid username or password');
+    }
+
+    if (!deviceId) throw ApiError.badRequest('Device ID is required', 'DEVICE_REQUIRED');
+
+    // Reset lockout counters, stamp login.
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    // SINGLE ACTIVE SESSION: terminate every other session for this user.
+    const terminated = await Session.updateMany(
+      { user: user._id, isActive: true },
+      { $set: { isActive: false, endedAt: new Date(), endReason: 'new_device_login' } }
+    );
+    if (terminated.modifiedCount > 0) {
+      await audit({ user: user._id, action: 'SESSION_TERMINATED', ip, deviceId, meta: { count: terminated.modifiedCount, cause: 'new_device_login' } });
+    }
+
+    const session = await Session.create({
+      user: user._id,
+      refreshTokenHash: 'pending',
+      deviceId,
+      fingerprint: fingerprint || null,
+      userAgent,
+      ip,
+      rememberMe: !!rememberMe,
+      ...device,
+    });
+
+    const tokens = AuthService.signTokens(user, session._id, rememberMe);
+    session.refreshTokenHash = sha256(tokens.refreshToken);
+    await session.save();
+
+    await LoginHistory.create({ ...historyBase, user: user._id, success: true });
+    await audit({ user: user._id, action: 'LOGIN', ip, deviceId });
+
+    return { user: user.toPublicJSON(), session, ...tokens };
+  }
+
+  /**
+   * Refresh-token rotation with reuse detection: a refresh token may be used
+   * exactly once. Reuse of a rotated token kills the session.
+   */
+  static async refresh(refreshToken, { ip } = {}) {
+    if (!refreshToken) throw ApiError.unauthorized('Refresh token required', 'NO_REFRESH');
+
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET);
+    } catch {
+      throw ApiError.unauthorized('Invalid or expired refresh token', 'REFRESH_INVALID');
+    }
+
+    const [user, session] = await Promise.all([
+      User.findById(decoded.userId),
+      Session.findById(decoded.sid).select('+refreshTokenHash'),
+    ]);
+
+    if (!user || user.deletedAt || user.status !== 'active') {
+      throw ApiError.unauthorized('Account unavailable', 'REFRESH_INVALID');
+    }
+    if (user.tokenVersion !== decoded.tokenVersion) {
+      throw ApiError.unauthorized('Token revoked', 'REFRESH_INVALID');
+    }
+    if (!session || !session.isActive) {
+      throw ApiError.unauthorized('Session ended', 'SESSION_TERMINATED');
+    }
+
+    if (!safeEqual(session.refreshTokenHash, sha256(refreshToken))) {
+      // Rotated token replayed — likely theft. Kill the session.
+      session.isActive = false;
+      session.endedAt = new Date();
+      session.endReason = 'refresh_rotated_reuse';
+      await session.save();
+      await audit({ user: user._id, action: 'SESSION_TERMINATED', ip, meta: { cause: 'refresh_reuse_detected' } });
+      throw ApiError.unauthorized('Refresh token reuse detected — session terminated', 'SESSION_TERMINATED');
+    }
+
+    const tokens = AuthService.signTokens(user, session._id, session.rememberMe);
+    session.refreshTokenHash = sha256(tokens.refreshToken);
+    session.lastActivityAt = new Date();
+    await session.save();
+
+    return { user: user.toPublicJSON(), ...tokens };
+  }
+
+  static async logout(sessionId, userId, ip) {
+    const session = await Session.findById(sessionId);
+    if (session && session.isActive) {
+      session.isActive = false;
+      session.endedAt = new Date();
+      session.endReason = 'logout';
+      await session.save();
+    }
+    await audit({ user: userId, action: 'LOGOUT', ip });
+  }
+
+  // ── Email verification ─────────────────────────────────────────────
+
+  static async sendVerificationCode(userId, email) {
+    const user = await User.findById(userId).select('+emailVerifyCodeHash +emailVerifyExpires');
+    if (!user) throw ApiError.notFound('User not found');
+    if (email) {
+      const taken = await User.findOne({ email: email.toLowerCase(), _id: { $ne: user._id } });
+      if (taken) throw ApiError.conflict('Email already in use');
+      user.email = email.toLowerCase();
+    }
+    if (!user.email) throw ApiError.badRequest('No email address on file');
+
+    const code = generateOtp();
+    user.emailVerifyCodeHash = sha256(code);
+    user.emailVerifyExpires = new Date(Date.now() + 15 * 60000);
+    await user.save();
+    await sendMail({ to: user.email, ...templates.verifyEmail(user.name, code) });
+    return { email: user.email };
+  }
+
+  static async verifyEmail(userId, code, ip) {
+    const user = await User.findById(userId).select('+emailVerifyCodeHash +emailVerifyExpires');
+    if (!user) throw ApiError.notFound('User not found');
+    if (!user.emailVerifyCodeHash || !user.emailVerifyExpires || user.emailVerifyExpires < new Date()) {
+      throw ApiError.badRequest('Verification code expired — request a new one', 'CODE_EXPIRED');
+    }
+    if (!safeEqual(user.emailVerifyCodeHash, sha256(code))) {
+      throw ApiError.badRequest('Invalid verification code', 'CODE_INVALID');
+    }
+    user.emailVerified = true;
+    user.emailVerifyCodeHash = null;
+    user.emailVerifyExpires = null;
+    await user.save();
+    await audit({ user: user._id, action: 'EMAIL_VERIFIED', ip });
+    return user.toPublicJSON();
+  }
+
+  // ── Password management ────────────────────────────────────────────
+
+  static async setPassword(userId, newPassword, ip) {
+    const settings = await getSettings();
+    const user = await User.findById(userId).select('+password');
+    if (!user) throw ApiError.notFound('User not found');
+    if (settings.requireEmailVerification && !user.emailVerified) {
+      throw ApiError.forbidden('Verify your email first', 'EMAIL_UNVERIFIED');
+    }
+    user.password = newPassword;
+    user.mustChangePassword = false;
+    await user.save();
+    await audit({ user: user._id, action: 'PASSWORD_CHANGED', ip });
+    return user.toPublicJSON();
+  }
+
+  static async changePassword(userId, currentPassword, newPassword, sessionId, ip) {
+    const user = await User.findById(userId).select('+password');
+    if (!user) throw ApiError.notFound('User not found');
+    if (!(await user.comparePassword(currentPassword))) {
+      throw ApiError.unauthorized('Current password is incorrect');
+    }
+    user.password = newPassword;
+    user.tokenVersion += 1; // revoke every outstanding token
+    await user.save();
+
+    // End all sessions except the current one, then re-issue for this session.
+    await Session.updateMany(
+      { user: user._id, isActive: true, _id: { $ne: sessionId } },
+      { $set: { isActive: false, endedAt: new Date(), endReason: 'password_changed' } }
+    );
+    const session = await Session.findById(sessionId);
+    const tokens = AuthService.signTokens(user, session._id, session.rememberMe);
+    session.refreshTokenHash = sha256(tokens.refreshToken);
+    await session.save();
+
+    await audit({ user: user._id, action: 'PASSWORD_CHANGED', ip });
+    return { user: user.toPublicJSON(), ...tokens };
+  }
+
+  static async requestPasswordReset(email, ip) {
+    const user = await User.findOne({ email: email.toLowerCase(), deletedAt: null })
+      .select('+passwordResetCodeHash +passwordResetExpires');
+    // Always report success to avoid account enumeration.
+    if (!user) return;
+    const code = generateOtp();
+    user.passwordResetCodeHash = sha256(code);
+    user.passwordResetExpires = new Date(Date.now() + 15 * 60000);
+    await user.save();
+    await sendMail({ to: user.email, ...templates.resetPassword(user.name, code) });
+    await audit({ user: user._id, action: 'PASSWORD_RESET_REQUESTED', ip });
+  }
+
+  static async resetPassword(email, code, newPassword, ip) {
+    const user = await User.findOne({ email: email.toLowerCase(), deletedAt: null })
+      .select('+passwordResetCodeHash +passwordResetExpires');
+    if (!user || !user.passwordResetCodeHash || user.passwordResetExpires < new Date()) {
+      throw ApiError.badRequest('Invalid or expired reset code', 'CODE_INVALID');
+    }
+    if (!safeEqual(user.passwordResetCodeHash, sha256(code))) {
+      throw ApiError.badRequest('Invalid or expired reset code', 'CODE_INVALID');
+    }
+    user.password = newPassword;
+    user.passwordResetCodeHash = null;
+    user.passwordResetExpires = null;
+    user.tokenVersion += 1;
+    user.lockedUntil = null;
+    user.failedLoginAttempts = 0;
+    await user.save();
+    await Session.updateMany(
+      { user: user._id, isActive: true },
+      { $set: { isActive: false, endedAt: new Date(), endReason: 'password_changed' } }
+    );
+    await audit({ user: user._id, action: 'PASSWORD_RESET', ip });
+  }
+
+  // ── Sessions & profile ────────────────────────────────────────────
+
+  static async getSessions(userId, currentSessionId) {
+    const sessions = await Session.find({ user: userId }).sort({ createdAt: -1 }).limit(20).lean();
+    return sessions.map((s) => ({ ...s, isCurrent: String(s._id) === String(currentSessionId) }));
+  }
+
+  static async getLoginHistory(userId, limit = 20) {
+    return LoginHistory.find({ user: userId }).sort({ createdAt: -1 }).limit(limit).lean();
+  }
+
+  static async getProfile(userId) {
+    const user = await User.findById(userId);
+    if (!user) throw ApiError.notFound('User not found');
+    return user.toPublicJSON();
+  }
+
+  static async updateProfile(userId, { name, preferences }) {
+    const user = await User.findById(userId);
+    if (!user) throw ApiError.notFound('User not found');
+    if (name) user.name = name;
+    if (preferences) user.preferences = { ...user.preferences.toObject(), ...preferences };
+    await user.save();
+    return user.toPublicJSON();
+  }
+}
+
+module.exports = AuthService;
