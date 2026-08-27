@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
-  Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, LogOut,
+  Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, LogOut,
   Sun, Moon, Laptop, Menu, Library,
 } from 'lucide-react';
 import { Avatar } from '../components/ui';
@@ -11,32 +11,11 @@ import { useTheme } from '../context/ThemeContext';
 import NotificationsBell from '../components/NotificationsBell';
 import GlobalSearch from '../components/GlobalSearch';
 import { LogoMark } from '../components/Logo';
-import { isAdminRole, ROLE_LABEL } from '../utils/roles';
+import { ROLE_LABEL, navFor } from '../utils/roles';
 
-const NAV = {
-  student: [
-    { to: '/student', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: '/student/catalog', label: 'Course Catalog', icon: Library },
-    { to: '/student/grades', label: 'My Grades', icon: GraduationCap },
-    { to: '/student/certificates', label: 'Certificates', icon: Award },
-    { to: '/student/bookmarks', label: 'Bookmarks', icon: Bookmark },
-    { to: '/announcements', label: 'Announcements', icon: Megaphone },
-  ],
-  teacher: [
-    { to: '/teacher', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: '/teacher/courses', label: 'My Courses', icon: BookOpen },
-    { to: '/announcements', label: 'Announcements', icon: Megaphone },
-  ],
-  admin: [
-    { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: '/admin/users', label: 'Users', icon: Users },
-    { to: '/admin/courses', label: 'Courses', icon: BookOpen },
-    { to: '/admin/sessions', label: 'Active Sessions', icon: MonitorSmartphone },
-    { to: '/admin/anticheat', label: 'Cheat Reports', icon: ShieldAlert },
-    { to: '/admin/audit', label: 'Audit Logs', icon: ScrollText },
-    { to: '/admin/announcements', label: 'Announcements', icon: Megaphone },
-    { to: '/admin/settings', label: 'Settings', icon: Settings },
-  ],
+const ICONS = {
+  LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
+  Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, Library,
 };
 
 const THEME_ICON = { light: Sun, dark: Moon, system: Laptop };
@@ -47,7 +26,7 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const ThemeIcon = THEME_ICON[theme] || Laptop;
-  const nav = NAV[isAdminRole(user?.role) ? 'admin' : user?.role] || [];
+  const nav = navFor(user?.role).map((item) => ({ ...item, icon: ICONS[item.icon] || LayoutDashboard }));
 
   const doLogout = async () => {
     await logout();

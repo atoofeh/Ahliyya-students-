@@ -27,6 +27,8 @@ import AdminSettings from './pages/admin/AdminSettings';
 import AdminAudit from './pages/admin/AdminAudit';
 import AdminAntiCheat from './pages/admin/AdminAntiCheat';
 import AdminAnnouncements from './pages/admin/AdminAnnouncements';
+import AdminSecurity from './pages/admin/AdminSecurity';
+import AdminAdmins from './pages/admin/AdminAdmins';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import { Spinner } from './components/ui';
 import { roleMatches, homeFor } from './utils/roles';
@@ -87,6 +89,10 @@ export default function App() {
                 <Route path="/admin/audit" element={<Protected roles={['admin']}><AdminAudit /></Protected>} />
                 <Route path="/admin/anticheat" element={<Protected roles={['admin']}><AdminAntiCheat /></Protected>} />
                 <Route path="/admin/announcements" element={<Protected roles={['admin']}><AdminAnnouncements /></Protected>} />
+                {/* Owner only — 'admin' is deliberately absent so roleMatches() does not admit administrators */}
+                <Route path="/admin/security" element={<Protected roles={['super_admin']}><AdminSecurity /></Protected>} />
+                <Route path="/admin/security/:tab" element={<Protected roles={['super_admin']}><AdminSecurity /></Protected>} />
+                <Route path="/admin/admins" element={<Protected roles={['super_admin']}><AdminAdmins /></Protected>} />
 
                 {/* Shared */}
                 <Route path="/announcements" element={<AnnouncementsPage />} />

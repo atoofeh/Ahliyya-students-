@@ -24,16 +24,29 @@ export default function LoginPage() {
   const [mode, setMode] = useState(MODES.LOGIN);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ username: '', password: '', email: '', code: '', rememberMe: false });
-  const [logoutReason, setLogoutReason] = useState(null);
-  const [deviceBlocked, setDeviceBlocked] = useState(false);
-
-  useEffect(() => {
+  // Why the previous session ended (set by the axios interceptor); read once, then cleared.
+  const [logoutReason] = useState(() => {
     const reason = sessionStorage.getItem('lms_logout_reason');
-    if (reason) {
-      setLogoutReason(reason);
-      sessionStorage.removeItem('lms_logout_reason');
+    if (reason) sessionStorage.removeItem('lms_logout_reason');
+    return reason;
+  });
+  const [deviceBlocked, setDeviceBlocked] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetNote, setResetNote] = useState('');
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const sendResetRequest = async () => {
+    setResetBusy(true);
+    try {
+      await api.post('/auth/device/reset-request', { username: form.username, note: resetNote });
+      setResetSent(true);
+    } catch (err) {
+      toast.error(apiError(err));
+    } finally {
+      setResetBusy(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     if (user) navigate(homeFor(user.role), { replace: true });
@@ -135,11 +148,26 @@ export default function LoginPage() {
           )}
 
           {deviceBlocked && (
-            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-rose-300/70 bg-rose-50 px-4 py-3 text-[13px] text-rose-800 dark:border-rose-700/60 dark:bg-rose-900/20 dark:text-rose-200">
-              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-              <span>
-                <strong>This account is already linked to another device.</strong> Contact an administrator or request a device reset.
-              </span>
+            <div className="mt-5 rounded-xl border border-rose-300/70 bg-rose-50 px-4 py-3 text-[13px] text-rose-800 dark:border-rose-700/60 dark:bg-rose-900/20 dark:text-rose-200">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                <span>
+                  <strong>This account is already linked to another device.</strong> Contact an administrator or request a device reset.
+                </span>
+              </div>
+              {resetSent ? (
+                <p className="mt-2 pl-[26px] font-semibold">Request sent. An administrator will review it.</p>
+              ) : !resetOpen ? (
+                <button type="button" className="mt-2 pl-[26px] font-semibold underline-offset-2 hover:underline" onClick={() => setResetOpen(true)}>
+                  Request a device reset
+                </button>
+              ) : (
+                <div className="mt-3 space-y-2 pl-[26px]">
+                  <Input label="Note for the administrator (optional)" value={resetNote} onChange={(e) => setResetNote(e.target.value)} maxLength={300}
+                    placeholder="e.g. My laptop was stolen last night" />
+                  <Button type="button" size="sm" loading={resetBusy} onClick={sendResetRequest} disabled={form.username.length < 3}>Send request</Button>
+                </div>
+              )}
             </div>
           )}
 

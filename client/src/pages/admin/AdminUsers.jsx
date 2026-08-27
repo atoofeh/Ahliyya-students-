@@ -4,7 +4,7 @@ import api, { apiError } from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { ROLE_LABEL } from '../../utils/roles';
-import { Card, Button, Modal, Input, Select, Badge, Spinner, Pagination, EmptyState } from '../../components/ui';
+import { Card, Button, Modal, Input, Select, Badge, Spinner, Pagination, EmptyState, Tabs } from '../../components/ui';
 
 const ROLE_COLORS = { super_admin: 'gold', admin: 'primary', teacher: 'blue', student: 'gray' };
 const STATUS_COLORS = { active: 'green', suspended: 'amber', banned: 'red', pending: 'gray' };
@@ -113,14 +113,18 @@ export default function AdminUsers() {
         <Button onClick={() => setCreateModal(true)}><Plus size={15} /> Create user</Button>
       </div>
 
+      <Tabs
+        tabs={[
+          { key: '', label: 'All' }, { key: 'student', label: 'Students' }, { key: 'teacher', label: 'Teachers' },
+          ...(isOwner ? [{ key: 'admin', label: 'Admins' }] : []),
+        ]}
+        active={filters.role}
+        onChange={(role) => { setPage(1); setFilters((f) => ({ ...f, role })); }}
+      />
+
       <div className="flex flex-wrap gap-3">
         <div className="w-64"><Input placeholder="Search name, username, email..." value={filters.search}
           onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, search: e.target.value })); }} /></div>
-        <Select value={filters.role} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, role: e.target.value })); }}
-          options={[
-            { value: '', label: 'All roles' }, { value: 'super_admin', label: 'Owner' }, { value: 'admin', label: 'Admins' },
-            { value: 'teacher', label: 'Teachers' }, { value: 'student', label: 'Students' },
-          ]} />
         <Select value={filters.status} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, status: e.target.value })); }}
           options={[{ value: '', label: 'All statuses' }, { value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }, { value: 'banned', label: 'Banned' }]} />
       </div>
