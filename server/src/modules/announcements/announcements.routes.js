@@ -1,7 +1,9 @@
 const router = require('express').Router();
+const { requirePermission } = require('../../middleware/authorize');
+const { PERMISSIONS: P } = require('../../core/permissions');
+const { isAdminRole } = require('../../core/permissions');
 const { z } = require('zod');
 const authenticate = require('../../middleware/authenticate');
-const authorize = require('../../middleware/authorize');
 const asyncHandler = require('../../core/asyncHandler');
 const ApiError = require('../../core/ApiError');
 const audit = require('../../core/audit');
@@ -49,7 +51,7 @@ router.get('/feed', asyncHandler(async (req, res) => {
 }));
 
 // Platform-wide announcements (admin)
-router.post('/global', authorize('admin'), validate(announcementSchema), asyncHandler(async (req, res) => {
+router.post('/global', requirePermission(P.ANNOUNCEMENTS_GLOBAL), validate(announcementSchema), asyncHandler(async (req, res) => {
   const announcement = await Announcement.create({ ...req.body, author: req.user.id, course: null });
   await audit({ user: req.user.id, action: 'ANNOUNCEMENT_CREATED', ip: req.ip, resource: `announcement:${announcement._id}` });
   const User = require('../../models/User');
@@ -88,7 +90,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   const announcement = await Announcement.findOne({ _id: req.params.id, deletedAt: null });
   if (!announcement) throw ApiError.notFound('Announcement not found');
   const isAuthor = String(announcement.author) === String(req.user.id);
-  if (req.user.role !== 'admin' && !isAuthor) throw ApiError.forbidden('Not your announcement');
+  if (!isAdminRole(req.user.role) && !isAuthor) throw ApiError.forbidden('Not your announcement');
   announcement.deletedAt = new Date();
   await announcement.save();
   await audit({ user: req.user.id, action: 'ANNOUNCEMENT_DELETED', ip: req.ip, resource: `announcement:${req.params.id}` });

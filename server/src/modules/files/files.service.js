@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { isAdminRole } = require('../../core/permissions');
 const ApiError = require('../../core/ApiError');
 const audit = require('../../core/audit');
 const { persistUpload } = require('../../middleware/uploads');
@@ -39,7 +40,7 @@ class FileService {
   static async remove(fileId, actor, ip) {
     const asset = await FileAsset.findOne({ _id: fileId, deletedAt: null }).select('+storagePath');
     if (!asset) throw ApiError.notFound('File not found');
-    if (actor.role !== 'admin' && String(asset.uploadedBy) !== String(actor.id)) {
+    if (!isAdminRole(actor.role) && String(asset.uploadedBy) !== String(actor.id)) {
       throw ApiError.forbidden('You can only delete your own files');
     }
     asset.deletedAt = new Date();

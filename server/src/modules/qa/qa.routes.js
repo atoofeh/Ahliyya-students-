@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const { isAdminRole } = require('../../core/permissions');
 const { z } = require('zod');
 const authenticate = require('../../middleware/authenticate');
 const asyncHandler = require('../../core/asyncHandler');
@@ -49,7 +50,7 @@ router.post('/:threadId/replies', validate(replySchema), asyncHandler(async (req
   if (!thread) throw ApiError.notFound('Thread not found');
 
   const course = await Course.findById(thread.course);
-  const isStaff = req.user.role === 'admin' || String(course?.teacher) === String(req.user.id);
+  const isStaff = isAdminRole(req.user.role) || String(course?.teacher) === String(req.user.id);
   const isAuthor = String(thread.author) === String(req.user.id);
   if (!isStaff && !isAuthor) {
     // Other enrolled students may also reply.
@@ -78,7 +79,7 @@ router.post('/:threadId/resolve', asyncHandler(async (req, res) => {
   const thread = await QAThread.findOne({ _id: req.params.threadId, deletedAt: null });
   if (!thread) throw ApiError.notFound('Thread not found');
   const course = await Course.findById(thread.course);
-  const isStaff = req.user.role === 'admin' || String(course?.teacher) === String(req.user.id);
+  const isStaff = isAdminRole(req.user.role) || String(course?.teacher) === String(req.user.id);
   if (!isStaff && String(thread.author) !== String(req.user.id)) throw ApiError.forbidden('Not allowed');
   thread.resolved = !thread.resolved;
   await thread.save();

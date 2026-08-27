@@ -1,4 +1,6 @@
 const router = require('express').Router();
+const { requirePermission } = require('../../middleware/authorize');
+const { PERMISSIONS: P } = require('../../core/permissions');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
 const asyncHandler = require('../../core/asyncHandler');
@@ -20,11 +22,11 @@ router.get('/courses/:courseId', requireCourseOwnership, asyncHandler(async (req
   res.json(await AnalyticsService.courseAnalytics(req.course._id));
 }));
 
-router.get('/admin', authorize('admin'), asyncHandler(async (req, res) => {
+router.get('/admin', requirePermission(P.ANALYTICS_GLOBAL), asyncHandler(async (req, res) => {
   res.json(await AnalyticsService.adminDashboard());
 }));
 
-router.get('/admin/report', authorize('admin'), asyncHandler(async (req, res) => {
+router.get('/admin/report', requirePermission(P.ANALYTICS_GLOBAL), asyncHandler(async (req, res) => {
   const report = await AnalyticsService.platformReport();
   await audit({ user: req.user.id, action: 'REPORT_GENERATED', ip: req.ip });
   res.json(report);

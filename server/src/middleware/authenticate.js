@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { isAdminRole } = require('../core/permissions');
 const env = require('../config/env');
 const ApiError = require('../core/ApiError');
 const { getSettings } = require('../config/settingsCache');
@@ -71,7 +72,7 @@ const authenticate = async (req, _res, next) => {
     }
 
     // Maintenance mode: only admins may pass.
-    if (settings.maintenanceMode && user.role !== 'admin') {
+    if (settings.maintenanceMode && !isAdminRole(user.role)) {
       throw new ApiError(503, settings.maintenanceMessage, 'MAINTENANCE');
     }
 

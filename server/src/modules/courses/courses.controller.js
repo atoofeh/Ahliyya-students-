@@ -1,4 +1,5 @@
 const asyncHandler = require('../../core/asyncHandler');
+const { isAdminRole } = require('../../core/permissions');
 const CourseService = require('./courses.service');
 
 const clientIp = (req) => req.ip || '';
@@ -6,13 +7,13 @@ const clientIp = (req) => req.ip || '';
 // ── Courses ───────────────────────────────────────────────────────────
 const createCourse = asyncHandler(async (req, res) => {
   // Teachers always own what they create; only admins may assign others.
-  if (req.user.role !== 'admin') delete req.body.teacher;
+  if (!isAdminRole(req.user.role)) delete req.body.teacher;
   const course = await CourseService.createCourse(req.user.id, req.body, clientIp(req));
   res.status(201).json(course);
 });
 
 const updateCourse = asyncHandler(async (req, res) => {
-  if (req.user.role !== 'admin') delete req.body.teacher;
+  if (!isAdminRole(req.user.role)) delete req.body.teacher;
   res.json(await CourseService.updateCourse(req.course, req.body, req.user.id, clientIp(req)));
 });
 

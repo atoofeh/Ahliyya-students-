@@ -1,4 +1,6 @@
 const router = require('express').Router();
+const { requirePermission } = require('../../middleware/authorize');
+const { PERMISSIONS: P } = require('../../core/permissions');
 const { z } = require('zod');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
@@ -38,7 +40,7 @@ router.get('/courses/:courseId', requireCourseOwnership, validate(paginationSche
   asyncHandler(async (req, res) => {
     res.json(await AntiCheatService.courseReport(req.course._id, req.query));
   }));
-router.get('/platform', authorize('admin'), validate(paginationSchema, 'query'),
+router.get('/platform', requirePermission(P.ANTICHEAT_PLATFORM), validate(paginationSchema, 'query'),
   asyncHandler(async (req, res) => {
     res.json(await AntiCheatService.platformReport(req.query));
   }));

@@ -1,4 +1,6 @@
 const fs = require('fs');
+const { requirePermission } = require('../../middleware/authorize');
+const { PERMISSIONS: P } = require('../../core/permissions');
 const router = require('express').Router();
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
@@ -32,7 +34,7 @@ router.post('/courses/:courseId/images', uploadLimiter, requireCourseOwnership, 
   }));
 
 // Global documents (admin only)
-router.post('/global', uploadLimiter, authorize('admin'), documentUpload,
+router.post('/global', uploadLimiter, requirePermission(P.FILES_GLOBAL), documentUpload,
   asyncHandler(async (req, res) => {
     const asset = await FileService.upload(req.file, {
       uploadedBy: req.user.id, kind: 'documents', scope: 'global',

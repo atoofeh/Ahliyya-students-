@@ -2,6 +2,8 @@ const router = require('express').Router();
 const { z } = require('zod');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
+const { requirePermission } = require('../../middleware/authorize');
+const { PERMISSIONS: P } = require('../../core/permissions');
 const { requireCourseAccess, requireCourseOwnership } = require('../../middleware/courseAccess');
 const { validate, paginationSchema } = require('../../middleware/validate');
 const { codeRedemptionLimiter } = require('../../middleware/rateLimiters');
@@ -30,14 +32,14 @@ router.post('/courses/:courseId/favorite', authorize('student'), c.toggleFavorit
 router.get('/certificates/mine', authorize('student'), c.myCertificates);
 router.post('/courses/:courseId/lessons/:lessonId/complete', authorize('student'), requireCourseAccess, c.completeLesson);
 
-// Codes (admin only)
-router.post('/courses/:courseId/codes', authorize('admin'), requireCourseOwnership, validate(generateCodesSchema), c.generateCodes);
-router.get('/courses/:courseId/codes', authorize('admin'), requireCourseOwnership, validate(paginationSchema, 'query'), c.listCodes);
-router.post('/courses/:courseId/codes/:codeId/revoke', authorize('admin'), requireCourseOwnership, c.revokeCode);
+// Codes (access_codes.manage — admin and owner)
+router.post('/courses/:courseId/codes', requirePermission(P.ACCESS_CODES_MANAGE), requireCourseOwnership, validate(generateCodesSchema), c.generateCodes);
+router.get('/courses/:courseId/codes', requirePermission(P.ACCESS_CODES_MANAGE), requireCourseOwnership, validate(paginationSchema, 'query'), c.listCodes);
+router.post('/courses/:courseId/codes/:codeId/revoke', requirePermission(P.ACCESS_CODES_MANAGE), requireCourseOwnership, c.revokeCode);
 
-// Roster (owner/admin)
+// Roster (course owner / admin); direct assignment needs enrollments.manage
 router.get('/courses/:courseId/students', requireCourseOwnership, validate(paginationSchema, 'query'), c.listStudents);
-router.post('/courses/:courseId/students', authorize('admin'), requireCourseOwnership, validate(assignSchema), c.assignStudent);
+router.post('/courses/:courseId/students', requirePermission(P.ENROLLMENTS_MANAGE), requireCourseOwnership, validate(assignSchema), c.assignStudent);
 router.delete('/courses/:courseId/students/:studentId', requireCourseOwnership, c.removeStudent);
 router.post('/courses/:courseId/students/:studentId/expire', requireCourseOwnership, validate(expireSchema), c.expireAccess);
 

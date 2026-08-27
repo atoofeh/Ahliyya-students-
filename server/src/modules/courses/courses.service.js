@@ -1,4 +1,5 @@
 const ApiError = require('../../core/ApiError');
+const { isAdminRole } = require('../../core/permissions');
 const audit = require('../../core/audit');
 const { paginatedQuery } = require('../../core/pagination');
 const Course = require('../../models/Course');
@@ -61,7 +62,7 @@ class CourseService {
    * grading/internal data never leaves the select projections.
    */
   static async courseDetail(course, user, enrollment) {
-    const isStaff = user.role === 'admin' || String(course.teacher) === String(user.id);
+    const isStaff = isAdminRole(user.role) || String(course.teacher) === String(user.id);
     const lessonFilter = { course: course._id, deletedAt: null, ...(isStaff ? {} : { isPublished: true }) };
 
     const [sections, lessons, progress] = await Promise.all([

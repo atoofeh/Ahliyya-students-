@@ -1,4 +1,5 @@
 const ApiError = require('../core/ApiError');
+const { isAdminRole } = require('../core/permissions');
 const asyncHandler = require('../core/asyncHandler');
 
 /**
@@ -23,7 +24,7 @@ const requireCourseAccess = asyncHandler(async (req, _res, next) => {
   const course = await loadCourse(req);
   req.course = course;
 
-  if (req.user.role === 'admin') return next();
+  if (isAdminRole(req.user.role)) return next();
 
   if (req.user.role === 'teacher') {
     if (String(course.teacher) !== String(req.user.id)) {
@@ -56,7 +57,7 @@ const requireCourseOwnership = asyncHandler(async (req, _res, next) => {
   const course = await loadCourse(req);
   req.course = course;
 
-  if (req.user.role === 'admin') return next();
+  if (isAdminRole(req.user.role)) return next();
   if (req.user.role === 'teacher' && String(course.teacher) === String(req.user.id)) return next();
   throw ApiError.forbidden('Only the course owner or an administrator can do this');
 });

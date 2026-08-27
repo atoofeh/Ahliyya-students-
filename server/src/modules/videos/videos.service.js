@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { isAdminRole } = require('../../core/permissions');
 const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
@@ -340,7 +341,7 @@ class VideoService {
   static async deleteVideo(videoId, user, ip) {
     const video = await Video.findOne({ _id: videoId, deletedAt: null }).select('+storagePath');
     if (!video) throw ApiError.notFound('Video not found');
-    if (user.role !== 'admin') {
+    if (!isAdminRole(user.role)) {
       const owns = await Course.findOne({ _id: video.course, teacher: user.id });
       if (!owns) throw ApiError.forbidden('Not your course');
     }

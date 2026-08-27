@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const { isAdminRole } = require('../../core/permissions');
 const { z } = require('zod');
 const authenticate = require('../../middleware/authenticate');
 const asyncHandler = require('../../core/asyncHandler');
@@ -37,7 +38,7 @@ router.get('/', authenticate, searchLimiter, validate(searchQuery, 'query'), asy
   }
   const scoped = (extra = {}) => (courseScope ? { course: { $in: courseScope }, ...extra } : extra);
 
-  const courseFilter = user.role === 'admin'
+  const courseFilter = isAdminRole(user.role)
     ? { deletedAt: null, title: regex }
     : user.role === 'teacher'
       ? { deletedAt: null, teacher: user.id, title: regex }
@@ -49,7 +50,7 @@ router.get('/', authenticate, searchLimiter, validate(searchQuery, 'query'), asy
     Quiz.find({ ...scoped({ deletedAt: null }), title: regex }).select('title course isPublished').limit(10).lean(),
     Video.find({ ...scoped({ deletedAt: null }), title: regex }).select('title course status durationSeconds').limit(10).lean(),
     Assignment.find({ ...scoped({ deletedAt: null }), title: regex }).select('title course dueAt').limit(10).lean(),
-    user.role === 'admin'
+    isAdminRole(user.role)
       ? User.find({ deletedAt: null, $or: [{ name: regex }, { username: regex }, { email: regex }] })
           .select('name username email role status').limit(10).lean()
       : user.role === 'teacher'

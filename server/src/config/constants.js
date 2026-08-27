@@ -3,7 +3,8 @@
  * used by models, validators, and the client-facing API.
  */
 module.exports = {
-  ROLES: { ADMIN: 'admin', TEACHER: 'teacher', STUDENT: 'student' },
+  ROLES: { SUPER_ADMIN: 'super_admin', ADMIN: 'admin', TEACHER: 'teacher', STUDENT: 'student' },
+  ROLE_RANK: { student: 0, teacher: 1, admin: 2, super_admin: 3 },
 
   USER_STATUS: {
     ACTIVE: 'active',
