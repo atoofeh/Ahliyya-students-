@@ -44,7 +44,7 @@ router.use(authenticate);
 
 // Users
 router.post('/users', requirePermission(P.USERS_CREATE), validate(createUserSchema), asyncHandler(async (req, res) => {
-  res.status(201).json(await AdminService.createUser(req.user.id, req.body, req.ip));
+  res.status(201).json(await AdminService.createUser(req.user, req.body, req.ip));
 }));
 router.get('/users', requirePermission(P.USERS_VIEW), validate(userListQuery, 'query'), asyncHandler(async (req, res) => {
   res.json(await AdminService.listUsers(req.query));
@@ -53,19 +53,19 @@ router.get('/users/:userId', requirePermission(P.USERS_VIEW), asyncHandler(async
   res.json(await AdminService.getUserDetail(req.params.userId));
 }));
 router.put('/users/:userId', requirePermission(P.USERS_UPDATE), validate(updateUserSchema), asyncHandler(async (req, res) => {
-  res.json(await AdminService.updateUser(req.user.id, req.params.userId, req.body, req.ip));
+  res.json(await AdminService.updateUser(req.user, req.params.userId, req.body, req.ip));
 }));
 router.post('/users/:userId/status', requirePermission(P.USERS_SUSPEND), validate(statusSchema), asyncHandler(async (req, res) => {
-  res.json(await AdminService.setUserStatus(req.user.id, req.params.userId, req.body.status, req.ip));
+  res.json(await AdminService.setUserStatus(req.user, req.params.userId, req.body.status, req.ip));
 }));
 router.post('/users/:userId/reset-password', requirePermission(P.USERS_RESET_PASSWORD), validate(resetPasswordSchema), asyncHandler(async (req, res) => {
-  res.json(await AdminService.resetUserPassword(req.user.id, req.params.userId, req.body.password, req.ip));
+  res.json(await AdminService.resetUserPassword(req.user, req.params.userId, req.body.password, req.ip));
 }));
 router.post('/users/:userId/force-logout', requirePermission(P.USERS_FORCE_LOGOUT), asyncHandler(async (req, res) => {
-  res.json(await AdminService.forceLogoutUser(req.user.id, req.params.userId, req.ip));
+  res.json(await AdminService.forceLogoutUser(req.user, req.params.userId, req.ip));
 }));
 router.delete('/users/:userId', requirePermission(P.USERS_DELETE), asyncHandler(async (req, res) => {
-  await AdminService.deleteUser(req.user.id, req.params.userId, req.ip);
+  await AdminService.deleteUser(req.user, req.params.userId, req.ip);
   res.json({ message: 'User deleted' });
 }));
 
@@ -74,7 +74,7 @@ router.get('/sessions', requirePermission(P.SESSIONS_VIEW), validate(paginationS
   res.json(await AdminService.listActiveSessions(req.query));
 }));
 router.post('/sessions/:sessionId/terminate', requirePermission(P.SESSIONS_REVOKE), asyncHandler(async (req, res) => {
-  res.json(await AdminService.forceLogout(req.user.id, req.params.sessionId, req.ip));
+  res.json(await AdminService.forceLogout(req.user, req.params.sessionId, req.ip));
 }));
 
 // Settings
@@ -82,7 +82,7 @@ router.get('/settings', requirePermission(P.SETTINGS_VIEW), asyncHandler(async (
   res.json(await AdminService.getPlatformSettings());
 }));
 router.put('/settings', requirePermission(P.SETTINGS_MANAGE), validate(settingsSchema), asyncHandler(async (req, res) => {
-  res.json(await AdminService.updateSettings(req.user.id, req.body, req.ip));
+  res.json(await AdminService.updateSettings(req.user, req.body, req.ip));
 }));
 
 // Logs
