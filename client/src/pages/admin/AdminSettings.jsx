@@ -1,22 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Save, ShieldCheck, Timer, Video, Wrench } from 'lucide-react';
+import { Save, ShieldCheck, Timer, Video, Wrench, Lock } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { Card, Button, Input, Select, Toggle, Spinner } from '../../components/ui';
 
 export default function AdminSettings() {
   const toast = useToast();
+  const { user } = useAuth();
+  const isOwner = user?.role === 'super_admin';
   const [settings, setSettings] = useState(null);
+  const [ownerOnly, setOwnerOnly] = useState([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.get('/admin/settings').then(({ data }) => setSettings(data.settings)).catch(() => {});
+    api.get('/admin/settings').then(({ data }) => {
+      setSettings(data.settings);
+      setOwnerOnly(data.ownerOnlyKeys || []);
+    }).catch(() => {});
   }, []);
 
   const save = async () => {
     setBusy(true);
     try {
-      const { data } = await api.put('/admin/settings', {
+      const payload = {
         ...settings,
         sessionTimeoutMinutes: Number(settings.sessionTimeoutMinutes),
         maxLoginAttempts: Number(settings.maxLoginAttempts),
@@ -24,7 +31,10 @@ export default function AdminSettings() {
         maxUploadMb: Number(settings.maxUploadMb),
         storageQuotaGb: Number(settings.storageQuotaGb),
         defaultQuizRetakeLimit: Number(settings.defaultQuizRetakeLimit),
-      });
+      };
+      // Owner-only keys are rejected server-side for admins; never send them.
+      if (!isOwner) for (const k of ownerOnly) delete payload[k];
+      const { data } = await api.put('/admin/settings', payload);
       setSettings(data.settings);
       toast.success('Settings saved — applied platform-wide within seconds');
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
@@ -33,6 +43,12 @@ export default function AdminSettings() {
   if (!settings) return <Spinner full />;
   const set = (k) => (e) => setSettings((s) => ({ ...s, [k]: e.target.value }));
   const setBool = (k) => (v) => setSettings((s) => ({ ...s, [k]: v }));
+  const lock = (k) => !isOwner && ownerOnly.includes(k);
+  const ownerTag = isOwner ? null : (
+    <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-gold-600 dark:text-gold-400">
+      <Lock size={10} /> Owner setting
+    </span>
+  );
 
   return (
     <div className="max-w-3xl space-y-5">
@@ -55,17 +71,24 @@ export default function AdminSettings() {
       </Card>
 
       <Card className="space-y-3 p-5">
-        <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100"><Timer size={16} /> Sessions & authentication</p>
+        <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100">
+          <Timer size={16} /> Sessions & authentication {ownerTag}
+        </p>
         <Select label="Inactivity timeout" value={String(settings.sessionTimeoutMinutes)} onChange={set('sessionTimeoutMinutes')}
+          disabled={lock('sessionTimeoutMinutes')}
           options={[15, 30, 60, 120].map((m) => ({ value: String(m), label: `${m} minutes` }))} />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Max failed logins before lockout" type="number" min="3" max="20"
+          <Input label="Max failed logins before lockout" type="number" min="3" max="20" disabled={lock('maxLoginAttempts')}
             value={settings.maxLoginAttempts} onChange={set('maxLoginAttempts')} />
-          <Input label="Lockout duration (minutes)" type="number" min="1" max="1440"
+          <Input label="Lockout duration (minutes)" type="number" min="1" max="1440" disabled={lock('lockoutMinutes')}
             value={settings.lockoutMinutes} onChange={set('lockoutMinutes')} />
         </div>
         <Toggle label="Require email verification" checked={!!settings.requireEmailVerification}
-          onChange={setBool('requireEmailVerification')} />
+          onChange={lock('requireEmailVerification') ? () => {} : setBool('requireEmailVerification')} />
+        <Toggle label="One authorized device per account"
+          hint="A second device is refused until an administrator revokes the first one. Sessions stay pinned to their device either way."
+          checked={!!settings.deviceBindingEnabled}
+          onChange={lock('deviceBindingEnabled') ? () => {} : setBool('deviceBindingEnabled')} />
       </Card>
 
       <Card className="space-y-3 p-5">
