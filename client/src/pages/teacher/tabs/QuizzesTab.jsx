@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Lock, Unlock, BarChart3, Users, BellRing, HelpCir
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState, Spinner } from '../../../components/ui';
+import { SkeletonCard } from '../../../components/Skeletons';
 
 const emptyQuiz = () => ({
   title: '', description: '', questions: [], timeLimitMinutes: 0, passingScore: 60,
@@ -142,7 +143,7 @@ export default function QuizzesTab({ courseId }) {
     } catch (err) { toast.error(apiError(err)); }
   };
 
-  if (!quizzes) return <Spinner full />;
+  if (!quizzes) return <SkeletonCard lines={5} />;
 
   return (
     <div className="space-y-4">

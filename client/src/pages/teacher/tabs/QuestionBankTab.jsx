@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { Plus, Pencil, Trash2, HelpCircle } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
-import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState, Spinner, Pagination } from '../../../components/ui';
+import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState, Pagination } from '../../../components/ui';
+import { SkeletonCard } from '../../../components/Skeletons';
 
 const TYPES = [
   { value: 'multiple_choice', label: 'Multiple choice' },
@@ -87,7 +88,7 @@ export default function QuestionBankTab({ courseId }) {
     ...f, options: f.options.map((o, oi) => (oi === i ? { ...o, ...patch } : o)),
   }));
 
-  if (!result) return <Spinner full />;
+  if (!result) return <SkeletonCard lines={5} />;
 
   return (
     <div className="space-y-4">

@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, ClipboardList, Inbox } from 'lucide-react';
 import api, { API_BASE, apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { Card, Button, Modal, Input, Textarea, Toggle, Badge, EmptyState, Spinner } from '../../../components/ui';
+import { SkeletonCard } from '../../../components/Skeletons';
 
 export default function AssignmentsTab({ courseId }) {
   const toast = useToast();
@@ -75,7 +76,7 @@ export default function AssignmentsTab({ courseId }) {
     } catch (err) { toast.error(apiError(err)); }
   };
 
-  if (!assignments) return <Spinner full />;
+  if (!assignments) return <SkeletonCard lines={5} />;
 
   return (
     <div className="space-y-4">

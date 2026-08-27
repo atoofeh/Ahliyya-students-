@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
-import { Card, Button, Spinner, Badge, Tabs, Toggle, Input, Textarea, Select, ConfirmButton } from '../../components/ui';
+import { Card, Button, Badge, Tabs, Toggle, Input, Textarea, Select, ConfirmButton } from '../../components/ui';
+import { SkeletonCard } from '../../components/Skeletons';
 import CurriculumTab from './tabs/CurriculumTab';
 import VideosTab from './tabs/VideosTab';
 import QuestionBankTab from './tabs/QuestionBankTab';
@@ -76,7 +77,7 @@ export default function CourseManager() {
     } catch (err) { toast.error(apiError(err)); }
   };
 
-  if (!detail || !settings) return <Spinner full />;
+  if (!detail || !settings) return <SkeletonCard lines={5} />;
   const { course, curriculum } = detail;
   const set = (k) => (e) => setSettings((s) => ({ ...s, [k]: e.target.value }));
 
