@@ -51,6 +51,16 @@ const hasPermission = (role, permission) => Boolean(ROLE_PERMISSIONS[role]?.has(
 const isAdminRole = (role) => role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN;
 
 /**
+ * Roles exempt from "one account, one authorized device".
+ * The owner administers the platform from wherever they happen to be — a phone,
+ * a laptop, someone else's machine — and being locked to one device turns every
+ * device change into an account recovery they alone could have performed.
+ * Sessions stay pinned to the device that created them, so a stolen token is
+ * still useless from anywhere else.
+ */
+const isMultiDeviceRole = (role) => role === ROLES.SUPER_ADMIN;
+
+/**
  * May `actorRole` assign `targetRole` to another account?
  * super_admin is never assignable (bootstrap only); admin needs admins.create;
  * anything else must rank strictly below the actor.
@@ -62,4 +72,4 @@ const canAssignRole = (actorRole, targetRole) => {
   return ROLE_RANK[targetRole] < ROLE_RANK[actorRole];
 };
 
-module.exports = { PERMISSIONS, ROLE_PERMISSIONS, ROLE_RANK, hasPermission, isAdminRole, canAssignRole };
+module.exports = { PERMISSIONS, ROLE_PERMISSIONS, ROLE_RANK, hasPermission, isAdminRole, isMultiDeviceRole, canAssignRole };

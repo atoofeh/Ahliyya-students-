@@ -208,3 +208,40 @@ test('an admin cannot revoke another admin device', async () => {
   const r = await api('POST', `/admin/users/${abdId}/device/revoke`, { token: admin.token, deviceId: 'dev-admin', body: { reason: 'peer attempt' } });
   assert.equal(r.status, 403);
 });
+
+// ── Owner: many devices, concurrent sessions, still pinned ───────────────────
+
+test('the owner may authorize several devices at once, unlike everyone else', async () => {
+  // A second device for the owner is accepted rather than refused.
+  const second = await login(CREDENTIALS.owner.username, CREDENTIALS.owner.password, 'dev-owner-phone');
+  assert.equal(second.status, 200, `owner second device rejected: ${JSON.stringify(second.data)}`);
+  assert.ok(second.data.accessToken);
+
+  // A student in the same situation is still refused.
+  await api('POST', '/auth/login', { deviceId: 'dev-sam-one', body: { username: 'sam', password: 'Learn@1234', deviceId: 'dev-sam-one' } });
+  const samSecond = await login('sam', 'Learn@1234', 'dev-sam-two');
+  assert.equal(samSecond.status, 403);
+  assert.equal(samSecond.data.message, DEVICE_MSG);
+});
+
+test('the owner\'s existing session survives a login from another device', async () => {
+  const phone = await login(CREDENTIALS.owner.username, CREDENTIALS.owner.password, 'dev-owner-tablet');
+  assert.equal(phone.status, 200);
+
+  // The original session must still work — signing in elsewhere does not evict it.
+  const stillValid = await api('GET', '/auth/me', { token: owner.token, deviceId: 'dev-owner' });
+  assert.equal(stillValid.status, 200, `original owner session was terminated: ${JSON.stringify(stillValid.data)}`);
+
+  // And the new one works too, at the same time.
+  const alsoValid = await api('GET', '/auth/me', { token: phone.data.accessToken, deviceId: 'dev-owner-tablet' });
+  assert.equal(alsoValid.status, 200);
+});
+
+test('an owner session is still pinned to the device that created it', async () => {
+  const laptop = await login(CREDENTIALS.owner.username, CREDENTIALS.owner.password, 'dev-owner-laptop');
+  assert.equal(laptop.status, 200);
+
+  // Replaying that token from a different device id must fail, exemption or not.
+  const replayed = await api('GET', '/auth/me', { token: laptop.data.accessToken, deviceId: 'dev-owner-someone-else' });
+  assert.equal(replayed.status, 401, `token replay from another device was allowed: ${JSON.stringify(replayed.data)}`);
+});

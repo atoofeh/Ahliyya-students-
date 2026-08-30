@@ -2,8 +2,10 @@ const mongoose = require('mongoose');
 
 /**
  * Authorized device for an account. The partial unique index on { user }
- * where status is 'active' makes the DATABASE guarantee at most one active
- * device per user — concurrent first logins cannot both bind.
+ * where status is 'active' and multiDevice is false makes the DATABASE
+ * guarantee at most one active device per ordinary user — concurrent first
+ * logins cannot both bind. Devices of multi-device roles are flagged and fall
+ * outside the constraint.
  * The device credential (the client's random device id) is stored only as a
  * SHA-256 hash; publicId is a short display handle derived from it.
  */
@@ -25,6 +27,12 @@ const deviceSchema = new mongoose.Schema(
     lastSeenAt: { type: Date, default: Date.now },
     lastIp: { type: String, default: '' },
 
+    // True on devices belonging to a multi-device role (see core/permissions).
+    // The partial index below filters on the literal false, so this needs a
+    // default rather than being absent: MongoDB partial filters accept
+    // { $exists: true } but not { $exists: false }.
+    multiDevice: { type: Boolean, default: false },
+
     status: { type: String, enum: ['active', 'revoked'], default: 'active' },
     revokedAt: { type: Date, default: null },
     revokedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -33,7 +41,10 @@ const deviceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-deviceSchema.index({ user: 1 }, { unique: true, partialFilterExpression: { status: 'active' } });
+deviceSchema.index(
+  { user: 1 },
+  { unique: true, partialFilterExpression: { status: 'active', multiDevice: false } }
+);
 deviceSchema.index({ user: 1, createdAt: -1 });
 
 deviceSchema.methods.toPublicJSON = function () {
@@ -49,6 +60,7 @@ deviceSchema.methods.toPublicJSON = function () {
     firstAuthorizedAt: this.firstAuthorizedAt,
     lastSeenAt: this.lastSeenAt,
     lastIp: this.lastIp,
+    multiDevice: !!this.multiDevice,
     status: this.status,
     revokedAt: this.revokedAt,
     revocationReason: this.revocationReason,

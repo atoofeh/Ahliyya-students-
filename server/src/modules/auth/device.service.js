@@ -2,6 +2,7 @@ const ApiError = require('../../core/ApiError');
 const audit = require('../../core/audit');
 const { securityLogger } = require('../../config/logger');
 const { sha256, safeEqual } = require('../../core/cryptoUtils');
+const { isMultiDeviceRole } = require('../../core/permissions');
 const Device = require('../../models/Device');
 const Session = require('../../models/Session');
 const User = require('../../models/User');
@@ -36,8 +37,14 @@ class DeviceService {
   static async bindOrVerify({ user, deviceId, fingerprint, ip, ua = {}, platform = 'web', appVersion = '' }) {
     const keyHash = DeviceService.hashDeviceId(deviceId);
     const fingerprintHash = fingerprint ? sha256(String(fingerprint)) : null;
+    const multiDevice = isMultiDeviceRole(user.role);
 
-    let active = await Device.findOne({ user: user._id, status: 'active' }).select('+deviceKeyHash');
+    // One-device accounts have at most one active device, so "the active device"
+    // is the thing to compare against. Multi-device accounts may have several,
+    // so look for this exact device instead and add it if it is new.
+    let active = multiDevice
+      ? await Device.findOne({ user: user._id, status: 'active', deviceKeyHash: keyHash }).select('+deviceKeyHash')
+      : await Device.findOne({ user: user._id, status: 'active' }).select('+deviceKeyHash');
 
     if (!active) {
       const hadPrevious = await Device.exists({ user: user._id, status: 'revoked' });
@@ -57,6 +64,7 @@ class DeviceService {
           lastSeenAt: new Date(),
           lastIp: ip || '',
           status: 'active',
+          ...(multiDevice && { multiDevice: true }),
         });
         await audit({
           user: user._id, action: hadPrevious ? 'DEVICE_CHANGED' : 'DEVICE_BOUND', targetUser: user._id,
@@ -71,7 +79,7 @@ class DeviceService {
       }
     }
 
-    if (!safeEqual(active.deviceKeyHash, keyHash)) {
+    if (!multiDevice && !safeEqual(active.deviceKeyHash, keyHash)) {
       return { device: active, rejected: true };
     }
 
@@ -121,7 +129,7 @@ class DeviceService {
   }
 
   static async activeFor(userId) {
-    const device = await Device.findOne({ user: userId, status: 'active' });
+    const device = await Device.findOne({ user: userId, status: 'active' }).sort({ lastSeenAt: -1 });
     return device ? device.toPublicJSON() : null;
   }
 
