@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, BookOpen, FileText, HelpCircle, Video, Users, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { isAdminRole } from '../utils/roles';
 import api from '../api/axios';
 import { useAuth } from '../hooks/useAuth';
 
@@ -47,7 +48,7 @@ export default function GlobalSearch() {
     if (group === 'courses') {
       navigate(user.role === 'student' ? `/student/courses/${item._id}` : user.role === 'teacher' ? `/teacher/courses/${item._id}` : `/admin/courses`);
     } else if (group === 'users') {
-      navigate(user.role === 'admin' ? '/admin/users' : '#');
+      navigate(isAdminRole(user.role) ? '/admin/users' : '#');
     } else {
       navigate(user.role === 'student' ? `/student/courses/${courseId}` : `/teacher/courses/${courseId}`);
     }

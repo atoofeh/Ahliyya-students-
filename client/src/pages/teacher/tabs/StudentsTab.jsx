@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { KeyRound, UserPlus, UserMinus, CalendarClock, Copy } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
+import { isAdminRole } from '../../../utils/roles';
 import { Card, Button, Modal, Input, Badge, EmptyState, Spinner, ProgressBar, Pagination } from '../../../components/ui';
 import { useAuth } from '../../../hooks/useAuth';
 
@@ -20,7 +21,7 @@ export default function StudentsTab({ courseId }) {
   const load = useCallback(() => {
     api.get(`/enrollments/courses/${courseId}/students`, { params: { page, limit: 20 } })
       .then(({ data }) => setStudents(data)).catch(() => {});
-    if (user?.role === 'admin') {
+    if (isAdminRole(user?.role)) {
       api.get(`/enrollments/courses/${courseId}/codes`, { params: { limit: 50 } })
         .then(({ data }) => setCodes(data.items)).catch(() => {});
     }
@@ -78,11 +79,11 @@ export default function StudentsTab({ courseId }) {
   };
 
   return (
-    <div className={user?.role === 'admin' ? "grid gap-5 lg:grid-cols-[1fr_360px]" : "space-y-4"}>
+    <div className={isAdminRole(user?.role) ? "grid gap-5 lg:grid-cols-[1fr_360px]" : "space-y-4"}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold text-surface-800 dark:text-surface-100">Enrolled students</h3>
-          {user?.role === 'admin' && (
+          {isAdminRole(user?.role) && (
             <div className="flex gap-2">
               <Input placeholder="username or email" value={assignName} onChange={(e) => setAssignName(e.target.value)} />
               <Button variant="outline" onClick={assign}><UserPlus size={15} /> Enroll</Button>
@@ -93,7 +94,7 @@ export default function StudentsTab({ courseId }) {
           <Card>
             <EmptyState
               title="No students yet"
-              subtitle={user?.role === 'admin' ? "Generate access codes or enroll students directly." : "Students can enroll using an access code."}
+              subtitle={isAdminRole(user?.role) ? "Generate access codes or enroll students directly." : "Students can enroll using an access code."}
             />
           </Card>
         ) : (
@@ -124,7 +125,7 @@ export default function StudentsTab({ courseId }) {
         <Pagination meta={students?.meta} onPage={setPage} />
       </div>
 
-      {user?.role === 'admin' && (
+      {isAdminRole(user?.role) && (
         <div className="space-y-4">
           <h3 className="font-semibold text-surface-800 dark:text-surface-100">Access codes</h3>
           <Card className="space-y-3 p-4">
