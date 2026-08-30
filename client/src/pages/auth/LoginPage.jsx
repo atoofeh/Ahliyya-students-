@@ -104,7 +104,7 @@ export default function LoginPage() {
 
           <div>
             <div className="mb-8 animate-float-slow">
-              <LogoMark size={112} tone="white" className="drop-shadow-[0_12px_30px_rgba(0,0,0,0.35)]" />
+              <LogoMark size={168} tone="white" className="drop-shadow-[0_12px_30px_rgba(0,0,0,0.35)]" />
             </div>
             <h1 className="font-display text-4xl font-extrabold leading-[1.15] text-white">
               Rise to <span className="text-gold-gradient">Excellence</span>
