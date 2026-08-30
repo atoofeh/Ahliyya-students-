@@ -1,15 +1,19 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Video, Trash2, Eye, FileUp, File as FileIcon } from 'lucide-react';
+import { Video, Trash2, Eye, FileUp, File as FileIcon, Play } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import ChunkedUploader from '../../../components/ChunkedUploader';
-import { Card, Badge, Button, EmptyState, Spinner } from '../../../components/ui';
+import { Card, Badge, Button, EmptyState, Spinner, Modal } from '../../../components/ui';
+import VideoPlayer from '../../../components/VideoPlayer';
 
 const fmtSize = (b) => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.ceil(b / 1024)} KB`);
 const fmtDur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '—');
 
 export default function VideosTab({ courseId }) {
   const toast = useToast();
+  // Staff preview. No lessonId is passed, so the player skips its progress
+  // heartbeat — watch counts and completion belong to students only.
+  const [preview, setPreview] = useState(null);
   const [videos, setVideos] = useState(null);
   const [files, setFiles] = useState(null);
   const fileInput = useRef(null);
@@ -74,7 +78,12 @@ export default function VideosTab({ courseId }) {
                   </p>
                 </div>
                 <Badge color={statusColor[v.status]}>{v.status}</Badge>
-                <Button size="sm" variant="ghost" onClick={() => deleteVideo(v._id)}><Trash2 size={14} className="text-rose-400" /></Button>
+                {v.status === 'ready' && (
+                  <Button size="sm" variant="ghost" aria-label={`Preview ${v.title}`} onClick={() => setPreview(v)}>
+                    <Play size={14} /> Preview
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" aria-label={`Delete ${v.title}`} onClick={() => deleteVideo(v._id)}><Trash2 size={14} className="text-rose-400" /></Button>
               </div>
             ))}
           </Card>
@@ -110,6 +119,16 @@ export default function VideosTab({ courseId }) {
           </Card>
         )}
       </div>
+      <Modal open={!!preview} onClose={() => setPreview(null)} title={preview?.title || 'Preview'} wide>
+        {preview && (
+          <div className="space-y-3">
+            <VideoPlayer key={preview._id} videoId={preview._id} />
+            <p className="text-xs text-surface-400">
+              Staff preview — this does not count as a view and records no progress.
+            </p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
