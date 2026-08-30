@@ -97,14 +97,29 @@ class AdminService {
       throw ApiError.forbidden(`You cannot assign role "${data.role}"`, 'FORBIDDEN');
     }
 
+    // Exempting an account from the one-device rule weakens the platform's
+    // central anti-sharing control, so only the owner may grant it.
+    const grantChanged = data.allowMultipleDevices !== undefined
+      && !!data.allowMultipleDevices !== !!user.allowMultipleDevices;
+    if (grantChanged && actor.role !== ROLES.SUPER_ADMIN) {
+      throw ApiError.forbidden('Only the owner can change multi-device access', 'FORBIDDEN');
+    }
+
     if (data.name) user.name = data.name;
     if (data.email !== undefined) user.email = data.email?.toLowerCase() || undefined;
     if (roleChanged) {
       user.role = data.role;
       user.tokenVersion += 1;
     }
+    if (grantChanged) user.allowMultipleDevices = !!data.allowMultipleDevices;
     await user.save();
 
+    if (grantChanged) {
+      await audit({
+        user: actor.id, action: 'USER_UPDATED', targetUser: userId, ip,
+        meta: { allowMultipleDevices: user.allowMultipleDevices },
+      });
+    }
     if (roleChanged) {
       await AdminService.#killSessions(userId, 'admin_force_logout');
       await audit({ user: actor.id, action: 'ROLE_CHANGED', targetUser: userId, ip, meta: { role: data.role } });

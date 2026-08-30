@@ -245,3 +245,37 @@ test('an owner session is still pinned to the device that created it', async () 
   const replayed = await api('GET', '/auth/me', { token: laptop.data.accessToken, deviceId: 'dev-owner-someone-else' });
   assert.equal(replayed.status, 401, `token replay from another device was allowed: ${JSON.stringify(replayed.data)}`);
 });
+
+// ── Per-account grant ────────────────────────────────────────────────────────
+
+test('the owner can grant multi-device access to an ordinary account', async () => {
+  const t = await app.createUser(admin.token, { name: 'Multi', username: 'multidev', password: 'Learn@1234', role: 'teacher' }, 'dev-admin');
+
+  // Without the grant, a second device is refused as usual.
+  await login('multidev', 'Learn@1234', 'dev-multi-one');
+  const before = await login('multidev', 'Learn@1234', 'dev-multi-two');
+  assert.equal(before.status, 403);
+
+  const granted = await api('PUT', `/admin/users/${t.id}`, {
+    token: owner.token, deviceId: 'dev-owner', body: { allowMultipleDevices: true },
+  });
+  assert.equal(granted.status, 200, JSON.stringify(granted.data));
+
+  // With it, the same second device is accepted.
+  const after = await login('multidev', 'Learn@1234', 'dev-multi-two');
+  assert.equal(after.status, 200, `grant did not take effect: ${JSON.stringify(after.data)}`);
+
+  // And the first session is still alive alongside it.
+  const first = await login('multidev', 'Learn@1234', 'dev-multi-one');
+  const both = await api('GET', '/auth/me', { token: after.data.accessToken, deviceId: 'dev-multi-two' });
+  assert.equal(first.status, 200);
+  assert.equal(both.status, 200);
+});
+
+test('an admin cannot grant multi-device access — owner only', async () => {
+  const s = await app.createUser(admin.token, { name: 'Nope', username: 'nogrant', password: 'Learn@1234', role: 'student' }, 'dev-admin');
+  const attempt = await api('PUT', `/admin/users/${s.id}`, {
+    token: admin.token, deviceId: 'dev-admin', body: { allowMultipleDevices: true },
+  });
+  assert.equal(attempt.status, 403, `an admin was allowed to grant the exemption: ${JSON.stringify(attempt.data)}`);
+});

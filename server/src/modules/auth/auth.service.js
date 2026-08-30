@@ -7,7 +7,7 @@ const audit = require('../../core/audit');
 const { sendMail, templates } = require('../../core/mailer');
 const { sha256, safeEqual, randomToken } = require('../../core/cryptoUtils');
 const { getSettings } = require('../../config/settingsCache');
-const { isMultiDeviceRole } = require('../../core/permissions');
+const { isMultiDeviceUser } = require('../../core/permissions');
 const User = require('../../models/User');
 const Session = require('../../models/Session');
 const LoginHistory = require('../../models/LoginHistory');
@@ -110,10 +110,11 @@ class AuthService {
     }
 
     // SINGLE ACTIVE SESSION: terminate every other session for this user.
-    // Multi-device roles (the owner) are exempt — signing in on a phone must not
-    // end the session on the laptop. Their sessions stay pinned to their own
-    // devices, so nothing is loosened beyond concurrency.
-    if (!isMultiDeviceRole(user.role)) {
+    // Multi-device accounts (the owner, plus anyone granted it) are exempt:
+    // signing in on a phone must not end the session on the laptop. Their
+    // sessions stay pinned to their own devices, so nothing is loosened
+    // beyond concurrency.
+    if (!isMultiDeviceUser(user)) {
       const terminated = await Session.updateMany(
         { user: user._id, isActive: true },
         { $set: { isActive: false, endedAt: new Date(), endReason: 'new_device_login' } }

@@ -23,6 +23,7 @@ const updateUserSchema = z.object({
   name: z.string().min(2).max(100).trim().optional(),
   email: z.string().email().max(200).nullable().optional(),
   role: z.enum(['admin', 'teacher', 'student']).optional(),
+  allowMultipleDevices: z.boolean().optional(),
 });
 
 const statusSchema = z.object({ status: z.enum(['active', 'suspended', 'banned']) });

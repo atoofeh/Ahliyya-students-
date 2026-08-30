@@ -2,7 +2,7 @@ const ApiError = require('../../core/ApiError');
 const audit = require('../../core/audit');
 const { securityLogger } = require('../../config/logger');
 const { sha256, safeEqual } = require('../../core/cryptoUtils');
-const { isMultiDeviceRole } = require('../../core/permissions');
+const { isMultiDeviceUser } = require('../../core/permissions');
 const Device = require('../../models/Device');
 const Session = require('../../models/Session');
 const User = require('../../models/User');
@@ -37,7 +37,7 @@ class DeviceService {
   static async bindOrVerify({ user, deviceId, fingerprint, ip, ua = {}, platform = 'web', appVersion = '' }) {
     const keyHash = DeviceService.hashDeviceId(deviceId);
     const fingerprintHash = fingerprint ? sha256(String(fingerprint)) : null;
-    const multiDevice = isMultiDeviceRole(user.role);
+    const multiDevice = isMultiDeviceUser(user);
 
     // One-device accounts have at most one active device, so "the active device"
     // is the thing to compare against. Multi-device accounts may have several,
@@ -87,6 +87,9 @@ class DeviceService {
       securityLogger.warn('DEVICE_FINGERPRINT_DRIFT', { user: String(user._id), device: active.publicId });
       await audit({ user: user._id, action: 'DEVICE_FINGERPRINT_DRIFT', targetUser: user._id, ip, deviceId: active.publicId });
     }
+    // A device bound before the grant still carries multiDevice: false, which
+    // would keep it inside the unique index. Flip it on the next sign-in.
+    if (multiDevice && !active.multiDevice) active.multiDevice = true;
     active.lastSeenAt = new Date();
     active.lastIp = ip || active.lastIp;
     if (fingerprintHash) active.fingerprintHash = fingerprintHash;

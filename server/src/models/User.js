@@ -13,6 +13,9 @@ const userSchema = new mongoose.Schema(
     avatar: { type: String, default: null }, // stored image asset id
 
     // Token/session control
+    // Exempts this account from "one account, one authorized device". Granted by
+    // the owner only; sessions stay pinned to their own device either way.
+    allowMultipleDevices: { type: Boolean, default: false },
     tokenVersion: { type: Number, default: 0 },
     mustChangePassword: { type: Boolean, default: false },
 

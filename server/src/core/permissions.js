@@ -61,6 +61,13 @@ const isAdminRole = (role) => role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN
 const isMultiDeviceRole = (role) => role === ROLES.SUPER_ADMIN;
 
 /**
+ * Whether this account may hold several authorized devices: the owner always,
+ * plus anyone the owner has explicitly granted it. Takes the user document
+ * rather than a role, because the grant is per account.
+ */
+const isMultiDeviceUser = (user) => isMultiDeviceRole(user?.role) || !!user?.allowMultipleDevices;
+
+/**
  * May `actorRole` assign `targetRole` to another account?
  * super_admin is never assignable (bootstrap only); admin needs admins.create;
  * anything else must rank strictly below the actor.
@@ -72,4 +79,4 @@ const canAssignRole = (actorRole, targetRole) => {
   return ROLE_RANK[targetRole] < ROLE_RANK[actorRole];
 };
 
-module.exports = { PERMISSIONS, ROLE_PERMISSIONS, ROLE_RANK, hasPermission, isAdminRole, isMultiDeviceRole, canAssignRole };
+module.exports = { PERMISSIONS, ROLE_PERMISSIONS, ROLE_RANK, hasPermission, isAdminRole, isMultiDeviceRole, isMultiDeviceUser, canAssignRole };
