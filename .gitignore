@@ -30,3 +30,6 @@ client/android/keystore.properties
 .idea/
 .DS_Store
 Thumbs.db
+
+# built app packages
+*.apk
