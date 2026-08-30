@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Pencil, Trash2 } from 'lucide-react';
+import { BookOpen, Pencil, Trash2, Users } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { Card, Button, Badge, Pagination, EmptyState, Input } from '../../components/ui';
@@ -62,14 +62,26 @@ export default function AdminCourses() {
                     <Badge color={c.isPublished ? 'green' : 'gray'}>{c.isPublished ? 'Published' : 'Draft'}</Badge>{' '}
                     <Badge>{c.visibility}</Badge>
                   </td>
-                  <td className="px-4 py-3">{c.enrollmentCount}</td>
+                  <td className="px-4 py-3">
+                    <button type="button" onClick={() => navigate(`/teacher/courses/${c._id}/students`)}
+                      className="font-medium text-brand-600 hover:underline dark:text-brand-300">
+                      {c.enrollmentCount}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-surface-400">{c.lessonCount} lessons · {c.quizCount} quizzes</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
-                      <Button size="sm" variant="ghost" title="Manage" onClick={() => navigate(`/teacher/courses/${c._id}`)}>
-                        <Pencil size={14} />
+                      {/* Enrolling a student was reachable only through an unlabelled
+                          pencil and then a tab, so nobody found it. Link straight to it. */}
+                      <Button size="sm" variant="ghost" aria-label={`Students in ${c.title}`}
+                        onClick={() => navigate(`/teacher/courses/${c._id}/students`)}>
+                        <Users size={14} /> Students
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => remove(c)}>
+                      <Button size="sm" variant="ghost" aria-label={`Manage ${c.title}`}
+                        onClick={() => navigate(`/teacher/courses/${c._id}`)}>
+                        <Pencil size={14} /> Manage
+                      </Button>
+                      <Button size="sm" variant="ghost" aria-label={`Delete ${c.title}`} onClick={() => remove(c)}>
                         <Trash2 size={14} className="text-rose-400" />
                       </Button>
                     </div>
