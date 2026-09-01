@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Loader2, X, Inbox } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Loader2, X, Inbox, Eye, EyeOff } from 'lucide-react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { pushBackHandler } from '../app/shell';
 
@@ -32,7 +32,13 @@ export function Button({ variant = 'primary', size = 'md', loading, className = 
       'hover:bg-brand-50/60 dark:hover:bg-brand-900/20'
     ),
   };
-  const sizes = { sm: 'px-3 py-1.5 text-xs rounded-lg', md: 'px-4 py-2 text-sm rounded-xl', lg: 'px-6 py-2.5 text-[15px] rounded-xl' };
+  // lg is the primary action on the auth screens; on a phone it wants a full
+  // thumb-sized target, so it grows there and keeps its desktop height at sm:.
+  const sizes = {
+    sm: 'px-3 py-1.5 text-xs rounded-lg',
+    md: 'px-4 py-2.5 text-sm rounded-xl sm:py-2',
+    lg: 'px-6 py-3.5 text-base rounded-xl sm:py-2.5 sm:text-[15px]',
+  };
   return (
     <button
       className={cx(
@@ -67,19 +73,51 @@ export function Card({ className = '', hover = false, children, ...props }) {
 }
 
 const fieldBase = cx(
-  'w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-surface-900 transition-shadow duration-150',
+  // 16px text and a taller box on phones: easier to hit, and browsers do not
+  // zoom the page when a sub-16px field takes focus. Desktop is unchanged.
+  'w-full rounded-xl border bg-white px-3.5 py-3 text-base sm:py-2.5 sm:text-sm',
+  'text-surface-900 transition-shadow duration-150',
   'placeholder:text-surface-400 dark:bg-surface-950/60 dark:text-surface-100',
   'focus:outline-none focus:ring-2 focus:ring-brand-500/70 focus:border-brand-400'
 );
 
 export function Input({ label, error, hint, className = '', ...props }) {
+  // Password fields get a reveal toggle. Typing a password blind on a phone
+  // keyboard is the most common cause of a failed sign-in, so every password
+  // field in the app gets this by virtue of using Input.
+  const isPassword = props.type === 'password';
+  const [revealed, setRevealed] = useState(false);
+
   return (
     <label className="block">
       {label && <span className="mb-1.5 block text-[13px] font-semibold text-surface-700 dark:text-surface-200">{label}</span>}
-      <input
-        className={cx(fieldBase, error ? 'border-rose-400' : 'border-surface-300 dark:border-surface-700', className)}
-        {...props}
-      />
+      <span className={isPassword ? 'relative block' : undefined}>
+        <input
+          {...props}
+          type={isPassword && revealed ? 'text' : props.type}
+          className={cx(
+            fieldBase,
+            error ? 'border-rose-400' : 'border-surface-300 dark:border-surface-700',
+            // Room for the toggle so long passwords never run under it.
+            isPassword && 'pr-11',
+            className
+          )}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setRevealed((v) => !v)}
+            // Keep it out of the tab order: Tab should go from the field to the
+            // submit button, not detour through a display option.
+            tabIndex={-1}
+            aria-label={revealed ? 'Hide password' : 'Show password'}
+            aria-pressed={revealed}
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-surface-400 transition-colors hover:text-surface-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:text-surface-200"
+          >
+            {revealed ? <EyeOff size={17} /> : <Eye size={17} />}
+          </button>
+        )}
+      </span>
       {hint && !error && <span className="mt-1 block text-xs text-surface-400">{hint}</span>}
       {error && <span className="mt-1 block text-xs text-rose-500">{error}</span>}
     </label>

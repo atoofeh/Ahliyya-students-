@@ -72,9 +72,12 @@ const authenticate = async (req, _res, next) => {
       }
     }
 
-    // Inactivity timeout (admin configurable).
+    // Inactivity timeout (admin configurable). Sessions created with
+    // "remember me" are exempt: the timeout protects an unattended device, and
+    // the user has explicitly asked to stay signed in on this one. They remain
+    // bounded by the 30-day refresh token, device pinning and revocation.
     const timeoutMs = (settings.sessionTimeoutMinutes || 30) * 60 * 1000;
-    if (session.lastActivityAt && Date.now() - session.lastActivityAt.getTime() > timeoutMs) {
+    if (!session.rememberMe && session.lastActivityAt && Date.now() - session.lastActivityAt.getTime() > timeoutMs) {
       session.isActive = false;
       session.endedAt = new Date();
       session.endReason = 'inactivity_timeout';

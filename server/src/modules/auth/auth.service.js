@@ -206,7 +206,7 @@ class AuthService {
     session.lastActivityAt = new Date();
     await session.save();
 
-    return { user: user.toPublicJSON(), ...tokens };
+    return { user: user.toPublicJSON(), rememberMe: !!session.rememberMe, ...tokens };
   }
 
   static async logout(sessionId, userId, ip, { forgetDevice = false } = {}) {
@@ -297,7 +297,7 @@ class AuthService {
     await session.save();
 
     await audit({ user: user._id, action: 'PASSWORD_CHANGED', ip });
-    return { user: user.toPublicJSON(), ...tokens };
+    return { user: user.toPublicJSON(), rememberMe: !!session.rememberMe, ...tokens };
   }
 
   static async requestPasswordReset(email, ip) {

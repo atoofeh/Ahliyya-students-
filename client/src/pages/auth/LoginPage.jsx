@@ -189,13 +189,15 @@ export default function LoginPage() {
                 hint={mode !== MODES.LOGIN ? '8+ characters with uppercase, lowercase and a digit' : undefined} />
             )}
             {mode === MODES.LOGIN && (
-              <div className="flex items-center justify-between text-[13px]">
-                <label className="flex cursor-pointer items-center gap-2 text-surface-600 dark:text-surface-300">
+              <div className="-my-1.5 flex flex-wrap items-center justify-between gap-x-4 text-[13px]">
+                {/* 44px is the smallest reliable touch target; the negative
+                    margin above keeps the visual spacing as it was. */}
+                <label className="flex min-h-[44px] cursor-pointer select-none items-center gap-2.5 py-2 text-surface-600 dark:text-surface-300">
                   <input type="checkbox" checked={form.rememberMe} onChange={set('rememberMe')}
-                    className="h-3.5 w-3.5 rounded accent-brand-600" />
+                    className="h-[18px] w-[18px] rounded accent-brand-600" />
                   Remember me
                 </label>
-                <button type="button" className="font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300" onClick={() => setMode(MODES.FORGOT)}>
+                <button type="button" className="min-h-[44px] py-2 font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300" onClick={() => setMode(MODES.FORGOT)}>
                   Forgot password?
                 </button>
               </div>

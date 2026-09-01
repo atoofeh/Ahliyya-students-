@@ -177,3 +177,47 @@ test('role change kills sessions; delete blocks login', async () => {
   const gone = await login('rol', 'Learn@1234', 'dev-rol-01');
   assert.equal(gone.status, 401);
 });
+
+// ── "Remember me" actually decides how long you stay signed in ───────────────
+
+const refreshCookie = (r) => (r.setCookies || []).find((c) => c.startsWith('lms_refresh=')) || '';
+const maxAgeOf = (cookie) => Number(cookie.match(/Max-Age=(\d+)/i)?.[1] || 0);
+
+test('unticked "remember me" issues a session cookie, not a persistent one', async () => {
+  await app.createUser(admin.token, { name: 'Forget Me', username: 'forgetme', password: 'Learn@1234', role: 'student' }, 'dev-admin');
+  const r = await api('POST', '/auth/login', {
+    deviceId: 'dev-forget-0001',
+    body: { username: 'forgetme', password: 'Learn@1234', deviceId: 'dev-forget-0001', rememberMe: false },
+  });
+  assert.equal(r.status, 200);
+  const cookie = refreshCookie(r);
+  assert.ok(cookie, 'a refresh cookie is still set');
+  assert.ok(!/Max-Age|Expires/i.test(cookie),
+    `an unticked login must not outlive the browser session, got: ${cookie}`);
+});
+
+test('ticked "remember me" issues a 30-day cookie', async () => {
+  await app.createUser(admin.token, { name: 'Remember Me', username: 'rememberme', password: 'Learn@1234', role: 'student' }, 'dev-admin');
+  const r = await api('POST', '/auth/login', {
+    deviceId: 'dev-remember-0001',
+    body: { username: 'rememberme', password: 'Learn@1234', deviceId: 'dev-remember-0001', rememberMe: true },
+  });
+  assert.equal(r.status, 200);
+  assert.ok(maxAgeOf(refreshCookie(r)) > 29 * 86400,
+    `expected roughly 30 days, got ${refreshCookie(r)}`);
+});
+
+test('refreshing does not downgrade a remembered session', async () => {
+  await app.createUser(admin.token, { name: 'Keep Me', username: 'keepme', password: 'Learn@1234', role: 'student' }, 'dev-admin');
+  const r = await api('POST', '/auth/login', {
+    deviceId: 'dev-keep-0001', platform: 'android',
+    body: { username: 'keepme', password: 'Learn@1234', deviceId: 'dev-keep-0001', rememberMe: true },
+  });
+  assert.equal(r.status, 200);
+  const refreshed = await api('POST', '/auth/refresh', {
+    deviceId: 'dev-keep-0001', platform: 'android', body: { refreshToken: r.data.refreshToken },
+  });
+  assert.equal(refreshed.status, 200);
+  assert.ok(maxAgeOf(refreshCookie(refreshed)) > 29 * 86400,
+    `a refresh must preserve the 30-day lifetime, got ${refreshCookie(refreshed)}`);
+});

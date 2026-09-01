@@ -13,12 +13,18 @@ const NATIVE_PLATFORMS = new Set(['android', 'ios']);
 
 const isNativeClient = (req) => NATIVE_PLATFORMS.has(String(req.headers['x-client-platform'] || '').toLowerCase());
 
+/**
+ * "Remember me" ticked  -> a persistent cookie, 30 days.
+ * "Remember me" unticked -> a SESSION cookie: no maxAge, so the browser drops it
+ * when it closes. Previously an unticked login still persisted for seven days,
+ * which made the checkbox look broken because it changed nothing observable.
+ */
 const cookieOptions = (rememberMe) => ({
   httpOnly: true,
   secure: env.NODE_ENV === 'production' || env.REFRESH_COOKIE_SAMESITE === 'none',
   sameSite: env.REFRESH_COOKIE_SAMESITE,
   path: '/api/v1/auth',
-  maxAge: (rememberMe ? 30 : 7) * 24 * 60 * 60 * 1000,
+  ...(rememberMe && { maxAge: 30 * 24 * 60 * 60 * 1000 }),
 });
 
 const clientIp = (req) => req.ip || req.socket?.remoteAddress || '';
@@ -49,7 +55,7 @@ const login = asyncHandler(async (req, res) => {
 const refresh = asyncHandler(async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE] || (isNativeClient(req) ? req.body?.refreshToken : undefined);
   const result = await AuthService.refresh(token, { ip: clientIp(req), deviceId: req.headers['x-device-id'] });
-  res.cookie(REFRESH_COOKIE, result.refreshToken, cookieOptions(false));
+  res.cookie(REFRESH_COOKIE, result.refreshToken, cookieOptions(result.rememberMe));
   res.json(authBody(req, result));
 });
 
@@ -96,7 +102,7 @@ const changePassword = asyncHandler(async (req, res) => {
   const result = await AuthService.changePassword(
     req.user.id, req.body.currentPassword, req.body.newPassword, req.session._id, clientIp(req)
   );
-  res.cookie(REFRESH_COOKIE, result.refreshToken, cookieOptions(false));
+  res.cookie(REFRESH_COOKIE, result.refreshToken, cookieOptions(result.rememberMe));
   res.json(authBody(req, result));
 });
 
