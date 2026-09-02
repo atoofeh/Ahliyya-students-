@@ -25,12 +25,13 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
-  // On native the server also returns the refresh token in the body; it goes
-  // straight into the Keystore. On web the field is absent — there the refresh
-  // token is an httpOnly cookie the page never sees.
-  const applyAuth = useCallback(async (data) => {
+  // On native the server also returns the refresh token in the body. Whether it
+  // is persisted (Keystore) or held only for this run of the app depends on
+  // "Remember me" — see token.js. On web the field is absent; the refresh token
+  // is an httpOnly cookie the page never sees.
+  const applyAuth = useCallback(async (data, { rememberMe } = {}) => {
     setAccessToken(data.accessToken);
-    if (data.refreshToken) await saveRefreshToken(data.refreshToken);
+    if (data.refreshToken) await saveRefreshToken(data.refreshToken, { persist: !!rememberMe });
     localStorage.setItem('lms_user', JSON.stringify(data.user));
     setUser(data.user);
     return data.user;
@@ -41,7 +42,7 @@ export function AuthProvider({ children }) {
     const { data } = await api.post('/auth/login', {
       username, password, rememberMe, deviceId, fingerprint,
     });
-    return applyAuth(data);
+    return applyAuth(data, { rememberMe });
   }, [applyAuth]);
 
   const refreshProfile = useCallback(async () => {
