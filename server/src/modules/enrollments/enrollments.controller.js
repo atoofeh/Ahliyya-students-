@@ -20,10 +20,6 @@ const redeemCode = asyncHandler(async (req, res) => {
   const enrollment = await EnrollmentService.enrollWithCode(req.user.id, req.body.code, clientIp(req));
   res.status(201).json(enrollment);
 });
-const enrollPublic = asyncHandler(async (req, res) => {
-  const enrollment = await EnrollmentService.enrollPublic(req.user.id, req.params.courseId, clientIp(req));
-  res.status(201).json(enrollment);
-});
 const myEnrollments = asyncHandler(async (req, res) => {
   res.json(await EnrollmentService.myEnrollments(req.user.id));
 });
@@ -60,7 +56,7 @@ const verifyCertificate = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  generateCodes, listCodes, revokeCode, redeemCode, enrollPublic, myEnrollments,
+  generateCodes, listCodes, revokeCode, redeemCode, myEnrollments,
   toggleFavorite, listStudents, assignStudent, removeStudent, expireAccess,
   completeLesson, myCertificates, verifyCertificate,
 };

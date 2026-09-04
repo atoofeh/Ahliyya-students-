@@ -13,6 +13,7 @@ import StudentsTab from './tabs/StudentsTab';
 import AssignmentsTab from './tabs/AssignmentsTab';
 import InsightsTab from './tabs/InsightsTab';
 import QaTab from './tabs/QaTab';
+import TeachersTab from './tabs/TeachersTab';
 
 const TABS = [
   { key: 'curriculum', label: 'Curriculum' },
@@ -21,6 +22,7 @@ const TABS = [
   { key: 'quizzes', label: 'Quizzes' },
   { key: 'assignments', label: 'Assignments' },
   { key: 'students', label: 'Students & codes' },
+  { key: 'teachers', label: 'Teachers' },
   { key: 'qa', label: 'Q&A' },
   { key: 'insights', label: 'Insights' },
   { key: 'settings', label: 'Settings' },
@@ -105,6 +107,7 @@ export default function CourseManager() {
         {tab === 'quizzes' && <QuizzesTab courseId={courseId} />}
         {tab === 'assignments' && <AssignmentsTab courseId={courseId} />}
         {tab === 'students' && <StudentsTab courseId={courseId} />}
+        {tab === 'teachers' && <TeachersTab courseId={courseId} />}
         {tab === 'qa' && <QaTab courseId={courseId} />}
         {tab === 'insights' && <InsightsTab courseId={courseId} />}
 
@@ -120,7 +123,7 @@ export default function CourseManager() {
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <Select label="Visibility" value={settings.visibility} onChange={set('visibility')}
-                options={[{ value: 'private', label: 'Private' }, { value: 'public', label: 'Public' }, { value: 'hidden', label: 'Hidden' }]} />
+                options={[{ value: 'hidden', label: 'Hidden — enrolled students only' }, { value: 'listed', label: 'Listed — visible in the catalog' }]} />
               <Input label="Enrollment limit (0 = unlimited)" type="number" min="0" value={settings.enrollmentLimit} onChange={set('enrollmentLimit')} />
               <Input label="Course end date" type="date" value={settings.expiresAt} onChange={set('expiresAt')} />
             </div>

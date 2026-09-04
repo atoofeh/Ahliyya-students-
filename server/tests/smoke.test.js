@@ -69,7 +69,7 @@ test('teacher login', async () => {
 test('teacher creates course', async () => {
   const { status, data } = await api('POST', '/courses', {
     token: teacherToken, deviceId: TEACHER_DEVICE,
-    body: { title: 'Intro to Networks', description: 'CCNA prep', category: 'IT', difficulty: 'beginner', visibility: 'private', isPublished: true },
+    body: { title: 'Intro to Networks', description: 'CCNA prep', category: 'IT', difficulty: 'beginner', visibility: 'hidden', isPublished: true },
   });
   assert.equal(status, 201, data.message);
   courseId = data._id;

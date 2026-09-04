@@ -62,8 +62,11 @@ const deleteLesson = asyncHandler(async (req, res) => {
   await CourseService.deleteLesson(req.course._id, req.params.lessonId);
   res.json({ message: 'Lesson deleted' });
 });
+const coursePreview = asyncHandler(async (req, res) => {
+  res.json(await CourseService.coursePreview(req.params.courseId, req.user));
+});
 const getLesson = asyncHandler(async (req, res) => {
-  res.json(await CourseService.getLesson(req.course._id, req.params.lessonId, req.user));
+  res.json(await CourseService.getLesson(req.course._id, req.params.lessonId, req.user, { previewOnly: req.previewOnly }));
 });
 const reorder = asyncHandler(async (req, res) => {
   await CourseService.reorder(req.course._id, req.body);
@@ -73,5 +76,5 @@ const reorder = asyncHandler(async (req, res) => {
 module.exports = {
   createCourse, updateCourse, deleteCourse, catalog, myCourses, courseDetail,
   createSection, updateSection, deleteSection,
-  createLesson, updateLesson, deleteLesson, getLesson, reorder,
+  createLesson, updateLesson, deleteLesson, getLesson, reorder, coursePreview,
 };

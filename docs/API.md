@@ -26,18 +26,34 @@ Security Center: `GET /security/overview` (counts + suspicious events + recent s
 ## Courses — `/courses`
 | Method | Path | Access |
 |---|---|---|
-| GET | `/catalog` | A (published+public) |
-| GET | `/mine` | T/AD |
+| GET | `/catalog` | A — published courses with `visibility: 'listed'`; each item carries `freeLessonCount` |
+| GET | `/mine` | T/AD — courses created **or co-taught** |
 | POST | `/` | T/AD |
-| GET | `/:courseId` | enrolled S / owner T / AD — returns course + curriculum + progress |
-| PUT/DELETE | `/:courseId` | owner/AD |
-| POST/PUT/DELETE | `/:courseId/sections[/:sectionId]` | owner/AD |
-| POST/PUT/DELETE | `/:courseId/lessons[/:lessonId]` | owner/AD |
-| GET | `/:courseId/lessons/:lessonId` | enrolled S / owner / AD |
-| POST | `/:courseId/reorder` | owner/AD |
+| GET | `/:courseId` | enrolled S / course staff / AD — returns course + curriculum + progress |
+| GET | `/:courseId/preview` | A — listed + published only: course card, `lessonCount`, `freeLessons[]`, `enrolled` |
+| PUT/DELETE | `/:courseId` | course staff/AD |
+| POST/PUT/DELETE | `/:courseId/sections[/:sectionId]` | course staff/AD |
+| POST/PUT/DELETE | `/:courseId/lessons[/:lessonId]` | course staff/AD |
+| GET | `/:courseId/lessons/:lessonId` | enrolled S / course staff / AD — **plus any authenticated user when the lesson is `isFree` on a listed, published course**; a preview viewer gets no progress record |
+| POST | `/:courseId/reorder` | course staff/AD |
+
+Course `visibility` is `listed` (shown in the catalog; free lessons open to anyone signed in) or `hidden` (invisible unless enrolled). The old `public` value and open self-enrolment are gone — enrolment is by access code or staff assignment. Migration `005` maps `public → listed`, `private → hidden`.
+
+## Co-teaching — `/co-teaching`
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| GET | `/courses/:courseId` | course staff/AD | `{owner, coTeachers[], pendingInvites[], canManage}` |
+| POST | `/courses/:courseId/invite` | course staff/AD | `{teacher: username\|email, message?}` → `201`. `400 TEACHER_NOT_FOUND` (identical for a missing, suspended or non-teacher account), `400 ALREADY_CO_TEACHER`, `409 INVITE_EXISTS`. 20/h per account. |
+| POST | `/courses/:courseId/invites/:inviteId/cancel` | course staff/AD | withdraw an unanswered invitation |
+| DELETE | `/courses/:courseId/teachers/:teacherId` | **course creator** or AD | `403 NOT_COURSE_CREATOR` for a co-teacher, `400 CANNOT_REMOVE_CREATOR` |
+| GET | `/invitations` | A | invitations addressed to the caller |
+| POST | `/invitations/:inviteId/accept` | invitee (T) | joins `Course.coTeachers`; `403 NOT_A_TEACHER` if the account was demoted |
+| POST | `/invitations/:inviteId/decline` | invitee | |
+
+An accepted co-teacher has the creator's authority everywhere a course is checked — content, roster, grading, Q&A moderation — because every check goes through `modules/courses/courseStaff`. Only the creator (or an admin) can change the teaching staff.
 
 ## Enrollments — `/enrollments`
-`POST /redeem` (S, access code) · `POST /courses/:id/enroll` (S, public courses) · `GET /mine` (S) · `POST /courses/:id/favorite` (S) · `POST /courses/:id/lessons/:lid/complete` (S) · `GET /certificates/mine` (S) · `GET /certificates/verify/:serial` (**public**) · codes (AD/O only): `POST/GET /courses/:id/codes`, `POST /courses/:id/codes/:codeId/revoke` · roster (course owner/AD/O): `GET /courses/:id/students`, `DELETE /courses/:id/students/:sid`, `POST /courses/:id/students/:sid/expire` · direct assignment (AD/O only): `POST /courses/:id/students`.
+`POST /redeem` (S, access code) · `GET /mine` (S) · `POST /courses/:id/favorite` (S) · `POST /courses/:id/lessons/:lid/complete` (S) · `GET /certificates/mine` (S) · `GET /certificates/verify/:serial` (**public**) · codes (AD/O only): `POST/GET /courses/:id/codes`, `POST /courses/:id/codes/:codeId/revoke` · roster (course staff/AD/O): `GET /courses/:id/students`, `DELETE /courses/:id/students/:sid` (a teacher may remove any student from a course they run), `POST /courses/:id/students/:sid/expire` · direct assignment (AD/O only): `POST /courses/:id/students`.
 
 ## Videos — `/videos`
 | Method | Path | Access | Notes |
@@ -73,6 +89,6 @@ Insights: `GET /courses/:id/:quizId/attempts|stats` (owner/AD) · `GET .../leade
 - **Announcements** `/announcements`: `GET /feed` (A) · `POST /global` (AD) · `POST/GET /courses/:id` · `DELETE /:id` (author/AD).
 - **Analytics** `/analytics`: `/student` (S) · `/teacher` (T) · `/courses/:id` (owner/AD) · `/admin`, `/admin/report` (AD).
 - **Search** `/search?q=` (A, role-scoped across courses/lessons/quizzes/videos/assignments/people).
-- **Q&A** `/qa`: `POST/GET /courses/:id` (course access) · `POST /:threadId/replies` · `POST /:threadId/resolve`.
+- **Q&A** `/qa` (moderated): `POST /courses/:id` — a student's question is created `pending` and notifies **every** teacher on the course; 20/15 min per account. A question posted by course staff is `approved` immediately. `GET /courses/:id?status=pending|approved|rejected` — staff see everything and a `pendingCount`; students see approved questions plus their own whatever its state. `POST /:threadId/approve` and `POST /:threadId/reject {reason?}` (course staff only; the author is notified either way). `POST /:threadId/replies` — staff replying to a pending question approves it in the same step; a student needs a **live enrollment** (being the author is not enough) and the thread must be `approved`, else `403 QA_NOT_APPROVED`. `POST /:threadId/resolve` (staff, or the enrolled author).
 - **Bookmarks** `/bookmarks`: `POST /`, `GET /`, `DELETE /:id` (S).
 - **Health**: `GET /api/health` (public).

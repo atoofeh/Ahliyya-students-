@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
   Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, LogOut,
-  Sun, Moon, Laptop, Menu, Library,
+  Sun, Moon, Laptop, Menu, Library, Handshake,
 } from 'lucide-react';
 import { Avatar } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
@@ -16,7 +16,7 @@ import { ROLE_LABEL, navFor } from '../utils/roles';
 
 const ICONS = {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
-  Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, Library,
+  Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, Library, Handshake,
 };
 
 const THEME_ICON = { light: Sun, dark: Moon, system: Laptop };

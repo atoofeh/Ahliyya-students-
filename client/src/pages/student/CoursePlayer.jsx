@@ -120,7 +120,7 @@ export default function CoursePlayer() {
     try {
       await api.post(`/qa/courses/${courseId}`, { ...qaForm, lesson: lesson?._id || null });
       setQaForm({ title: '', body: '' });
-      toast.success('Question posted — your instructor is notified');
+      toast.success('Question sent — your teacher reviews it before the class sees it');
       loadQA();
     } catch (err) { toast.error(apiError(err)); }
   };
@@ -337,6 +337,7 @@ export default function CoursePlayer() {
     <div className="space-y-4">
       <div className="space-y-3 rounded-xl border border-surface-200 p-3.5 dark:border-surface-700/60">
         <p className="text-sm font-semibold text-surface-800 dark:text-surface-100">Ask a question</p>
+        <p className="text-xs text-surface-400">Your teacher reads it first. Once they approve it, the rest of the class can see and answer it.</p>
         <Input placeholder="Question title" value={qaForm.title} onChange={(e) => setQaForm((f) => ({ ...f, title: e.target.value }))} />
         <Textarea placeholder="Describe your question…" value={qaForm.body} onChange={(e) => setQaForm((f) => ({ ...f, body: e.target.value }))} />
         <Button size="sm" onClick={askQuestion}><Send size={14} /> Post question</Button>
@@ -345,10 +346,24 @@ export default function CoursePlayer() {
         <div key={t._id} className="rounded-xl border border-surface-200 p-3.5 dark:border-surface-700/60">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-surface-900 dark:text-white">{t.title}</p>
-            {t.resolved && <Badge color="green">Resolved</Badge>}
+            <div className="flex shrink-0 gap-1.5">
+              {t.status === 'pending' && <Badge color="amber">Awaiting approval</Badge>}
+              {t.status === 'rejected' && <Badge color="red">Not published</Badge>}
+              {t.resolved && t.status === 'approved' && <Badge color="green">Resolved</Badge>}
+            </div>
           </div>
           <p className="mt-1 text-sm text-surface-600 dark:text-surface-300">{t.body}</p>
           <p className="mt-1 text-xs text-surface-400">{t.author?.name} · {new Date(t.createdAt).toLocaleString()}</p>
+          {t.status === 'pending' && (
+            <p className="mt-2 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+              Only you and your teacher can see this until it is approved.
+            </p>
+          )}
+          {t.status === 'rejected' && (
+            <p className="mt-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+              Your teacher did not publish this question{t.rejectionReason ? `: ${t.rejectionReason}` : '.'}
+            </p>
+          )}
           {t.replies.map((r) => (
             <div key={r._id} className="mt-2 rounded-lg bg-surface-50 p-3 dark:bg-surface-700/40">
               <p className="text-sm text-surface-700 dark:text-surface-200">{r.body}</p>
@@ -357,10 +372,15 @@ export default function CoursePlayer() {
               </p>
             </div>
           ))}
-          <div className="mt-2 flex gap-2">
-            <Input placeholder="Reply…" value={reply[t._id] || ''} onChange={(e) => setReply((r) => ({ ...r, [t._id]: e.target.value }))} />
-            <Button size="sm" variant="outline" onClick={() => sendReply(t._id)} aria-label="Send reply"><MessageSquareText size={14} /></Button>
-          </div>
+          {t.status === 'approved' && (
+            <div className="mt-2 flex gap-2">
+              {/* Input brings its own <label> wrapper — that is the flex item. */}
+              <div className="min-w-0 flex-1">
+                <Input placeholder="Reply…" value={reply[t._id] || ''} onChange={(e) => setReply((r) => ({ ...r, [t._id]: e.target.value }))} />
+              </div>
+              <Button size="sm" variant="outline" onClick={() => sendReply(t._id)} aria-label="Send reply"><MessageSquareText size={14} /></Button>
+            </div>
+          )}
         </div>
       ))}
     </div>

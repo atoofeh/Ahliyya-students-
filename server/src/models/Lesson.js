@@ -17,7 +17,10 @@ const lessonSchema = new mongoose.Schema(
     content: { type: String, default: '', maxlength: 100000 }, // rich text lessons
 
     durationMinutes: { type: Number, default: 0 },
-    isPreview: { type: Boolean, default: false }, // viewable before enrollment
+    // A free lesson: any signed-in user can watch it on a listed course,
+    // enrolled or not. Enforced by middleware/courseAccess.requireLessonAccess
+    // and by VideoService.issueStreamToken.
+    isFree: { type: Boolean, default: false },
     isPublished: { type: Boolean, default: true },
     deletedAt: { type: Date, default: null },
   },
@@ -25,6 +28,7 @@ const lessonSchema = new mongoose.Schema(
 );
 
 lessonSchema.index({ course: 1, section: 1, order: 1, deletedAt: 1 });
+lessonSchema.index({ course: 1, isFree: 1, isPublished: 1, deletedAt: 1 });
 lessonSchema.index({ title: 'text' });
 
 module.exports = mongoose.model('Lesson', lessonSchema);

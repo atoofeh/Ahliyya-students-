@@ -13,7 +13,10 @@ module.exports = {
     PENDING: 'pending',
   },
 
-  COURSE_VISIBILITY: { PUBLIC: 'public', PRIVATE: 'private', HIDDEN: 'hidden' },
+  // 'listed' — signed-in users can find the course and watch the lessons its
+  // teacher marked free. Enrolment still needs a code or a staff assignment.
+  // 'hidden'  — invisible to anyone who is not enrolled or staff.
+  COURSE_VISIBILITY: { LISTED: 'listed', HIDDEN: 'hidden' },
   COURSE_DIFFICULTY: ['beginner', 'intermediate', 'advanced', 'expert'],
 
   LESSON_TYPES: ['video', 'pdf', 'document', 'quiz', 'assignment', 'text'],
@@ -87,6 +90,10 @@ module.exports = {
     // platform
     'SETTINGS_UPDATED', 'MAINTENANCE_ON', 'MAINTENANCE_OFF', 'ANNOUNCEMENT_CREATED',
     'ANNOUNCEMENT_DELETED', 'REPORT_GENERATED', 'CHEAT_EVENT',
+    // q&a moderation
+    'QA_QUESTION_ASKED', 'QA_QUESTION_APPROVED', 'QA_QUESTION_REJECTED',
+    // co-teaching
+    'COTEACH_INVITED', 'COTEACH_ACCEPTED', 'COTEACH_DECLINED', 'COTEACH_REMOVED',
   ],
 
   UPLOAD: {

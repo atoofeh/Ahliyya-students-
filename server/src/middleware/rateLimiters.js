@@ -23,6 +23,11 @@ const CHUNK_UPLOAD_PATH = /^\/api\/v1\/videos\/uploads\/[^/]+\/chunks(\?|$)/;
 const accountKey = (req) => `u:${String(req.body?.username || req.ip || '').toLowerCase()}`;
 const ACCOUNT_KEY = { keyGenerator: accountKey };
 
+// Buckets for authenticated actions that fan out to other people. Keying on the
+// account rather than the IP matters here: a whole class shares one NAT, and
+// one student must not be able to use up everybody else's budget.
+const USER_KEY = { keyGenerator: (req) => `a:${String(req.user?.id || req.ip || '')}` };
+
 module.exports = {
   // Login: a relaxed per-IP bucket (a lecture hall shares one NAT) plus a strict per-account bucket.
   loginIpLimiter: build(15 * 60 * 1000, 30, 'Too many login attempts from this network. Try again in 15 minutes.'),
@@ -41,4 +46,10 @@ module.exports = {
     skip: (req) => CHUNK_UPLOAD_PATH.test(req.originalUrl),
   }),
   antiCheatLimiter: build(60 * 1000, 240, 'Event rate exceeded.'),
+  // Asking a question notifies every teacher on the course, so it is a spam
+  // vector even though the questions themselves are held for moderation.
+  qaAskLimiter: build(15 * 60 * 1000, 20, 'Too many questions in a short time. Try again shortly.', USER_KEY),
+  // A co-teaching invitation notifies the invitee; one teacher must not be able
+  // to blanket the staff list.
+  coTeachInviteLimiter: build(60 * 60 * 1000, 20, 'Too many invitations sent. Try again later.', USER_KEY),
 };

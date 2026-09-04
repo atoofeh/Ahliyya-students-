@@ -9,7 +9,12 @@ const courseSchema = new mongoose.Schema(
     thumbnail: { type: String, default: null }, // FileAsset id
     category: { type: String, trim: true, default: 'General', maxlength: 100 },
     tags: { type: [String], default: [] },
+    // The creator. Kept as the course's owner for display and as the account
+    // that can remove co-teachers; authority is otherwise shared.
     teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    // Teachers who accepted an invitation. Equal authority over content,
+    // students, grading and moderation — see modules/courses/courseStaff.js.
+    coTeachers: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
 
     difficulty: { type: String, enum: COURSE_DIFFICULTY, default: 'beginner' },
     language: { type: String, default: 'en', maxlength: 10 },
@@ -22,7 +27,7 @@ const courseSchema = new mongoose.Schema(
     enrollmentLimit: { type: Number, default: 0 }, // 0 = unlimited
     enrollmentCount: { type: Number, default: 0 },
     expiresAt: { type: Date, default: null }, // course access end date
-    visibility: { type: String, enum: Object.values(COURSE_VISIBILITY), default: COURSE_VISIBILITY.PRIVATE },
+    visibility: { type: String, enum: Object.values(COURSE_VISIBILITY), default: COURSE_VISIBILITY.HIDDEN },
     isPublished: { type: Boolean, default: false },
 
     certificateEnabled: { type: Boolean, default: true },
@@ -39,6 +44,7 @@ const courseSchema = new mongoose.Schema(
 );
 
 courseSchema.index({ teacher: 1, deletedAt: 1 });
+courseSchema.index({ coTeachers: 1, deletedAt: 1 });
 courseSchema.index({ visibility: 1, isPublished: 1, deletedAt: 1 });
 courseSchema.index({ category: 1 });
 courseSchema.index({ title: 'text', description: 'text', category: 'text', tags: 'text' });

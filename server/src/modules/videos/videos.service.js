@@ -4,6 +4,7 @@ const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { v4: uuidv4 } = require('uuid');
+const { staffCourseFilter } = require('../courses/courseStaff');
 const execFileAsync = promisify(execFile);
 
 const env = require('../../config/env');
@@ -221,19 +222,34 @@ class VideoService {
 
   // ── Playback ────────────────────────────────────────────────────────
 
+  /**
+   * Does this video sit on a lesson the teacher marked free, on a course they
+   * listed and published? Uses the same predicate as the lesson route, so a
+   * video can never be more (or less) reachable than the lesson holding it.
+   */
+  static async #isFreePreviewVideo(video) {
+    const { isFreeLessonMedia } = require('../../middleware/courseAccess');
+    return isFreeLessonMedia({ courseId: video.course, video: video._id });
+  }
+
   /** Issue a short-lived signed stream token (called from the player). */
   static async issueStreamToken(videoId, user, sessionId) {
     const video = await Video.findOne({ _id: videoId, deletedAt: null });
     if (!video) throw ApiError.notFound('Video not found');
 
-    // Access first (admin, owning teacher, or actively enrolled student) — an outsider
-    // must not learn whether the video exists or is still processing.
+    // Access first (admin, course staff, actively enrolled student, or anyone
+    // signed in when the video sits on a free lesson) — an outsider must not
+    // learn whether the video exists or is still processing.
     if (user.role === 'student') {
       const enrollment = await Enrollment.findOne({ student: user.id, course: video.course, status: 'active' });
-      if (!enrollment) throw ApiError.forbidden('Not enrolled in this course');
+      if (!enrollment && !(await VideoService.#isFreePreviewVideo(video))) {
+        throw ApiError.forbidden('Not enrolled in this course');
+      }
     } else if (user.role === 'teacher') {
-      const owns = await Course.findOne({ _id: video.course, teacher: user.id });
-      if (!owns) throw ApiError.forbidden('Not your course');
+      const owns = await Course.findOne({ _id: video.course, ...staffCourseFilter(user.id) });
+      if (!owns && !(await VideoService.#isFreePreviewVideo(video))) {
+        throw ApiError.forbidden('Not your course');
+      }
     }
     if (video.status !== 'ready') throw ApiError.badRequest('Video is still processing', 'VIDEO_NOT_READY');
 
@@ -356,7 +372,7 @@ class VideoService {
     const video = await Video.findOne({ _id: videoId, deletedAt: null }).select('+storagePath');
     if (!video) throw ApiError.notFound('Video not found');
     if (!isAdminRole(user.role)) {
-      const owns = await Course.findOne({ _id: video.course, teacher: user.id });
+      const owns = await Course.findOne({ _id: video.course, ...staffCourseFilter(user.id) });
       if (!owns) throw ApiError.forbidden('Not your course');
     }
     video.deletedAt = new Date();

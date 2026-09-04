@@ -15,9 +15,19 @@ This document describes what the platform protects, how, and — critically — 
 - **Inactivity timeout**: `Session.lastActivityAt` is tracked (throttled writes); requests beyond the owner-configured idle window end the session. A background sweep closes sessions from vanished clients.
 - **Global revocation**: `tokenVersion` on the user invalidates every outstanding token (password change/reset, role change, suspension, ban, delete, force-logout, device revocation).
 
-## One account, one authorized device
+## One student, one authorized device
 
-Every account is bound to a single authorized device.
+Every **student** account is bound to a single authorized device. Teachers,
+administrators and the owner may be signed in on several devices at once: they
+move between a classroom machine, an office laptop and a phone in a normal
+working day, and the rule exists to stop a shared student login, not to make
+staff work impossible. The distinction lives in one place —
+`isMultiDeviceRole()` in `src/core/permissions.js` — and an individual account
+can also be granted it with `allowMultipleDevices`.
+
+Everything below applies to single-device accounts; **session pinning applies to
+everyone**, staff included, so a stolen staff token is still useless without the
+device id it was issued to.
 
 - **Binding.** On the first successful login (after the password check) the server records a `Device` for the account: the SHA-256 of the client's random device id, a browser/OS fingerprint hash as a supporting signal, platform, and first/last-seen timestamps. The `Device` collection has a **partial unique index** on `{ user }` where `status: 'active'`, so the database — not application code — guarantees at most one active device; two simultaneous first logins result in exactly one binding.
 - **Same device** logs in normally; last-seen, IP and fingerprint are refreshed. Fingerprint drift (browser updates) is logged (`DEVICE_FINGERPRINT_DRIFT`), never enforced.
@@ -33,6 +43,9 @@ Every account is bound to a single authorized device.
 
 - Four roles: `super_admin` (owner), `admin`, `teacher`, `student`. A central permission map (`src/core/permissions.js`) drives `requirePermission()`; teacher/course routes additionally enforce ownership (`courseAccess`). The owner is created only by the bootstrap seed — no API accepts `role: 'super_admin'`. Admins cannot create or mutate other admins, cannot touch the owner (`OWNER_PROTECTED`, audited as `OWNER_ACTION_BLOCKED`), cannot act on their own account through admin routes (`SELF_ACTION`), and cannot change owner-only settings (`sessionTimeoutMinutes`, `maxLoginAttempts`, `lockoutMinutes`, `requireEmailVerification`, `deviceBindingEnabled`).
 - Course-scoped routes verify ownership (teacher) or active, unexpired enrollment (student) on every request — never trust the client.
+- **Who runs a course** has exactly one definition: `modules/courses/courseStaff.js`. A course has a creator (`teacher`) and any number of accepted co-teachers (`coTeachers`), and every check — the middleware, and every query that filters by teacher — goes through `isCourseStaff()` / `staffCourseFilter()`. This is deliberate: co-teaching was added *after* dozens of ownership checks already existed, and a single forgotten `{ teacher: id }` comparison would have been a silent privilege bug. Co-teaching itself is invitation-based (`CoTeachInvite`, database-enforced against duplicate open invitations); only the creator or an administrator can change the teaching staff, so an invited colleague cannot remove the person who invited them.
+- **Free lessons.** A lesson marked `isFree` on a `listed`, published course is readable by any authenticated user, enrolled or not. The rule is written once (`isFreeLesson` / `isFreeLessonMedia` in `middleware/courseAccess.js`) and asked by all three routes that can expose the content — the lesson route, the video stream-token issuer, and the file server — so a document, its video and its lesson can never drift apart. Quiz question images are outside it by construction: only a lesson's own `fileAsset` can match. Un-marking a lesson closes it, and its media, immediately. A preview viewer gets no progress record and no quizzes, assignments or announcements.
+- **Q&A is moderated.** A student's question is stored `pending` and is visible only to its author and the course staff until a teacher approves it; a rejected question never reaches the class. Taking part in a thread requires a live enrollment — being the author is not enough, so a student removed from a course cannot keep posting through an old thread of their own.
 - Quiz answer keys are `select: false` at the schema level; student-facing queries physically cannot include `isCorrect`, `correctAnswers`, or `explanation` unless a grading path opts in. Attempts snapshot questions at start, so editing a question never leaks into or corrupts a running attempt.
 - Suspended/banned accounts fail authentication before any handler runs. Maintenance mode blocks all non-admin traffic at the same choke point.
 

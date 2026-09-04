@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, PlayCircle, FileText, HelpCircle, ClipboardList, AlignLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, PlayCircle, FileText, HelpCircle, ClipboardList, AlignLeft, Unlock } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState } from '../../../components/ui';
@@ -47,6 +47,7 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
       type: form.type,
       durationMinutes: Number(form.durationMinutes) || 0,
       isPublished: form.isPublished !== false,
+      isFree: form.isFree === true,
       content: form.type === 'text' ? form.content || '' : '',
       video: form.type === 'video' ? form.video || null : null,
       fileAsset: ['pdf', 'document'].includes(form.type) ? form.fileAsset || null : null,
@@ -71,9 +72,9 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
   const openLessonModal = (section, lesson) => {
     setForm(lesson ? {
       _id: lesson._id, title: lesson.title, type: lesson.type, durationMinutes: lesson.durationMinutes,
-      isPublished: lesson.isPublished, content: lesson.content,
+      isPublished: lesson.isPublished, isFree: lesson.isFree, content: lesson.content,
       video: lesson.video || '', fileAsset: lesson.fileAsset || '', quiz: lesson.quiz || '', assignment: lesson.assignment || '',
-    } : { type: 'video', title: '', durationMinutes: 0, isPublished: true });
+    } : { type: 'video', title: '', durationMinutes: 0, isPublished: true, isFree: false });
     setLessonModal({ section, lesson });
   };
 
@@ -107,6 +108,7 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
                 <Icon size={16} className="shrink-0 text-surface-400" />
                 <span className="flex-1 truncate text-sm text-surface-700 dark:text-surface-200">{l.title}</span>
                 {!l.isPublished && <Badge>Draft</Badge>}
+                {l.isFree && <Badge color='green'><Unlock size={11} className='mr-0.5 inline' />Free</Badge>}
                 {l.durationMinutes > 0 && <span className="text-xs text-surface-400">{l.durationMinutes}m</span>}
                 <button className="p-1 text-surface-300 hover:text-surface-600 disabled:opacity-30" disabled={i === 0 || busy}
                   onClick={() => moveLesson(section, i, -1)}><ChevronUp size={14} /></button>
@@ -161,6 +163,8 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
             <Textarea label="Content" value={form.content || ''} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} rows={6} />
           )}
           <Toggle label="Published" checked={form.isPublished !== false} onChange={(v) => setForm((f) => ({ ...f, isPublished: v }))} />
+          <Toggle label="Free lesson" hint="Anyone signed in can watch this one without enrolling — as long as the course is listed in the catalog."
+            checked={form.isFree === true} onChange={(v) => setForm((f) => ({ ...f, isFree: v }))} />
           <Button className="w-full" loading={busy} onClick={saveLesson} disabled={!form.title?.trim()}>Save lesson</Button>
         </div>
       </Modal>

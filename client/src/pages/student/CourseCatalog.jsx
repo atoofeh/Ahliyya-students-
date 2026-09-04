@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Clock, BarChart3, Search, CheckCircle2 } from 'lucide-react';
-import api, { apiError } from '../../api/axios';
-import { useToast } from '../../hooks/useToast';
+import { BookOpen, Clock, BarChart3, Search, CheckCircle2, Unlock } from 'lucide-react';
+import api from '../../api/axios';
 import { Card, Button, EmptyState, Badge, Pagination, PageIntro } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 import CourseCover from '../../components/CourseCover';
@@ -14,7 +13,6 @@ export default function CourseCatalog() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [enrolledIds, setEnrolledIds] = useState(new Set());
-  const toast = useToast();
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -31,19 +29,11 @@ export default function CourseCatalog() {
     return () => clearTimeout(t);
   }, [load, search]);
 
-  const enroll = async (course) => {
-    try {
-      await api.post(`/enrollments/courses/${course._id}/enroll`);
-      toast.success(`Enrolled in ${course.title}`);
-      navigate(`/student/courses/${course._id}`);
-    } catch (err) { toast.error(apiError(err)); }
-  };
-
   return (
     <div className="space-y-5">
       <PageIntro
         title="Course catalog"
-        subtitle="Public courses open for enrollment — private courses need an access code."
+        subtitle="Browse what your school offers. Free lessons are open to everyone; the rest needs an access code from the teacher."
         actions={
           <div className="relative w-full sm:w-72">
             <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
@@ -58,7 +48,7 @@ export default function CourseCatalog() {
       />
 
       {!result ? <SkeletonCard /> : result.items.length === 0 ? (
-        <Card><EmptyState icon={<BookOpen size={28} />} title="No public courses found"
+        <Card><EmptyState icon={<BookOpen size={28} />} title="No courses listed yet"
           subtitle="Ask your teacher for an access code, or check back later." /></Card>
       ) : (
         <>
@@ -73,9 +63,13 @@ export default function CourseCatalog() {
                         {c.category}
                       </span>
                     </div>
-                    {enrolled && (
+                    {enrolled ? (
                       <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-emerald-500/90 px-2.5 py-0.5 text-[10.5px] font-bold text-white shadow-card backdrop-blur-sm">
                         <CheckCircle2 size={11} /> Enrolled
+                      </span>
+                    ) : c.freeLessonCount > 0 && (
+                      <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-gold-400/90 px-2.5 py-0.5 text-[10.5px] font-bold text-brand-950 shadow-card backdrop-blur-sm">
+                        <Unlock size={11} /> {c.freeLessonCount} free
                       </span>
                     )}
                   </CourseCover>
@@ -98,11 +92,8 @@ export default function CourseCatalog() {
                       {enrolled
                         ? <Button variant="secondary" className="w-full" onClick={() => navigate(`/student/courses/${c._id}`)}>Open course</Button>
                         : (
-                          <Button className="w-full" onClick={() => enroll(c)}>
-                            Enroll
-                            {c.price > 0
-                              ? <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-xs font-bold">{c.price} {c.currency}</span>
-                              : <span className="rounded-md bg-gold-400/25 px-1.5 py-0.5 text-xs font-bold text-gold-200">Free</span>}
+                          <Button className="w-full" onClick={() => navigate(`/student/catalog/${c._id}`)}>
+                            {c.freeLessonCount > 0 ? 'Watch the free lessons' : 'View course'}
                           </Button>
                         )}
                     </div>

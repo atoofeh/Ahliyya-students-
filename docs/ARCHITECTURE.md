@@ -17,8 +17,8 @@ Request → security stack → rate limit → /api/v1 router
 |---|---|
 | `auth` | login/refresh/logout, device binding & revocation, email verification, password lifecycle, own sessions & login history |
 | `admin` | user CRUD + status + password resets, owner protections, authorized devices, session control, platform settings, audit/login logs |
-| `courses` | courses, sections, lessons, curriculum ordering, catalog |
-| `enrollments` | access codes, enrollment (code/public/assigned), roster, progress, certificates |
+| `courses` | courses, sections, lessons, curriculum ordering, catalog, course preview, co-teaching invitations |
+| `enrollments` | access codes, enrollment (code or staff assignment), roster, progress, certificates |
 | `videos` | chunked uploads, encryption, signed streaming, watch progress, watermark data |
 | `quizzes` | question bank, quiz CRUD, attempt lifecycle, grading, stats, leaderboards |
 | `assignments` | assignment CRUD, submissions, grading |
@@ -28,24 +28,24 @@ Request → security stack → rate limit → /api/v1 router
 | `announcements` | platform-wide and course-scoped announcements |
 | `analytics` | student/teacher/course/admin dashboards, exportable platform report |
 | `search` | role-scoped global search across 6 entity types |
-| `qa` | student questions, threaded replies, resolution |
+| `qa` | student questions, teacher moderation (approve/reject), threaded replies, resolution |
 | `bookmarks` | lesson bookmarks with video timestamps |
 
-## Data model (26 collections)
+## Data model (27 collections)
 
-- **Identity**: `User` (soft-delete, four roles, status, lockout, tokenVersion), `Session` (single-active enforcement, device pinning, refresh hash), `Device` (one active per user — partial unique index), `LoginHistory`.
-- **Content**: `Course` → `Section` → `Lesson` (typed: video/pdf/document/text/quiz/assignment), `Video` (upload state + encryption metadata), `FileAsset`.
+- **Identity**: `User` (soft-delete, four roles, status, lockout, tokenVersion), `Session` (single-active enforcement, device pinning, refresh hash), `Device` (one active per student — partial unique index; staff roles are exempt via `isMultiDeviceRole`), `LoginHistory`.
+- **Content**: `Course` (creator + `coTeachers[]`; visibility listed/hidden) → `Section` → `Lesson` (typed: video/pdf/document/text/quiz/assignment, `isFree` opens one to any signed-in user), `Video` (upload state + encryption metadata), `FileAsset`. `CoTeachInvite` carries the invitation flow.
 - **Learning**: `Enrollment` (status, expiry, denormalized progress), `LessonProgress` (resume positions), `Certificate` (verifiable serials), `Bookmark`.
 - **Assessment**: `Question` (bank, answer keys `select:false`), `Quiz` (policy + scheduling + pool), `QuizAttempt` (question snapshots, grading state, risk score), `Assignment`, `Submission`.
 - **Platform**: `Notification` (TTL-indexed), `Announcement`, `AuditLog`, `CheatEvent`, `PlatformSetting` (singleton, cached 15 s).
-- **Community**: `QAThread`, `Bookmark`, `AccessCode`.
+- **Community**: `QAThread` (moderated: pending → approved/rejected), `Bookmark`, `AccessCode`.
 - **Ops**: `Migration` (`_migrations` — applied data migrations).
 
 Conventions: soft deletes (`deletedAt`) on user-facing entities; compound indexes on every hot path (unique `student+course`, `student+lesson`, leaderboard `quiz+percent`); text indexes for search; denormalized aggregates (course lesson counts, enrollment progress) recomputed by the owning service.
 
 ## Roles & permissions
 
-`super_admin` (owner) > `admin` > `teacher` > `student`. `src/core/permissions.js` maps roles to named permissions; routes declare needs with `requirePermission()`, legacy routes use `authorize()` (the owner satisfies any `admin` check). Target-level rules — nobody mutates the owner but the owner, admins cannot manage admins, nobody mutates their own account through admin routes, `super_admin` is never assignable — live in `AdminService.assertCanManage`. Course ownership stays in `courseAccess`.
+`super_admin` (owner) > `admin` > `teacher` > `student`. `src/core/permissions.js` maps roles to named permissions; routes declare needs with `requirePermission()`, legacy routes use `authorize()` (the owner satisfies any `admin` check). Target-level rules — nobody mutates the owner but the owner, admins cannot manage admins, nobody mutates their own account through admin routes, `super_admin` is never assignable — live in `AdminService.assertCanManage`. Course ownership stays in `courseAccess`, which delegates "is this my course?" to `modules/courses/courseStaff.js` — the one definition of creator-plus-co-teachers.
 
 ## Bootstrap & migrations
 

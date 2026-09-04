@@ -249,7 +249,9 @@ test('an owner session is still pinned to the device that created it', async () 
 // ── Per-account grant ────────────────────────────────────────────────────────
 
 test('the owner can grant multi-device access to an ordinary account', async () => {
-  const t = await app.createUser(admin.token, { name: 'Multi', username: 'multidev', password: 'Learn@1234', role: 'teacher' }, 'dev-admin');
+  // A student: since staff are multi-device by role, students are the only
+  // accounts the per-account grant still changes anything for.
+  const t = await app.createUser(admin.token, { name: 'Multi', username: 'multidev', password: 'Learn@1234', role: 'student' }, 'dev-admin');
 
   // Without the grant, a second device is refused as usual.
   await login('multidev', 'Learn@1234', 'dev-multi-one');
@@ -278,4 +280,45 @@ test('an admin cannot grant multi-device access — owner only', async () => {
     token: admin.token, deviceId: 'dev-admin', body: { allowMultipleDevices: true },
   });
   assert.equal(attempt.status, 403, `an admin was allowed to grant the exemption: ${JSON.stringify(attempt.data)}`);
+});
+
+// ── Staff work across devices; students do not ──────────────────────────────
+
+test('teachers and admins may sign in from several devices', async () => {
+  const t = await app.createUser(admin.token,
+    { name: 'Multi Teacher', username: 'multiteach', password: 'Teach@1234', role: 'teacher', mustChangePassword: false }, 'dev-admin');
+  assert.ok(t.id);
+
+  const first = await login('multiteach', 'Teach@1234', 'dev-teach-laptop');
+  const second = await login('multiteach', 'Teach@1234', 'dev-teach-phone');
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200, `a teacher's second device was refused: ${JSON.stringify(second.data)}`);
+
+  // Both sessions stay usable at the same time — signing in on the phone must
+  // not sign the laptop out mid-lesson.
+  const laptop = await api('GET', '/auth/me', { token: first.data.accessToken, deviceId: 'dev-teach-laptop' });
+  const phone = await api('GET', '/auth/me', { token: second.data.accessToken, deviceId: 'dev-teach-phone' });
+  assert.equal(laptop.status, 200, 'the first teacher session was terminated');
+  assert.equal(phone.status, 200);
+
+  // The admin created above (CREDENTIALS.admin) is likewise unrestricted.
+  const adminSecond = await login(CREDENTIALS.admin.username, CREDENTIALS.admin.password, 'dev-admin-second');
+  assert.equal(adminSecond.status, 200, `an admin's second device was refused: ${JSON.stringify(adminSecond.data)}`);
+});
+
+test('a student is still locked to one device, and staff tokens stay device-pinned', async () => {
+  await app.createUser(admin.token,
+    { name: 'One Device', username: 'onedevice', password: 'Learn@1234', role: 'student', mustChangePassword: false }, 'dev-admin');
+
+  const first = await login('onedevice', 'Learn@1234', 'dev-student-one');
+  const second = await login('onedevice', 'Learn@1234', 'dev-student-two');
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 403, 'the one-device rule must still apply to students');
+  assert.equal(second.data.message, DEVICE_MSG);
+
+  // Relaxing the count must not relax the pinning: a teacher token replayed
+  // from a device that did not create it is still refused.
+  const teach = await login('multiteach', 'Teach@1234', 'dev-teach-laptop');
+  const replayed = await api('GET', '/auth/me', { token: teach.data.accessToken, deviceId: 'dev-teach-elsewhere' });
+  assert.equal(replayed.status, 401, 'a staff token was accepted from another device');
 });

@@ -48,3 +48,37 @@ test('quiz autosave bucket: 120 writes per minute per IP', async () => {
   const blocked = await api('POST', '/quizzes/attempts/000000000000000000000000/answers', { token: s.token, deviceId: 'dev-beta-quiz', headers: { 'X-Forwarded-For': '10.7.7.7' }, body: { answers: [] } });
   assert.equal(blocked.status, 429);
 });
+
+test('question bucket: 20 questions per account, and one student cannot spend another\'s budget', async () => {
+  await app.createUser(admin.token, { name: 'Tess', username: 'tess', password: 'Teach@1234', role: 'teacher' }, 'dev-admin');
+  const teacher = await app.loginAs('tess', 'Teach@1234', { deviceId: 'dev-tess-0001' });
+  const course = await api('POST', '/courses', {
+    token: teacher.token, deviceId: teacher.deviceId, body: { title: 'Rate Limited', category: 'Test', isPublished: true },
+  });
+  const courseId = course.data._id;
+  // Fresh accounts: the login-bucket tests above have already spent alpha's and beta's.
+  await app.createUser(admin.token, { name: 'Qasker', username: 'qasker', password: 'Learn@1234', role: 'student' }, 'dev-admin');
+  await app.createUser(admin.token, { name: 'Qmate', username: 'qmate', password: 'Learn@1234', role: 'student' }, 'dev-admin');
+  for (const student of ['qasker', 'qmate']) {
+    await api('POST', `/enrollments/courses/${courseId}/students`, { token: admin.token, deviceId: 'dev-admin', body: { student } });
+  }
+  const alpha = await app.loginAs('qasker', 'Learn@1234', { deviceId: 'dev-qasker-01' });
+  const beta = await app.loginAs('qmate', 'Learn@1234', { deviceId: 'dev-qmate-001' });
+
+  const ask = (s, i) => api('POST', `/qa/courses/${courseId}`, {
+    // Same network for both students — a class shares one NAT, so the bucket
+    // must key on the account, not the address.
+    token: s.token, deviceId: s.deviceId, headers: { 'X-Forwarded-For': '10.5.5.5' },
+    body: { title: `Question ${i}`, body: 'Please explain.' },
+  });
+
+  let last;
+  for (let i = 0; i < 20; i++) last = await ask(alpha, i);
+  assert.equal(last.status, 201, 'the 20th question should still go through');
+  const blocked = await ask(alpha, 21);
+  assert.equal(blocked.status, 429);
+  assert.equal(blocked.data.code, 'RATE_LIMITED');
+
+  const other = await ask(beta, 1);
+  assert.equal(other.status, 201, 'a classmate on the same network must still be able to ask');
+});

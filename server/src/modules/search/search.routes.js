@@ -5,12 +5,13 @@ const authenticate = require('../../middleware/authenticate');
 const asyncHandler = require('../../core/asyncHandler');
 const { validate } = require('../../middleware/validate');
 const { searchLimiter } = require('../../middleware/rateLimiters');
+const { staffCourseFilter } = require('../courses/courseStaff');
 
 const searchQuery = z.object({ q: z.string().min(2).max(200).trim() });
 
 /**
  * Global search, role-scoped:
- *  - students search their enrolled courses' content + public catalog
+ *  - students search their enrolled courses' content + the listed catalog
  *  - teachers search their own courses, students, and content
  *  - admins search everything including users
  */
@@ -30,7 +31,7 @@ router.get('/', authenticate, searchLimiter, validate(searchQuery, 'query'), asy
   // Scope: which course ids can this user see content for?
   let courseScope = null; // null = all (admin)
   if (user.role === 'teacher') {
-    const owned = await Course.find({ teacher: user.id, deletedAt: null }).select('_id');
+    const owned = await Course.find({ ...staffCourseFilter(user.id), deletedAt: null }).select('_id');
     courseScope = owned.map((c) => c._id);
   } else if (user.role === 'student') {
     const enrolled = await Enrollment.find({ student: user.id, status: 'active' }).select('course');
@@ -41,8 +42,8 @@ router.get('/', authenticate, searchLimiter, validate(searchQuery, 'query'), asy
   const courseFilter = isAdminRole(user.role)
     ? { deletedAt: null, title: regex }
     : user.role === 'teacher'
-      ? { deletedAt: null, teacher: user.id, title: regex }
-      : { deletedAt: null, title: regex, $or: [{ _id: { $in: courseScope } }, { isPublished: true, visibility: 'public' }] };
+      ? { deletedAt: null, ...staffCourseFilter(user.id), title: regex }
+      : { deletedAt: null, title: regex, $or: [{ _id: { $in: courseScope } }, { isPublished: true, visibility: 'listed' }] };
 
   const [courses, lessons, quizzes, videos, assignments, users] = await Promise.all([
     Course.find(courseFilter).select('title category difficulty teacher').populate('teacher', 'name').limit(10).lean(),

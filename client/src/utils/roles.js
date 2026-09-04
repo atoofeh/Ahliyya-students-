@@ -19,6 +19,7 @@ export const STUDENT_NAV = [
 export const TEACHER_NAV = [
   { to: '/teacher', label: 'Dashboard', icon: 'LayoutDashboard', end: true },
   { to: '/teacher/courses', label: 'My Courses', icon: 'BookOpen' },
+  { to: '/teacher/invitations', label: 'Invitations', icon: 'Handshake' },
   { to: '/announcements', label: 'Announcements', icon: 'Megaphone' },
 ];
 export const ADMIN_NAV = [

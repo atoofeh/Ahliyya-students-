@@ -26,7 +26,6 @@ router.use(authenticate);
 
 // Student self-service
 router.post('/redeem', authorize('student'), codeRedemptionLimiter, validate(redeemSchema), c.redeemCode);
-router.post('/courses/:courseId/enroll', authorize('student'), c.enrollPublic);
 router.get('/mine', authorize('student'), c.myEnrollments);
 router.post('/courses/:courseId/favorite', authorize('student'), c.toggleFavorite);
 router.get('/certificates/mine', authorize('student'), c.myCertificates);

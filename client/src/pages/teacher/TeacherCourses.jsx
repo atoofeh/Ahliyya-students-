@@ -8,9 +8,8 @@ import { SkeletonCard } from '../../components/Skeletons';
 
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced', 'expert'].map((d) => ({ value: d, label: d }));
 const VISIBILITIES = [
-  { value: 'private', label: 'Private (access code only)' },
-  { value: 'public', label: 'Public (open enrollment)' },
-  { value: 'hidden', label: 'Hidden' },
+  { value: 'hidden', label: 'Hidden — enrolled students only' },
+  { value: 'listed', label: 'Listed — shown in the catalog' },
 ];
 
 export default function TeacherCourses() {
@@ -21,7 +20,7 @@ export default function TeacherCourses() {
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     title: '', description: '', category: 'General', difficulty: 'beginner',
-    language: 'en', visibility: 'private',
+    language: 'en', visibility: 'hidden',
   });
 
   const load = useCallback(() => {
@@ -37,7 +36,7 @@ export default function TeacherCourses() {
       await api.post('/courses', form);
       toast.success('Course created');
       setModal(false);
-      setForm({ title: '', description: '', category: 'General', difficulty: 'beginner', language: 'en', visibility: 'private' });
+      setForm({ title: '', description: '', category: 'General', difficulty: 'beginner', language: 'en', visibility: 'hidden' });
       load();
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
   };
