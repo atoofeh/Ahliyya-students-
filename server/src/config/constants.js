@@ -21,6 +21,11 @@ module.exports = {
 
   LESSON_TYPES: ['video', 'pdf', 'document', 'quiz', 'assignment', 'text'],
 
+  // What a student signed up for. 'mid' and 'final' cover one exam period each;
+  // 'full' is the whole course. Recorded on the enrollment together with what
+  // they paid, which only administrators and the owner can see.
+  ENROLLMENT_PACKAGES: ['mid', 'final', 'full'],
+
   QUESTION_TYPES: [
     'multiple_choice',
     'true_false',
@@ -81,7 +86,7 @@ module.exports = {
     'DEVICE_RESET_REQUESTED', 'DEVICE_RESET_REQUEST_RESOLVED',
     // courses
     'COURSE_CREATED', 'COURSE_UPDATED', 'COURSE_DELETED', 'COURSE_PUBLISHED',
-    'ENROLLED', 'UNENROLLED', 'CODE_REDEEM', 'ENROLLMENT_EXPIRED',
+    'ENROLLED', 'UNENROLLED', 'CODE_REDEEM', 'ENROLLMENT_EXPIRED', 'ENROLLMENT_PAYMENT_RECORDED',
     // content
     'VIDEO_UPLOADED', 'VIDEO_DELETED', 'VIDEO_ACCESSED', 'FILE_UPLOADED', 'FILE_DELETED',
     // quizzes

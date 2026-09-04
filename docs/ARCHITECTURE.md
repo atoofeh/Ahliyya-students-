@@ -35,7 +35,7 @@ Request → security stack → rate limit → /api/v1 router
 
 - **Identity**: `User` (soft-delete, four roles, status, lockout, tokenVersion), `Session` (single-active enforcement, device pinning, refresh hash), `Device` (one active per student — partial unique index; staff roles are exempt via `isMultiDeviceRole`), `LoginHistory`.
 - **Content**: `Course` (creator + `coTeachers[]`; visibility listed/hidden) → `Section` → `Lesson` (typed: video/pdf/document/text/quiz/assignment, `isFree` opens one to any signed-in user), `Video` (upload state + encryption metadata), `FileAsset`. `CoTeachInvite` carries the invitation flow.
-- **Learning**: `Enrollment` (status, expiry, denormalized progress), `LessonProgress` (resume positions), `Certificate` (verifiable serials), `Bookmark`.
+- **Learning**: `Enrollment` (status, expiry, denormalized progress, the package — mid/final/full — and the payment recorded against it, which only `payments.manage` holders may read), `LessonProgress` (resume positions), `Certificate` (verifiable serials), `Bookmark`.
 - **Assessment**: `Question` (bank, answer keys `select:false`), `Quiz` (policy + scheduling + pool), `QuizAttempt` (question snapshots, grading state, risk score), `Assignment`, `Submission`.
 - **Platform**: `Notification` (TTL-indexed), `Announcement`, `AuditLog`, `CheatEvent`, `PlatformSetting` (singleton, cached 15 s).
 - **Community**: `QAThread` (moderated: pending → approved/rejected), `Bookmark`, `AccessCode`.

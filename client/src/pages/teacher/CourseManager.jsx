@@ -106,7 +106,7 @@ export default function CourseManager() {
         {tab === 'questions' && <QuestionBankTab courseId={courseId} />}
         {tab === 'quizzes' && <QuizzesTab courseId={courseId} />}
         {tab === 'assignments' && <AssignmentsTab courseId={courseId} />}
-        {tab === 'students' && <StudentsTab courseId={courseId} />}
+        {tab === 'students' && <StudentsTab courseId={courseId} currency={course.currency} />}
         {tab === 'teachers' && <TeachersTab courseId={courseId} />}
         {tab === 'qa' && <QaTab courseId={courseId} />}
         {tab === 'insights' && <InsightsTab courseId={courseId} />}

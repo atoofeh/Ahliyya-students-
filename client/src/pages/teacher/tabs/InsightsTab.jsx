@@ -6,9 +6,17 @@ import { useToast } from '../../../hooks/useToast';
 import { Card, Button, Input, Textarea, Badge, EmptyState, Tabs } from '../../../components/ui';
 import { SkeletonCard } from '../../../components/Skeletons';
 import QaTab from './QaTab';
+import PaymentsTab from './PaymentsTab';
+import { useAuth } from '../../../hooks/useAuth';
+import { isAdminRole } from '../../../utils/roles';
 
 export default function InsightsTab({ courseId }) {
   const toast = useToast();
+  const { user } = useAuth();
+  // Payments are the institution's business, not the teaching staff's. The
+  // server refuses the endpoint to a teacher either way; this just keeps a tab
+  // they cannot use out of their way.
+  const canSeePayments = isAdminRole(user?.role);
   const [sub, setSub] = useState('analytics');
   const [analytics, setAnalytics] = useState(null);
   const [cheat, setCheat] = useState(null);
@@ -38,6 +46,7 @@ export default function InsightsTab({ courseId }) {
         { key: 'anticheat', label: 'Anti-cheat' },
         { key: 'announcements', label: 'Announcements' },
         { key: 'qa', label: 'Q&A' },
+        ...(canSeePayments ? [{ key: 'payments', label: 'Payments' }] : []),
       ]} />
 
       {sub === 'analytics' && (!analytics ? <SkeletonCard lines={6} /> : (
@@ -156,6 +165,7 @@ export default function InsightsTab({ courseId }) {
       )}
 
       {sub === 'qa' && <QaTab courseId={courseId} />}
+      {sub === 'payments' && canSeePayments && <PaymentsTab courseId={courseId} />}
     </div>
   );
 }

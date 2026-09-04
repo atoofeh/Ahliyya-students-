@@ -12,8 +12,21 @@ const Certificate = require('../../models/Certificate');
 const QuizAttempt = require('../../models/QuizAttempt');
 const User = require('../../models/User');
 const { notifyUser } = require('../notifications/notifications.service');
+const { ENROLLMENT_PACKAGES } = require('../../config/constants');
+
+const daysAgo = (n) => new Date(Date.now() - n * 86400000);
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
+
+/**
+ * The payment fields, as a Mongoose projection that removes them.
+ *
+ * Money is administrator-and-owner only. Every read path that can reach a
+ * teacher or a student applies this, so the fields never leave the database
+ * rather than being hidden by the interface — a client that hides a value it
+ * was sent is not access control.
+ */
+const WITHOUT_PAYMENT = '-amountPaid -currency -paymentNote -paymentRecordedBy -paymentRecordedAt';
 
 const generateCode = (len = 10) => {
   const bytes = crypto.randomBytes(len);
@@ -25,12 +38,16 @@ const generateCode = (len = 10) => {
 class EnrollmentService {
   // ── Access codes ────────────────────────────────────────────────────
 
-  static async generateCodes(courseId, createdBy, { count, maxUses, expiresInDays, grantsAccessDays }) {
+  static async generateCodes(courseId, createdBy, {
+    count, maxUses, expiresInDays, grantsAccessDays, package: pkg, amountPaid,
+  }) {
     const docs = [];
     for (let i = 0; i < count; i++) {
       docs.push({
         code: generateCode(),
         course: courseId,
+        package: pkg || 'full',
+        amountPaid: amountPaid || 0,
         maxUses,
         grantsAccessDays: grantsAccessDays || 0,
         expiresAt: expiresInDays ? new Date(Date.now() + expiresInDays * 86400000) : null,
@@ -66,7 +83,7 @@ class EnrollmentService {
     return EnrollmentService.#enroll(studentId, course, { joinedViaCode: code, ip });
   }
 
-  static async assignStudent(courseId, studentIdentifier, actorId, ip) {
+  static async assignStudent(courseId, studentIdentifier, actorId, ip, payment = {}) {
     const course = await Course.findOne({ _id: courseId, deletedAt: null });
     if (!course) throw ApiError.notFound('Course not found');
     const student = await User.findOne({
@@ -75,10 +92,41 @@ class EnrollmentService {
       deletedAt: null,
     });
     if (!student) throw ApiError.notFound('Student not found');
-    return EnrollmentService.#enroll(student._id, course, { enrolledBy: actorId, ip, bypassLimit: true });
+    return EnrollmentService.#enroll(student._id, course, {
+      enrolledBy: actorId, ip, bypassLimit: true, payment,
+    });
   }
 
-  static async #enroll(studentId, course, { joinedViaCode = null, enrolledBy = null, ip, bypassLimit = false }) {
+  /**
+   * Change what a student is recorded as having taken and paid.
+   *
+   * Amounts get mistyped and packages get upgraded mid-term, so the figures
+   * have to be correctable. Every correction is audited with the old and the
+   * new value, because "who changed this number" is the first question anyone
+   * asks of a payment record.
+   */
+  static async recordPayment(courseId, studentId, changes, actorId, ip) {
+    const enrollment = await Enrollment.findOne({ course: courseId, student: studentId });
+    if (!enrollment) throw ApiError.notFound('Enrollment not found');
+
+    const before = { package: enrollment.package, amountPaid: enrollment.amountPaid };
+    if (changes.package !== undefined) enrollment.package = changes.package;
+    if (changes.amountPaid !== undefined) enrollment.amountPaid = changes.amountPaid;
+    if (changes.paymentNote !== undefined) enrollment.paymentNote = changes.paymentNote;
+    enrollment.paymentRecordedBy = actorId;
+    enrollment.paymentRecordedAt = new Date();
+    await enrollment.save();
+
+    await audit({
+      user: actorId, action: 'ENROLLMENT_PAYMENT_RECORDED', targetUser: studentId, course: courseId, ip,
+      meta: { before, after: { package: enrollment.package, amountPaid: enrollment.amountPaid } },
+    });
+    return enrollment;
+  }
+
+  static async #enroll(studentId, course, {
+    joinedViaCode = null, enrolledBy = null, ip, bypassLimit = false, payment = {},
+  }) {
     const { getSettings } = require('../../config/settingsCache');
     const settings = await getSettings();
     if (!settings.enrollmentOpen && !enrolledBy) {
@@ -99,12 +147,24 @@ class EnrollmentService {
       expiresAt = new Date(Date.now() + joinedViaCode.grantsAccessDays * 86400000);
     }
 
+    // A code carries what it was sold as; a direct assignment carries what the
+    // administrator typed. Either way the enrollment ends up with both, so the
+    // course's figures cover every student however they got in.
+    const pkg = payment.package || joinedViaCode?.package || 'full';
+    const amountPaid = payment.amountPaid ?? joinedViaCode?.amountPaid ?? 0;
+    const recorded = payment.package !== undefined || payment.amountPaid !== undefined;
+
     let enrollment;
     if (existing) {
       existing.status = 'active';
       existing.expiresAt = expiresAt;
       existing.joinedViaCode = joinedViaCode?._id || existing.joinedViaCode;
       existing.enrolledBy = enrolledBy;
+      existing.package = pkg;
+      existing.amountPaid = amountPaid;
+      existing.currency = course.currency || 'USD';
+      if (payment.paymentNote !== undefined) existing.paymentNote = payment.paymentNote;
+      if (recorded) { existing.paymentRecordedBy = enrolledBy; existing.paymentRecordedAt = new Date(); }
       enrollment = await existing.save();
     } else {
       enrollment = await Enrollment.create({
@@ -113,6 +173,11 @@ class EnrollmentService {
         joinedViaCode: joinedViaCode?._id || null,
         enrolledBy,
         expiresAt,
+        package: pkg,
+        amountPaid,
+        currency: course.currency || 'USD',
+        paymentNote: payment.paymentNote || '',
+        ...(recorded && { paymentRecordedBy: enrolledBy, paymentRecordedAt: new Date() }),
       });
       await Course.updateOne({ _id: course._id }, { $inc: { enrollmentCount: 1 } });
     }
@@ -159,12 +224,21 @@ class EnrollmentService {
     return enrollment;
   }
 
-  static async listStudents(courseId, { page, limit, search }) {
+  /**
+   * The course roster.
+   *
+   * `canSeePayments` comes from the caller's permission, not from a query
+   * parameter, and decides whether the money columns are read at all. A teacher
+   * still gets each student's package — they need to know who is with them for
+   * the midterm and who for the whole course.
+   */
+  static async listStudents(courseId, { page, limit, search }, { canSeePayments = false } = {}) {
     const filter = { course: courseId, status: { $in: ['active', 'completed'] } };
     const result = await paginatedQuery(Enrollment, filter, {
       page, limit,
       populate: { path: 'student', select: 'name username email lastLoginAt status' },
       sort: { createdAt: -1 },
+      ...(canSeePayments ? {} : { select: WITHOUT_PAYMENT }),
     });
     if (search) {
       const q = search.toLowerCase();
@@ -177,10 +251,84 @@ class EnrollmentService {
 
   static async myEnrollments(studentId) {
     const enrollments = await Enrollment.find({ student: studentId, status: { $in: ['active', 'completed'] } })
+      .select(WITHOUT_PAYMENT)
       .populate({ path: 'course', select: 'title description category difficulty durationMinutes lessonCount quizCount thumbnail teacher expiresAt', populate: { path: 'teacher', select: 'name' } })
       .sort({ lastAccessedAt: -1, createdAt: -1 })
       .lean();
     return enrollments.filter((e) => e.course);
+  }
+
+  /**
+   * What this course has taken in, split by what students bought.
+   *
+   * Administrators and the owner only — the route enforces that. Removed and
+   * expired enrollments still count: the money was paid, and dropping them
+   * would make the totals disagree with the books.
+   */
+  static async courseRevenue(courseId) {
+    const course = await Course.findById(courseId).select('title currency');
+    const paid = { course: courseId, status: { $ne: 'removed' } };
+
+    const [byPackage, monthly, overall] = await Promise.all([
+      Enrollment.aggregate([
+        { $match: paid },
+        {
+          $group: {
+            _id: { $ifNull: ['$package', 'full'] },
+            students: { $sum: 1 },
+            collected: { $sum: { $ifNull: ['$amountPaid', 0] } },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      Enrollment.aggregate([
+        { $match: { ...paid, createdAt: { $gte: daysAgo(365) } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+            students: { $sum: 1 },
+            collected: { $sum: { $ifNull: ['$amountPaid', 0] } },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      Enrollment.aggregate([
+        { $match: paid },
+        {
+          $group: {
+            _id: null,
+            students: { $sum: 1 },
+            collected: { $sum: { $ifNull: ['$amountPaid', 0] } },
+            // Someone enrolled with nothing recorded — usually a code redeemed
+            // before its price was set. Worth surfacing rather than averaging away.
+            unrecorded: { $sum: { $cond: [{ $gt: [{ $ifNull: ['$amountPaid', 0] }, 0] }, 0, 1] } },
+          },
+        },
+      ]),
+    ]);
+
+    const totals = overall[0] || { students: 0, collected: 0, unrecorded: 0 };
+    return {
+      course: { _id: courseId, title: course?.title, currency: course?.currency || 'USD' },
+      totals: {
+        students: totals.students,
+        collected: totals.collected,
+        unrecorded: totals.unrecorded,
+        average: totals.students ? Math.round((totals.collected / totals.students) * 100) / 100 : 0,
+      },
+      byPackage: ENROLLMENT_PACKAGES.map((name) => {
+        const row = byPackage.find((r) => r._id === name);
+        const students = row?.students || 0;
+        const collected = row?.collected || 0;
+        return {
+          package: name,
+          students,
+          collected,
+          average: students ? Math.round((collected / students) * 100) / 100 : 0,
+        };
+      }),
+      monthly: monthly.map((m) => ({ month: m._id, students: m.students, collected: m.collected })),
+    };
   }
 
   static async toggleFavorite(studentId, courseId) {

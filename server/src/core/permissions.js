@@ -20,6 +20,10 @@ const PERMISSIONS = Object.freeze({
   COURSES_MANAGE_ANY: 'courses.manage_any',
   COURSES_MANAGE_OWN: 'courses.manage_own',
   ENROLLMENTS_MANAGE: 'enrollments.manage',
+  // Seeing and recording what a student paid. Deliberately separate from
+  // enrollment management: teachers run their own rosters, but money is the
+  // institution's business, not theirs.
+  PAYMENTS_MANAGE: 'payments.manage',
   ACCESS_CODES_MANAGE: 'access_codes.manage',
   SESSIONS_VIEW: 'sessions.view',
   SESSIONS_REVOKE: 'sessions.revoke',

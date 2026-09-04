@@ -55,6 +55,19 @@ An accepted co-teacher has the creator's authority everywhere a course is checke
 ## Enrollments — `/enrollments`
 `POST /redeem` (S, access code) · `GET /mine` (S) · `POST /courses/:id/favorite` (S) · `POST /courses/:id/lessons/:lid/complete` (S) · `GET /certificates/mine` (S) · `GET /certificates/verify/:serial` (**public**) · codes (AD/O only): `POST/GET /courses/:id/codes`, `POST /courses/:id/codes/:codeId/revoke` · roster (course staff/AD/O): `GET /courses/:id/students`, `DELETE /courses/:id/students/:sid` (a teacher may remove any student from a course they run), `POST /courses/:id/students/:sid/expire` · direct assignment (AD/O only): `POST /courses/:id/students`.
 
+### Packages and payments
+
+Every enrollment carries a **package** — `mid`, `final` or `full` — and what the student paid.
+
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| POST | `/courses/:id/students` | AD/O (`enrollments.manage`) | `{student, package?, amountPaid?, paymentNote?}`. Defaults to `full` and `0`. The enrollment copies the course's `currency` so a later change to the course cannot re-denominate it. |
+| POST | `/courses/:id/codes` | AD/O (`access_codes.manage`) | also takes `{package?, amountPaid?}` — a redeemed code carries them onto the enrollment it creates, so students who join by code are not missing from the figures |
+| PATCH | `/courses/:id/students/:sid/payment` | **AD/O only** (`payments.manage`) | `{package?, amountPaid?, paymentNote?}` — corrections; audited as `ENROLLMENT_PAYMENT_RECORDED` with the before and after values |
+| GET | `/courses/:id/revenue` | **AD/O only** (`payments.manage`) | `{course:{currency}, totals:{students, collected, average, unrecorded}, byPackage[], monthly[]}`. Removed students still count towards `collected` — the money was taken — but not towards `students`. |
+
+`GET /courses/:id/students` returns `package` to everyone who may see the roster, and `amountPaid`, `currency`, `paymentNote`, `paymentRecordedBy` and `paymentRecordedAt` **only** to a caller holding `payments.manage`. For anyone else those fields are excluded from the query, so a teacher's client is never sent them. `GET /mine` never returns them at all.
+
 ## Videos — `/videos`
 | Method | Path | Access | Notes |
 |---|---|---|---|

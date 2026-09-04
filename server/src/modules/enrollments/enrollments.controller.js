@@ -1,5 +1,9 @@
 const asyncHandler = require('../../core/asyncHandler');
 const EnrollmentService = require('./enrollments.service');
+const { hasPermission, PERMISSIONS: P } = require('../../core/permissions');
+
+/** Only administrators and the owner may see what anyone paid. */
+const canSeePayments = (req) => hasPermission(req.user.role, P.PAYMENTS_MANAGE);
 
 const clientIp = (req) => req.ip || '';
 
@@ -29,11 +33,19 @@ const toggleFavorite = asyncHandler(async (req, res) => {
 
 // Roster management (owner/admin)
 const listStudents = asyncHandler(async (req, res) => {
-  res.json(await EnrollmentService.listStudents(req.course._id, req.query));
+  res.json(await EnrollmentService.listStudents(req.course._id, req.query, { canSeePayments: canSeePayments(req) }));
 });
 const assignStudent = asyncHandler(async (req, res) => {
-  const enrollment = await EnrollmentService.assignStudent(req.course._id, req.body.student, req.user.id, clientIp(req));
+  const { student, ...payment } = req.body;
+  const enrollment = await EnrollmentService.assignStudent(req.course._id, student, req.user.id, clientIp(req), payment);
   res.status(201).json(enrollment);
+});
+const recordPayment = asyncHandler(async (req, res) => {
+  res.json(await EnrollmentService.recordPayment(
+    req.course._id, req.params.studentId, req.body, req.user.id, clientIp(req)));
+});
+const courseRevenue = asyncHandler(async (req, res) => {
+  res.json(await EnrollmentService.courseRevenue(req.course._id));
 });
 const removeStudent = asyncHandler(async (req, res) => {
   await EnrollmentService.removeStudent(req.course._id, req.params.studentId, req.user.id, clientIp(req));
@@ -57,6 +69,6 @@ const verifyCertificate = asyncHandler(async (req, res) => {
 
 module.exports = {
   generateCodes, listCodes, revokeCode, redeemCode, myEnrollments,
-  toggleFavorite, listStudents, assignStudent, removeStudent, expireAccess,
+  toggleFavorite, listStudents, assignStudent, removeStudent, expireAccess, recordPayment, courseRevenue,
   completeLesson, myCertificates, verifyCertificate,
 };
