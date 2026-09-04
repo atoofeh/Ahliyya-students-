@@ -13,10 +13,9 @@
  *
  * On the web this module is inert: every function returns immediately.
  */
-import { isNative } from './native';
+import { isNative, openNotificationSettings } from './native';
 
 let plugin = null;
-let permission = null; // null = not asked yet, true/false = answered
 let navigateTo = null;
 
 /**
@@ -39,24 +38,47 @@ const load = async () => {
 };
 
 /**
- * Ask once for permission to post notifications (Android 13+ requires it).
- * A refusal is remembered for the session and never nags again.
+ * What the phone will currently do with a notification.
+ *
+ *   'unsupported' — the web, or a platform without the plugin
+ *   'granted'     — notifications appear
+ *   'prompt'      — the system will still ask if we request it
+ *   'denied'      — the system will not ask again; only settings can fix it
  */
-export const ensurePermission = async () => {
-  if (!isNative) return false;
-  if (permission !== null) return permission;
+export const notificationState = async () => {
+  if (!isNative) return 'unsupported';
   try {
     await load();
-    const current = await plugin.checkPermissions();
-    const status = current.display === 'granted' ? current : await plugin.requestPermissions();
-    permission = status.display === 'granted';
-    return permission;
+    const { display } = await plugin.checkPermissions();
+    if (display === 'granted') return 'granted';
+    if (display === 'denied') return 'denied';
+    return 'prompt';
   } catch (err) {
-    console.warn('[notifications] permission check failed', err);
-    permission = false;
-    return false;
+    console.warn('[notifications] could not read the permission state', err);
+    return 'unsupported';
   }
 };
+
+/**
+ * Ask the system for permission. Only ever call this from something the user
+ * just tapped — a cold dialog 30 seconds after sign-in is missed or dismissed,
+ * and Android never asks twice.
+ */
+export const requestNotificationPermission = async () => {
+  if (!isNative) return 'unsupported';
+  try {
+    await load();
+    const { display } = await plugin.requestPermissions();
+    if (display === 'granted') return 'granted';
+    return display === 'denied' ? 'denied' : 'prompt';
+  } catch (err) {
+    console.warn('[notifications] permission request failed', err);
+    return 'denied';
+  }
+};
+
+/** Send the user to the system screen where a refusal can be undone. */
+export const openSystemNotificationSettings = openNotificationSettings;
 
 /**
  * Route a tapped notification into the app. NotificationsBell passes
@@ -86,14 +108,16 @@ const idFor = (value) => {
 };
 
 /**
- * Post one phone notification per item. Does nothing on the web, or when the
- * user declined the permission. A failure here must never break the app, but it
- * is logged rather than swallowed: a silent notification failure is invisible
- * from the outside and very hard to find later.
+ * Post one phone notification per item.
+ *
+ * Returns true only when the phone actually accepted them, so the caller can
+ * decide whether these items count as announced. It never asks for permission:
+ * an alert that arrives while permission is still missing must be left for the
+ * next poll rather than triggering a dialog out of nowhere.
  */
 export const notifyOnDevice = async (items) => {
-  if (!isNative || !items?.length) return;
-  if (!(await ensurePermission())) return;
+  if (!isNative || !items?.length) return false;
+  if ((await notificationState()) !== 'granted') return false;
   try {
     await load();
     await plugin.schedule({
@@ -104,7 +128,9 @@ export const notifyOnDevice = async (items) => {
         extra: { link: n.link || null },
       })),
     });
+    return true;
   } catch (err) {
     console.warn('[notifications] could not post to the phone', err);
+    return false;
   }
 };

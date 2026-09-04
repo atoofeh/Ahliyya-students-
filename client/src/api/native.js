@@ -52,4 +52,19 @@ export const nativeDeviceId = async () => {
 /** Hand a downloaded file to the system viewer. Native only. */
 export const openFile = (path, mime) => LmsNative.openFile({ path, mime });
 
+/**
+ * Open this app's notification settings. Android refuses to show the runtime
+ * permission dialog again once it has been declined, so this is the only way
+ * back for someone who tapped "Don't allow".
+ */
+export const openNotificationSettings = async () => {
+  if (!isNative) return false;
+  try {
+    await LmsNative.openNotificationSettings();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export default LmsNative;

@@ -22,7 +22,7 @@ client/
       AndroidManifest.xml        no cleartext, no backup, FileProvider
       java/com/alahliyya/lms/
         MainActivity.java        registers LmsNative, sets FLAG_SECURE
-        LmsNativePlugin.java     Keystore store · device id · openFile
+        LmsNativePlugin.java     Keystore store · device id · openFile · notification settings
       res/xml/network_security_config.xml     release: TLS only
     app/src/debug/res/xml/network_security_config.xml   debug: dev hosts only
     keystore.properties          release signing — gitignored, never committed
@@ -134,6 +134,7 @@ means a leak; the CI job treats that as a failed build.
 | `secureSet` / `secureGet` / `secureRemove` | AES-256-GCM. The key is generated inside the AndroidKeyStore and cannot be exported; the value is stored as `base64(iv):base64(ciphertext)` in private SharedPreferences. Undecryptable ciphertext (device restored, app data cleared) is dropped rather than wedging the login. |
 | `deviceId` | SHA-256 of `Settings.Secure.ANDROID_ID`, hashed on the device so the raw platform id never crosses the bridge or the network. Falls back to a Keystore-stored UUID when `ANDROID_ID` is missing or the known-buggy `9774d56d682e549c`. |
 | `openFile` | Serves a cached download to the system viewer through the `FileProvider`, with a one-shot read grant. |
+| `openNotificationSettings` | Opens this app’s notification settings. Android stops offering its permission dialog after a refusal, so this is the only way back for someone who tapped “Don’t allow”. |
 
 Because the device id derives from `ANDROID_ID`, **reinstalling the app keeps the same device binding** —
 a reinstall does not need an administrator device reset. Clearing app data alone likewise keeps it.
@@ -160,11 +161,33 @@ The Capacitor plugin modules are imported dynamically so the web bundle never ca
 notification shade whenever the unread count grows: `NotificationsBell` already
 polls `/notifications/unread-count` every 30 seconds, and when that number goes
 up it fetches the new items and hands them to `@capacitor/local-notifications`.
-Tapping one opens the app on the linked screen. Permission (`POST_NOTIFICATIONS`
-on Android 13+) is requested the first time there is something to show, not on a
-cold start, and a refusal is never re-asked during the session. The plugin is
-imported dynamically, so the web bundle does not carry it and the whole module
-is inert in a browser.
+Tapping one opens the app on the linked screen. The plugin is imported
+dynamically, so the web bundle does not carry it and the whole module is inert
+in a browser.
+
+**Permission is asked in the app, never by the system out of nowhere.**
+`POST_NOTIFICATIONS` (Android 13+) is a runtime permission, and Android shows
+its dialog *once*: after a refusal it never asks again. The first version of
+this feature called `requestPermissions()` lazily, the moment a notification
+wanted to appear — so the dialog arrived unannounced about thirty seconds after
+sign-in, in the middle of whatever the teacher was doing, and a dismissal
+silently ended notifications for good. Worse, the alert that triggered the
+request was already marked as announced, so even tapping *Allow* produced
+nothing and the feature looked broken.
+
+So: `notifyOnDevice` never asks for anything. It reports whether the phone
+actually accepted the notifications, and `NotificationsBell` only advances its
+"already announced" marker when it did — anything held back goes out on the
+next poll. The ask lives in the notification panel itself, where the user went
+looking for notifications: a card explaining what phone alerts are for, with a
+button that triggers the system dialog. Granting it delivers whatever was
+waiting immediately.
+
+For someone who already refused, `notificationState()` returns `denied` and the
+card switches to *Open notification settings*, which calls
+`LmsNativePlugin.openNotificationSettings` — `ACTION_APP_NOTIFICATION_SETTINGS`
+for this package, falling back to the app details page. Without that, a single
+"Don't allow" would be permanently unrecoverable from inside the app.
 
 **This is a local notification, not a push.** The app posts it itself; nothing
 about a question or a course leaves the device to a third-party service, and no

@@ -241,4 +241,34 @@ public class LmsNativePlugin extends Plugin {
             call.reject("No app can open this file");
         }
     }
+
+    /**
+     * Opens this app's notification settings.
+     *
+     * Android stops showing the runtime permission dialog once a user has
+     * refused it, so an app that only ever calls requestPermissions() leaves
+     * them with no way back. This is that way back: the same screen the system
+     * settings would take them to, opened directly on this app.
+     */
+    @PluginMethod
+    public void openNotificationSettings(PluginCall call) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+            intent.putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            // Fall back to the app's general settings page, which every device has.
+            try {
+                Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                fallback.setData(Uri.parse("package:" + getContext().getPackageName()));
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(fallback);
+                call.resolve();
+            } catch (Exception inner) {
+                call.reject("Could not open the notification settings");
+            }
+        }
+    }
 }
