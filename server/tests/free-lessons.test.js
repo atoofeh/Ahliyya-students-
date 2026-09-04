@@ -185,3 +185,59 @@ test('a video on a free lesson streams for an outsider; one on a paid lesson doe
   assert.equal((await as(sue, 'POST', `/videos/${freeVideo._id}/token`)).status, 403);
   await as(ada, 'PUT', `/courses/${listed._id}/lessons/${listed.lessons.free._id}`, { isFree: true });
 });
+
+test('a document on a free lesson opens for an outsider; one on a paid lesson does not', async () => {
+  const pdf = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
+  const upload = async (name) => {
+    const form = new FormData();
+    form.append('file', new Blob([pdf], { type: 'application/pdf' }), name);
+    const res = await fetch(`${app.baseUrl}/api/v1/files/courses/${listed._id}/documents`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ada.token}`, 'x-device-id': ada.deviceId },
+      body: form,
+    });
+    assert.equal(res.status, 201);
+    return res.json();
+  };
+  const freeDoc = await upload('free-notes.pdf');
+  const paidDoc = await upload('paid-notes.pdf');
+
+  const attach = (lessonId, fileAsset) => as(ada, 'PUT', `/courses/${listed._id}/lessons/${lessonId}`, { type: 'pdf', fileAsset: String(fileAsset) });
+  await attach(listed.lessons.free._id, freeDoc._id);
+  await attach(listed.lessons.paid._id, paidDoc._id);
+
+  const content = (session, fileId) => api('GET', `/files/${fileId}/content`, { token: session.token, deviceId: session.deviceId });
+  assert.equal((await content(sue, freeDoc._id)).status, 200, 'a free lesson\'s document was refused to a signed-in outsider');
+  assert.equal((await content(sue, paidDoc._id)).status, 403, 'a paid lesson\'s document was served to an outsider');
+  assert.equal((await content(zoe, freeDoc._id)).status, 200);
+  assert.equal((await content(zoe, paidDoc._id)).status, 403);
+
+  // Un-marking the lesson closes the document with it.
+  await as(ada, 'PUT', `/courses/${listed._id}/lessons/${listed.lessons.free._id}`, { isFree: false });
+  assert.equal((await content(sue, freeDoc._id)).status, 403);
+  await as(ada, 'PUT', `/courses/${listed._id}/lessons/${listed.lessons.free._id}`, { isFree: true });
+});
+
+test('a quiz question image is never free, even alongside a free lesson', async () => {
+  // A real upload through the real path — scope 'question', not a lesson's file.
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  const form = new FormData();
+  form.append('scope', 'question');
+  form.append('file', new Blob([png], { type: 'image/png' }), 'answer-key.png');
+  const res = await fetch(`${app.baseUrl}/api/v1/files/courses/${listed._id}/images`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${ada.token}`, 'x-device-id': ada.deviceId },
+    body: form,
+  });
+  assert.equal(res.status, 201);
+  const asset = await res.json();
+  assert.equal(asset.scope, 'question');
+
+  const outsider = await api('GET', `/files/${asset._id}/content`, { token: sue.token, deviceId: sue.deviceId });
+  assert.equal(outsider.status, 403, 'a quiz question image was served to a non-enrolled student');
+  const enrolled = await api('GET', `/files/${asset._id}/content`, { token: sam.token, deviceId: sam.deviceId });
+  assert.equal(enrolled.status, 200);
+});

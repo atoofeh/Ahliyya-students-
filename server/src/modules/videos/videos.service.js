@@ -228,13 +228,8 @@ class VideoService {
    * video can never be more (or less) reachable than the lesson holding it.
    */
   static async #isFreePreviewVideo(video) {
-    const Lesson = require('../../models/Lesson');
-    const { isFreeLesson } = require('../../middleware/courseAccess');
-    const [course, lesson] = await Promise.all([
-      Course.findOne({ _id: video.course, deletedAt: null }),
-      Lesson.findOne({ course: video.course, video: video._id, deletedAt: null, isFree: true, isPublished: true }),
-    ]);
-    return isFreeLesson(course, lesson);
+    const { isFreeLessonMedia } = require('../../middleware/courseAccess');
+    return isFreeLessonMedia({ courseId: video.course, video: video._id });
   }
 
   /** Issue a short-lived signed stream token (called from the player). */

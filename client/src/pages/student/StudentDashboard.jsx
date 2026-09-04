@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Play, Star, KeyRound, ArrowRight, Library, ClipboardList, HelpCircle, Clock } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useAuth } from '../../hooks/useAuth';
@@ -26,7 +26,9 @@ export default function StudentDashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [upNext, setUpNext] = useState([]);
-  const [codeModal, setCodeModal] = useState(false);
+  // The course preview links here with ?redeem=1 — "I have an access code".
+  const [params, setParams] = useSearchParams();
+  const [codeModal, setCodeModal] = useState(params.get('redeem') === '1');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -124,7 +126,7 @@ export default function StudentDashboard() {
           <EmptyState
             icon={<Library size={26} />}
             title="Nothing in progress yet"
-            subtitle="Redeem an access code from your teacher, or browse the public catalog to enrol."
+            subtitle="Redeem an access code from your teacher, or browse the catalog to see what is on offer."
             action={(
               <div className="flex flex-wrap justify-center gap-2">
                 <Button onClick={() => setCodeModal(true)}><KeyRound size={15} /> Redeem code</Button>
@@ -219,7 +221,7 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      <Modal open={codeModal} onClose={() => setCodeModal(false)} title="Redeem access code">
+      <Modal open={codeModal} onClose={() => { setCodeModal(false); if (params.get('redeem')) setParams({}, { replace: true }); }} title="Redeem access code">
         <div className="space-y-4">
           <Input label="Access code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="XXXX-XXXX-XX" />
           <Button className="w-full" loading={busy} onClick={redeem} disabled={code.length < 4}>Enrol</Button>

@@ -6,7 +6,7 @@ const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
 const asyncHandler = require('../../core/asyncHandler');
 const ApiError = require('../../core/ApiError');
-const { requireCourseOwnership, requireCourseAccess } = require('../../middleware/courseAccess');
+const { requireCourseOwnership, requireCourseAccess, isFreeLessonMedia } = require('../../middleware/courseAccess');
 const { documentUpload, imageUpload } = require('../../middleware/uploads');
 const { uploadLimiter } = require('../../middleware/rateLimiters');
 const { validate, paginationSchema } = require('../../middleware/validate');
@@ -82,14 +82,18 @@ router.get('/:fileId/content', asyncHandler(async (req, res) => {
   const asset = await FileService.getForServing(req.params.fileId);
 
   if (asset.scope === 'course' || asset.scope === 'question') {
+    // A document on a free lesson opens for anyone signed in — the same rule the
+    // lesson route applies, asked in one place so the two cannot drift.
+    // Question images are never free: only Lesson.fileAsset can match.
+    const free = () => isFreeLessonMedia({ courseId: asset.course, fileAsset: asset._id });
     if (req.user.role === 'student') {
       const Enrollment = require('../../models/Enrollment');
       const enrolled = await Enrollment.findOne({ student: req.user.id, course: asset.course, status: 'active' });
-      if (!enrolled) throw ApiError.forbidden('Not enrolled');
+      if (!enrolled && !(await free())) throw ApiError.forbidden('Not enrolled');
     } else if (req.user.role === 'teacher') {
       const Course = require('../../models/Course');
       const owns = await Course.findOne({ _id: asset.course, ...staffCourseFilter(req.user.id) });
-      if (!owns) throw ApiError.forbidden('Not your course');
+      if (!owns && !(await free())) throw ApiError.forbidden('Not your course');
     }
   } else if (asset.scope === 'submission') {
     if (req.user.role === 'student' && String(asset.uploadedBy) !== String(req.user.id)) {

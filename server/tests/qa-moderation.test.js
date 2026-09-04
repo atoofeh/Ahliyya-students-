@@ -140,3 +140,23 @@ test('a student cannot fake the moderation state of their own question', async (
   assert.equal(asked.data.moderatedBy, null);
   assert.ok(!titles(await as(sue, 'GET', `/qa/courses/${courseId}`)).includes('Sneaky'));
 });
+
+test('a student removed from the course cannot keep posting in their own thread', async () => {
+  const asked = await ask(sam, 'Still here?');
+  const threadId = asked.data._id;
+  await as(ada, 'POST', `/qa/${threadId}/approve`);
+  assert.equal((await as(sam, 'POST', `/qa/${threadId}/replies`, { body: 'while enrolled' })).status, 201);
+
+  await as(ada, 'DELETE', `/enrollments/courses/${courseId}/students/${sam.user.id}`);
+
+  const after = await as(sam, 'POST', `/qa/${threadId}/replies`, { body: 'after being removed' });
+  assert.equal(after.status, 403, 'a removed student kept posting through their old thread');
+  assert.equal(after.data.code, 'NOT_ENROLLED');
+  assert.equal((await as(sam, 'POST', `/qa/${threadId}/resolve`)).status, 403);
+
+  // Re-enrolling restores it — the rule is about membership, not punishment.
+  await api('POST', `/enrollments/courses/${courseId}/students`, {
+    token: admin.token, deviceId: 'dev-admin-01', body: { student: 'sam' },
+  });
+  assert.equal((await as(sam, 'POST', `/qa/${threadId}/replies`, { body: 'back again' })).status, 201);
+});

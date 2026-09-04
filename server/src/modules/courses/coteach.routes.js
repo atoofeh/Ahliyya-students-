@@ -130,10 +130,12 @@ router.delete('/courses/:courseId/teachers/:teacherId', requireCourseOwnership, 
 /** Invitations addressed to me. */
 router.get('/invitations', asyncHandler(async (req, res) => {
   const invites = await CoTeachInvite.find({ invitee: req.user.id, status: 'pending' })
-    .populate('course', 'title category thumbnail')
+    .populate({ path: 'course', select: 'title category thumbnail deletedAt' })
     .populate('invitedBy', 'name username')
     .sort({ createdAt: -1 });
-  res.json({ items: invites });
+  // Deleting a course cancels its invitations, but a race (or an old record)
+  // could still leave one pointing at a course that is gone.
+  res.json({ items: invites.filter((i) => i.course && !i.course.deletedAt) });
 }));
 
 /** Loads a pending invitation addressed to the caller. */

@@ -71,6 +71,12 @@ class CourseService {
       softDelete(Announcement),
       softDelete(QAThread),
       Enrollment.updateMany({ course: courseId, status: 'active' }, { $set: { status: 'removed' } }),
+      // An open co-teaching invitation for a course that no longer exists would
+      // otherwise sit in someone's inbox forever.
+      require('../../models/CoTeachInvite').updateMany(
+        { course: courseId, status: 'pending' },
+        { $set: { status: 'cancelled', respondedAt: now } }
+      ),
     ]);
 
     await audit({
@@ -106,11 +112,20 @@ class CourseService {
     const filter = { deletedAt: null, isPublished: true, visibility: 'listed' };
     if (search) filter.$text = { $search: search };
     if (category) filter.category = category;
-    return paginatedQuery(Course, filter, {
+    const result = await paginatedQuery(Course, filter, {
       page, limit,
       populate: { path: 'teacher', select: 'name' },
       select: '-__v',
     });
+
+    // How many lessons each card offers for free — the reason to open it.
+    const counts = await Lesson.aggregate([
+      { $match: { course: { $in: result.items.map((c) => c._id) }, deletedAt: null, isPublished: true, isFree: true } },
+      { $group: { _id: '$course', n: { $sum: 1 } } },
+    ]);
+    const byCourse = Object.fromEntries(counts.map((c) => [String(c._id), c.n]));
+    result.items = result.items.map((c) => ({ ...c, freeLessonCount: byCourse[String(c._id)] || 0 }));
+    return result;
   }
 
   /** Courses this teacher runs — created or co-taught. */

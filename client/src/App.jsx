@@ -11,6 +11,7 @@ import OnboardingPage from './pages/auth/OnboardingPage';
 
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'));
 const CourseCatalog = lazy(() => import('./pages/student/CourseCatalog'));
+const CoursePreview = lazy(() => import('./pages/student/CoursePreview'));
 const CoursePlayer = lazy(() => import('./pages/student/CoursePlayer'));
 const QuizRunner = lazy(() => import('./pages/student/QuizRunner'));
 const AttemptResult = lazy(() => import('./pages/student/AttemptResult'));
@@ -20,6 +21,7 @@ const BookmarksPage = lazy(() => import('./pages/student/BookmarksPage'));
 
 const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
 const TeacherCourses = lazy(() => import('./pages/teacher/TeacherCourses'));
+const TeacherInvitations = lazy(() => import('./pages/teacher/TeacherInvitations'));
 const CourseManager = lazy(() => import('./pages/teacher/CourseManager'));
 
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -74,6 +76,7 @@ export default function App() {
                 {/* Student */}
                 <Route path="/student" element={<Protected roles={['student']}><StudentDashboard /></Protected>} />
                 <Route path="/student/catalog" element={<Protected roles={['student']}><CourseCatalog /></Protected>} />
+                <Route path="/student/catalog/:courseId" element={<Protected roles={['student']}><CoursePreview /></Protected>} />
                 <Route path="/student/courses/:courseId" element={<Protected roles={['student']}><CoursePlayer /></Protected>} />
                 <Route path="/student/attempts/:attemptId" element={<Protected roles={['student']}><AttemptResult /></Protected>} />
                 <Route path="/student/grades" element={<Protected roles={['student']}><GradesPage /></Protected>} />
@@ -83,6 +86,7 @@ export default function App() {
                 {/* Teacher */}
                 <Route path="/teacher" element={<Protected roles={['teacher']}><TeacherDashboard /></Protected>} />
                 <Route path="/teacher/courses" element={<Protected roles={['teacher']}><TeacherCourses /></Protected>} />
+                <Route path="/teacher/invitations" element={<Protected roles={['teacher']}><TeacherInvitations /></Protected>} />
                 <Route path="/teacher/courses/:courseId" element={<Protected roles={['teacher', 'admin']}><CourseManager /></Protected>} />
                 <Route path="/teacher/courses/:courseId/:tab" element={<Protected roles={['teacher', 'admin']}><CourseManager /></Protected>} />
 

@@ -89,12 +89,32 @@ router.get('/courses/:courseId', requireCourseAccess, validate(qaListSchema, 'qu
   res.json(page);
 }));
 
-/** Loads a thread plus its course, and says whether the caller is staff there. */
+/**
+ * Loads a thread plus its course, and says who the caller is on it.
+ *
+ * `member` is the gate for taking part at all: course staff, or a student with
+ * a live enrollment. Being the author is deliberately NOT enough — a student
+ * removed from the course must not keep posting into it through an old thread
+ * of their own.
+ */
 const loadThread = async (threadId, user) => {
   const thread = await QAThread.findOne({ _id: threadId, deletedAt: null });
   if (!thread) throw ApiError.notFound('Thread not found');
   const course = await Course.findOne({ _id: thread.course, deletedAt: null });
-  return { thread, course, staff: isCourseStaff(course, user) };
+  const staff = isCourseStaff(course, user);
+
+  let member = staff;
+  if (!member && course) {
+    const Enrollment = require('../../models/Enrollment');
+    member = !!(await Enrollment.findOne({ student: user.id, course: course._id, status: 'active' }));
+  }
+  return {
+    thread,
+    course,
+    staff,
+    member,
+    isAuthor: String(thread.author) === String(user.id),
+  };
 };
 
 /** Approve a pending question so the course can see it. */
@@ -143,16 +163,10 @@ router.post('/:threadId/reject', validate(rejectSchema), asyncHandler(async (req
 }));
 
 router.post('/:threadId/replies', validate(replySchema), asyncHandler(async (req, res) => {
-  const { thread, staff } = await loadThread(req.params.threadId, req.user);
-  const isAuthor = String(thread.author) === String(req.user.id);
+  const { thread, staff, member, isAuthor } = await loadThread(req.params.threadId, req.user);
 
-  if (!staff && !isAuthor) {
-    // Other enrolled students may join the discussion — but only once the
-    // question has been approved, and never on a rejected one.
-    const Enrollment = require('../../models/Enrollment');
-    const enrolled = await Enrollment.findOne({ student: req.user.id, course: thread.course, status: 'active' });
-    if (!enrolled) throw ApiError.forbidden('Not enrolled in this course');
-  }
+  if (!member) throw ApiError.forbidden('Not enrolled in this course', 'NOT_ENROLLED');
+  // Students — the author included — may only join an approved discussion.
   if (!staff && thread.status !== 'approved') {
     throw ApiError.forbidden('This question is not open for replies', 'QA_NOT_APPROVED');
   }
@@ -183,8 +197,8 @@ router.post('/:threadId/replies', validate(replySchema), asyncHandler(async (req
 }));
 
 router.post('/:threadId/resolve', asyncHandler(async (req, res) => {
-  const { thread, staff } = await loadThread(req.params.threadId, req.user);
-  if (!staff && String(thread.author) !== String(req.user.id)) throw ApiError.forbidden('Not allowed');
+  const { thread, staff, member, isAuthor } = await loadThread(req.params.threadId, req.user);
+  if (!staff && !(member && isAuthor)) throw ApiError.forbidden('Not allowed');
   thread.resolved = !thread.resolved;
   await thread.save();
   res.json(thread);

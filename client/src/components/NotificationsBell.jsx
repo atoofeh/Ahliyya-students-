@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Bell, CheckCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { useAuth } from '../hooks/useAuth';
+import { notifyOnDevice, onNotificationTap } from '../api/deviceNotifications';
 import { Button, EmptyState, Spinner } from './ui';
 
 const timeAgo = (d) => {
@@ -12,22 +14,68 @@ const timeAgo = (d) => {
   return `${Math.floor(s / 86400)}d ago`;
 };
 
+/**
+ * Remembering which notifications already reached the phone, per account, so a
+ * reload does not replay yesterday's alerts. A per-viewer convenience only —
+ * losing it costs at most one repeated notification.
+ */
+const SEEN_KEY = (userId) => `lms.notified.${userId}`;
+const readSeen = (userId) => {
+  try { return localStorage.getItem(SEEN_KEY(userId)) || null; } catch { return null; }
+};
+const writeSeen = (userId, iso) => {
+  try { localStorage.setItem(SEEN_KEY(userId), iso); } catch { /* private mode — alerts may repeat */ }
+};
+
 export default function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [items, setItems] = useState(null);
   const ref = useRef(null);
+  const lastCount = useRef(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const userId = user?.id;
 
-  const loadCount = useCallback(() => {
-    api.get('/notifications/unread-count').then(({ data }) => setCount(data.count)).catch(() => {});
-  }, []);
+  /**
+   * Raise a phone notification for anything unread that arrived since the last
+   * one we announced. Runs only when the unread count actually grew, so the
+   * poll costs one request as before in the common case.
+   */
+  const announceNew = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const { data } = await api.get('/notifications', { params: { limit: 10, unreadOnly: true } });
+      const seen = readSeen(userId);
+      const fresh = data.items.filter((n) => !seen || new Date(n.createdAt) > new Date(seen));
+      if (fresh.length === 0) return;
+      writeSeen(userId, fresh[0].createdAt);
+      await notifyOnDevice(fresh);
+    } catch { /* the bell still works without the phone alert */ }
+  }, [userId]);
+
+  const loadCount = useCallback(async () => {
+    try {
+      const { data } = await api.get('/notifications/unread-count');
+      setCount(data.count);
+      const grew = lastCount.current !== null && data.count > lastCount.current;
+      lastCount.current = data.count;
+      if (grew) await announceNew();
+    } catch { /* offline — the next tick tries again */ }
+  }, [announceNew]);
 
   useEffect(() => {
-    loadCount();
+    const first = setTimeout(loadCount, 0);
     const interval = setInterval(loadCount, 30000);
-    return () => clearInterval(interval);
+    return () => { clearTimeout(first); clearInterval(interval); };
   }, [loadCount]);
+
+  // Tapping a phone notification opens the thing it is about.
+  useEffect(() => {
+    let dispose;
+    onNotificationTap(navigate).then((fn) => { dispose = fn; });
+    return () => { if (dispose) dispose(); };
+  }, [navigate]);
 
   useEffect(() => {
     const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -56,6 +104,7 @@ export default function NotificationsBell() {
     await api.post('/notifications/read-all');
     setItems((it) => it?.map((n) => ({ ...n, readAt: n.readAt || new Date().toISOString() })));
     setCount(0);
+    lastCount.current = 0;
   };
 
   return (

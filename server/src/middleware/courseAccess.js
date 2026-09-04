@@ -84,6 +84,32 @@ const isFreeLesson = (course, lesson) => (
 );
 
 /**
+ * Is this media attached to a free lesson?
+ *
+ * The media routes (video streaming, file serving) authorize independently of
+ * the lesson route, so they ask here rather than re-deriving the rule — a video
+ * or document must never be more, or less, reachable than the lesson holding it.
+ *
+ * Pass exactly one of `video` / `fileAsset`.
+ */
+const isFreeLessonMedia = async ({ courseId, video, fileAsset }) => {
+  if (!video && !fileAsset) return false;
+  const Course = require('../models/Course');
+  const Lesson = require('../models/Lesson');
+  const [course, lesson] = await Promise.all([
+    Course.findOne({ _id: courseId, deletedAt: null }),
+    Lesson.findOne({
+      course: courseId,
+      deletedAt: null,
+      isFree: true,
+      isPublished: true,
+      ...(video ? { video } : { fileAsset }),
+    }),
+  ]);
+  return isFreeLesson(course, lesson);
+};
+
+/**
  * Lesson access: everything requireCourseAccess allows, plus a signed-in user
  * opening a free lesson on a listed course.
  *
@@ -116,4 +142,4 @@ const requireLessonAccess = asyncHandler(async (req, res, next) => {
   throw denied;
 });
 
-module.exports = { requireCourseAccess, requireCourseOwnership, requireLessonAccess, isFreeLesson };
+module.exports = { requireCourseAccess, requireCourseOwnership, requireLessonAccess, isFreeLesson, isFreeLessonMedia };
