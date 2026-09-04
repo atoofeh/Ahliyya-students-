@@ -374,7 +374,10 @@ export default function CoursePlayer() {
           ))}
           {t.status === 'approved' && (
             <div className="mt-2 flex gap-2">
-              <Input placeholder="Reply…" value={reply[t._id] || ''} onChange={(e) => setReply((r) => ({ ...r, [t._id]: e.target.value }))} />
+              {/* Input brings its own <label> wrapper — that is the flex item. */}
+              <div className="min-w-0 flex-1">
+                <Input placeholder="Reply…" value={reply[t._id] || ''} onChange={(e) => setReply((r) => ({ ...r, [t._id]: e.target.value }))} />
+              </div>
               <Button size="sm" variant="outline" onClick={() => sendReply(t._id)} aria-label="Send reply"><MessageSquareText size={14} /></Button>
             </div>
           )}

@@ -152,11 +152,15 @@ export default function QaTab({ courseId }) {
 
             {t.status !== 'rejected' && (
               <div className="mt-2 flex gap-2">
-                <Input
-                  placeholder={pending ? 'Answer it — this publishes the question too…' : 'Reply as instructor…'}
-                  value={reply[t._id] || ''}
-                  onChange={(e) => setReply((r) => ({ ...r, [t._id]: e.target.value }))}
-                />
+                {/* Input renders its own <label> wrapper, so the flex item is that
+                    wrapper — it needs the growth, not the field inside it. */}
+                <div className="min-w-0 flex-1">
+                  <Input
+                    placeholder={pending ? 'Answer it — this publishes the question too…' : 'Reply as instructor…'}
+                    value={reply[t._id] || ''}
+                    onChange={(e) => setReply((r) => ({ ...r, [t._id]: e.target.value }))}
+                  />
+                </div>
                 <Button size="sm" disabled={busy} onClick={() => sendReply(t._id, pending)} aria-label="Send reply">
                   <Send size={14} />
                 </Button>
