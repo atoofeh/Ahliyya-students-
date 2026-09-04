@@ -3,13 +3,13 @@ import { KeyRound, UserPlus, UserMinus, CalendarClock, Copy, Wallet } from 'luci
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { isAdminRole } from '../../../utils/roles';
-import { PACKAGES, packageOf, money } from '../../../utils/packages';
+import { PACKAGES, packageOf, money, DEFAULT_CURRENCY } from '../../../utils/packages';
 import { Card, Button, Modal, Input, Select, Badge, EmptyState, Spinner, ProgressBar, Pagination } from '../../../components/ui';
 import { useAuth } from '../../../hooks/useAuth';
 
 const PACKAGE_OPTIONS = PACKAGES.map((p) => ({ value: p.value, label: p.label }));
 
-export default function StudentsTab({ courseId, currency = 'USD' }) {
+export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
   const toast = useToast();
   const { user } = useAuth();
   const staff = isAdminRole(user?.role);

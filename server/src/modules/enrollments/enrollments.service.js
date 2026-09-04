@@ -12,7 +12,7 @@ const Certificate = require('../../models/Certificate');
 const QuizAttempt = require('../../models/QuizAttempt');
 const User = require('../../models/User');
 const { notifyUser } = require('../notifications/notifications.service');
-const { ENROLLMENT_PACKAGES } = require('../../config/constants');
+const { ENROLLMENT_PACKAGES, DEFAULT_CURRENCY } = require('../../config/constants');
 
 const daysAgo = (n) => new Date(Date.now() - n * 86400000);
 
@@ -162,7 +162,7 @@ class EnrollmentService {
       existing.enrolledBy = enrolledBy;
       existing.package = pkg;
       existing.amountPaid = amountPaid;
-      existing.currency = course.currency || 'USD';
+      existing.currency = course.currency || DEFAULT_CURRENCY;
       if (payment.paymentNote !== undefined) existing.paymentNote = payment.paymentNote;
       if (recorded) { existing.paymentRecordedBy = enrolledBy; existing.paymentRecordedAt = new Date(); }
       enrollment = await existing.save();
@@ -175,7 +175,7 @@ class EnrollmentService {
         expiresAt,
         package: pkg,
         amountPaid,
-        currency: course.currency || 'USD',
+        currency: course.currency || DEFAULT_CURRENCY,
         paymentNote: payment.paymentNote || '',
         ...(recorded && { paymentRecordedBy: enrolledBy, paymentRecordedAt: new Date() }),
       });
@@ -309,7 +309,7 @@ class EnrollmentService {
 
     const totals = overall[0] || { students: 0, collected: 0, unrecorded: 0 };
     return {
-      course: { _id: courseId, title: course?.title, currency: course?.currency || 'USD' },
+      course: { _id: courseId, title: course?.title, currency: course?.currency || DEFAULT_CURRENCY },
       totals: {
         students: totals.students,
         collected: totals.collected,

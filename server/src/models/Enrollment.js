@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { ENROLLMENT_PACKAGES } = require('../config/constants');
+const { ENROLLMENT_PACKAGES, DEFAULT_CURRENCY } = require('../config/constants');
 
 const enrollmentSchema = new mongoose.Schema(
   {
@@ -24,7 +24,7 @@ const enrollmentSchema = new mongoose.Schema(
     amountPaid: { type: Number, default: 0, min: 0 },
     // Copied from the course when the student enrols, so a later change to the
     // course's currency cannot silently re-denominate past payments.
-    currency: { type: String, default: 'USD', maxlength: 5 },
+    currency: { type: String, default: DEFAULT_CURRENCY, maxlength: 5 },
     paymentNote: { type: String, default: '', maxlength: 300 },
     paymentRecordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     paymentRecordedAt: { type: Date, default: null },

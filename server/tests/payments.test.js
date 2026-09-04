@@ -27,7 +27,7 @@ before(async () => {
 
   const course = await api('POST', '/courses', {
     token: ada.token, deviceId: ada.deviceId,
-    body: { title: 'Paid Course', category: 'Test', currency: 'JOD', isPublished: true },
+    body: { title: 'Paid Course', category: 'Test', isPublished: true },
   });
   courseId = course.data._id;
 });
@@ -43,7 +43,7 @@ test('an administrator records the package and the amount when enrolling', async
   assert.equal(r.status, 201, JSON.stringify(r.data));
   assert.equal(r.data.package, 'mid');
   assert.equal(r.data.amountPaid, 40);
-  assert.equal(r.data.currency, 'JOD', 'the enrollment keeps the currency the course used');
+  assert.equal(r.data.currency, 'JOD', 'the platform currency is the dinar, and the enrollment keeps it');
 
   await enrol('pete', { package: 'final', amountPaid: 45 });
   await enrol('pia', { package: 'full', amountPaid: 80 });

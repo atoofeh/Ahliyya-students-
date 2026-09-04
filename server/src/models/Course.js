@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { COURSE_VISIBILITY, COURSE_DIFFICULTY } = require('../config/constants');
+const { COURSE_VISIBILITY, COURSE_DIFFICULTY, DEFAULT_CURRENCY } = require('../config/constants');
 
 const courseSchema = new mongoose.Schema(
   {
@@ -22,7 +22,7 @@ const courseSchema = new mongoose.Schema(
 
     // Commercial-readiness (payments arrive later; schema is ready now)
     price: { type: Number, default: 0, min: 0 },
-    currency: { type: String, default: 'USD', maxlength: 5 },
+    currency: { type: String, default: DEFAULT_CURRENCY, maxlength: 5 },
 
     enrollmentLimit: { type: Number, default: 0 }, // 0 = unlimited
     enrollmentCount: { type: Number, default: 0 },

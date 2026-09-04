@@ -19,6 +19,11 @@ module.exports = {
   COURSE_VISIBILITY: { LISTED: 'listed', HIDDEN: 'hidden' },
   COURSE_DIFFICULTY: ['beginner', 'intermediate', 'advanced', 'expert'],
 
+  // The institution's currency. Courses carry their own `currency` field, so a
+  // course could differ, but nothing sets one today — change it here and every
+  // new course and enrollment follows.
+  DEFAULT_CURRENCY: 'JOD',
+
   LESSON_TYPES: ['video', 'pdf', 'document', 'quiz', 'assignment', 'text'],
 
   // What a student signed up for. 'mid' and 'final' cover one exam period each;
