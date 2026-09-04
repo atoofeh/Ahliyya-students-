@@ -7,6 +7,13 @@ const Section = require('../../models/Section');
 const Lesson = require('../../models/Lesson');
 const Enrollment = require('../../models/Enrollment');
 const LessonProgress = require('../../models/LessonProgress');
+const Video = require('../../models/Video');
+const FileAsset = require('../../models/FileAsset');
+const Quiz = require('../../models/Quiz');
+const Question = require('../../models/Question');
+const Assignment = require('../../models/Assignment');
+const Announcement = require('../../models/Announcement');
+const QAThread = require('../../models/QAThread');
 
 class CourseService {
   // ── Courses ─────────────────────────────────────────────────────────
@@ -25,12 +32,73 @@ class CourseService {
     return course;
   }
 
+  /**
+   * Deleting a course takes its content with it.
+   *
+   * Previously this marked only the course, so every lesson, quiz and — crucially
+   * — every uploaded video stayed live: still counted by the storage figure on the
+   * dashboard, and still occupying disk. A single deleted course could leave
+   * hundreds of megabytes behind with nothing in the interface pointing at it.
+   *
+   * Media bytes are removed here, the same way deleting a single video or file
+   * already does. Academic history is deliberately kept: certificates, quiz
+   * attempts, submissions and progress are a record of what a student actually
+   * did, and the audit log is never touched.
+   */
   static async deleteCourse(course, actorId, ip) {
-    course.deletedAt = new Date();
+    const now = new Date();
+    const courseId = course._id;
+
+    course.deletedAt = now;
     course.isPublished = false;
     await course.save();
-    await Enrollment.updateMany({ course: course._id, status: 'active' }, { $set: { status: 'removed' } });
-    await audit({ user: actorId, action: 'COURSE_DELETED', course: course._id, ip });
+
+    const softDelete = (model, extra = {}) =>
+      model.updateMany({ course: courseId, deletedAt: null, ...extra }, { $set: { deletedAt: now } });
+
+    // Reclaim the bytes before the records are marked, so a failure here cannot
+    // orphan a file that nothing points to any more.
+    const freed = await CourseService.#purgeCourseMedia(courseId);
+
+    await Promise.all([
+      softDelete(Section),
+      softDelete(Lesson),
+      softDelete(Video),
+      softDelete(FileAsset),
+      softDelete(Quiz),
+      softDelete(Question),
+      softDelete(Assignment),
+      softDelete(Announcement),
+      softDelete(QAThread),
+      Enrollment.updateMany({ course: courseId, status: 'active' }, { $set: { status: 'removed' } }),
+    ]);
+
+    await audit({
+      user: actorId, action: 'COURSE_DELETED', course: courseId, ip,
+      meta: { videosRemoved: freed.videos, filesRemoved: freed.files, bytesFreed: freed.bytes },
+    });
+  }
+
+  /** Unlinks the encrypted media of a course and reports what it reclaimed. */
+  static async #purgeCourseMedia(courseId) {
+    const fs = require('fs');
+    const path = require('path');
+    let bytes = 0;
+
+    const videos = await Video.find({ course: courseId, deletedAt: null }).select('+storagePath sizeBytes');
+    for (const v of videos) {
+      bytes += v.sizeBytes || 0;
+      // Each video owns a directory; deleting a single video removes it the same way.
+      if (v.storagePath) await fs.promises.rm(path.dirname(v.storagePath), { recursive: true, force: true }).catch(() => {});
+    }
+
+    const files = await FileAsset.find({ course: courseId, deletedAt: null }).select('+storagePath sizeBytes');
+    for (const f of files) {
+      bytes += f.sizeBytes || 0;
+      if (f.storagePath) await fs.promises.unlink(f.storagePath).catch(() => {});
+    }
+
+    return { videos: videos.length, files: files.length, bytes };
   }
 
   /** Catalog for students: published + public courses. */

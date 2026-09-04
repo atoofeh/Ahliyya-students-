@@ -298,3 +298,54 @@ test('global search (admin)', async () => {
   assert.equal(status, 200);
   assert.ok(data.courses.length >= 1);
 });
+
+// ── Deleting a course must take its content and its disk usage with it ───────
+
+test('deleting a course removes its content and frees the bytes on disk', async () => {
+  const fsp = require('node:fs/promises');
+  const Video = require('../src/models/Video');
+  const FileAsset = require('../src/models/FileAsset');
+  const Lesson = require('../src/models/Lesson');
+
+  // Reuses the teacher established earlier in this file, as the other tests do.
+  const course = (await api('POST', '/courses', {
+    token: teacherToken, deviceId: TEACHER_DEVICE,
+    body: { title: 'Course To Delete', description: 'cascade check', category: 'Engineering', isPublished: true },
+  })).data;
+  const section = (await api('POST', `/courses/${course._id}/sections`, {
+    token: teacherToken, deviceId: TEACHER_DEVICE, body: { title: 'Week 1' },
+  })).data;
+
+  // A real document on disk, through the real upload path.
+  const pdf = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
+  const form = new FormData();
+  form.append('file', new Blob([pdf], { type: 'application/pdf' }), 'notes.pdf');
+  const upload = await fetch(`${app.baseUrl}/api/v1/files/courses/${course._id}/documents`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${teacherToken}`, 'x-device-id': TEACHER_DEVICE },
+    body: form,
+  });
+  assert.equal(upload.status, 201);
+  const asset = await upload.json();
+
+  await api('POST', `/courses/${course._id}/lessons`, {
+    token: teacherToken, deviceId: TEACHER_DEVICE,
+    body: { section: section._id, title: 'Reading', type: 'pdf', fileAsset: asset._id, durationMinutes: 5 },
+  });
+
+  const stored = await FileAsset.findById(asset._id).select('+storagePath');
+  const onDisk = stored.storagePath;
+  assert.ok(await fsp.stat(onDisk).then(() => true).catch(() => false), 'the uploaded file should exist before deletion');
+
+  const del = await api('DELETE', `/courses/${course._id}`, { token: teacherToken, deviceId: TEACHER_DEVICE });
+  assert.equal(del.status, 200, JSON.stringify(del.data));
+
+  // The bytes are gone.
+  assert.equal(await fsp.stat(onDisk).then(() => true).catch(() => false), false,
+    'the file must be removed from disk when its course is deleted');
+
+  // And nothing is left counting towards the storage figure.
+  assert.equal(await FileAsset.countDocuments({ course: course._id, deletedAt: null }), 0, 'file assets still live');
+  assert.equal(await Video.countDocuments({ course: course._id, deletedAt: null }), 0, 'videos still live');
+  assert.equal(await Lesson.countDocuments({ course: course._id, deletedAt: null }), 0, 'lessons still live');
+});
