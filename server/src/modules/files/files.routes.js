@@ -11,6 +11,7 @@ const { documentUpload, imageUpload } = require('../../middleware/uploads');
 const { uploadLimiter } = require('../../middleware/rateLimiters');
 const { validate, paginationSchema } = require('../../middleware/validate');
 const FileService = require('./files.service');
+const { staffCourseFilter } = require('../courses/courseStaff');
 
 router.use(authenticate);
 
@@ -87,7 +88,7 @@ router.get('/:fileId/content', asyncHandler(async (req, res) => {
       if (!enrolled) throw ApiError.forbidden('Not enrolled');
     } else if (req.user.role === 'teacher') {
       const Course = require('../../models/Course');
-      const owns = await Course.findOne({ _id: asset.course, teacher: req.user.id });
+      const owns = await Course.findOne({ _id: asset.course, ...staffCourseFilter(req.user.id) });
       if (!owns) throw ApiError.forbidden('Not your course');
     }
   } else if (asset.scope === 'submission') {

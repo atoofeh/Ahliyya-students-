@@ -13,7 +13,7 @@ const courseSchema = z.object({
   currency: z.string().max(5).optional(),
   enrollmentLimit: z.number().int().min(0).optional(),
   expiresAt: z.coerce.date().nullable().optional(),
-  visibility: z.enum(['public', 'private', 'hidden']).optional(),
+  visibility: z.enum(['listed', 'hidden']).optional(),
   isPublished: z.boolean().optional(),
   certificateEnabled: z.boolean().optional(),
   completionThreshold: z.number().min(0).max(100).optional(),
@@ -37,7 +37,7 @@ const lessonSchema = z.object({
   assignment: objectId.nullable().optional(),
   content: z.string().max(100000).optional(),
   durationMinutes: z.number().min(0).optional(),
-  isPreview: z.boolean().optional(),
+  isFree: z.boolean().optional(),
   isPublished: z.boolean().optional(),
   order: z.number().int().min(0).optional(),
 });

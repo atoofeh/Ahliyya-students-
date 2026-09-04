@@ -1,5 +1,5 @@
 const ApiError = require('../../core/ApiError');
-const { isAdminRole } = require('../../core/permissions');
+const { isCourseStaff, staffCourseFilter } = require('./courseStaff');
 const audit = require('../../core/audit');
 const { paginatedQuery } = require('../../core/pagination');
 const Course = require('../../models/Course');
@@ -101,9 +101,9 @@ class CourseService {
     return { videos: videos.length, files: files.length, bytes };
   }
 
-  /** Catalog for students: published + public courses. */
+  /** Catalog: published courses their teacher chose to list. */
   static async catalog({ page, limit, search, category }) {
-    const filter = { deletedAt: null, isPublished: true, visibility: 'public' };
+    const filter = { deletedAt: null, isPublished: true, visibility: 'listed' };
     if (search) filter.$text = { $search: search };
     if (category) filter.category = category;
     return paginatedQuery(Course, filter, {
@@ -113,8 +113,9 @@ class CourseService {
     });
   }
 
+  /** Courses this teacher runs — created or co-taught. */
   static async teacherCourses(teacherId, { page, limit, search }) {
-    const filter = { teacher: teacherId, deletedAt: null };
+    const filter = { ...staffCourseFilter(teacherId), deletedAt: null };
     if (search) filter.$text = { $search: search };
     return paginatedQuery(Course, filter, { page, limit });
   }
@@ -130,7 +131,7 @@ class CourseService {
    * grading/internal data never leaves the select projections.
    */
   static async courseDetail(course, user, enrollment) {
-    const isStaff = isAdminRole(user.role) || String(course.teacher) === String(user.id);
+    const isStaff = isCourseStaff(course, user);
     const lessonFilter = { course: course._id, deletedAt: null, ...(isStaff ? {} : { isPublished: true }) };
 
     const [sections, lessons, progress] = await Promise.all([
@@ -157,6 +158,47 @@ class CourseService {
       course: { ...course.toObject(), teacher },
       curriculum,
       enrollment: enrollment || null,
+    };
+  }
+
+  /**
+   * Preview of a listed course for someone who is not enrolled.
+   *
+   * Returns the course card plus only the lessons its teacher marked free —
+   * never the paid curriculum, never quizzes, assignments or announcements.
+   * The lesson list is the same set requireLessonAccess will let them open.
+   */
+  static async coursePreview(courseId, user) {
+    const course = await Course.findOne({ _id: courseId, deletedAt: null, isPublished: true, visibility: 'listed' });
+    if (!course) throw ApiError.notFound('Course not found');
+
+    const [freeLessons, lessonCount, teacher, enrollment] = await Promise.all([
+      Lesson.find({ course: course._id, deletedAt: null, isPublished: true, isFree: true })
+        .sort({ order: 1 })
+        .select('title type durationMinutes order section video')
+        .lean(),
+      Lesson.countDocuments({ course: course._id, deletedAt: null, isPublished: true }),
+      require('../../models/User').findById(course.teacher).select('name username'),
+      user.role === 'student'
+        ? Enrollment.findOne({ student: user.id, course: course._id, status: 'active' }).lean()
+        : Promise.resolve(null),
+    ]);
+
+    return {
+      course: {
+        _id: course._id,
+        title: course.title,
+        description: course.description,
+        category: course.category,
+        difficulty: course.difficulty,
+        thumbnail: course.thumbnail,
+        durationMinutes: course.durationMinutes,
+        tags: course.tags,
+        teacher,
+      },
+      lessonCount,
+      freeLessons,
+      enrolled: !!enrollment,
     };
   }
 
@@ -216,7 +258,7 @@ class CourseService {
     await CourseService.refreshCourseAggregates(courseId);
   }
 
-  static async getLesson(courseId, lessonId, user) {
+  static async getLesson(courseId, lessonId, user, { previewOnly = false } = {}) {
     const lesson = await Lesson.findOne({ _id: lessonId, course: courseId, deletedAt: null })
       .populate('fileAsset', 'originalName mimeType sizeBytes downloadable')
       .populate('video', 'title status durationSeconds thumbnail')
@@ -224,7 +266,7 @@ class CourseService {
       .populate('assignment', 'title dueAt maxPoints isPublished');
     if (!lesson) throw ApiError.notFound('Lesson not found');
 
-    if (user.role === 'student') {
+    if (user.role === 'student' && !previewOnly) {
       if (!lesson.isPublished) throw ApiError.forbidden('Lesson not available');
       // Touch progress record for recent-activity feeds.
       await LessonProgress.findOneAndUpdate(

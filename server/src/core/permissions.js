@@ -52,13 +52,18 @@ const isAdminRole = (role) => role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN
 
 /**
  * Roles exempt from "one account, one authorized device".
- * The owner administers the platform from wherever they happen to be — a phone,
- * a laptop, someone else's machine — and being locked to one device turns every
- * device change into an account recovery they alone could have performed.
- * Sessions stay pinned to the device that created them, so a stolen token is
- * still useless from anywhere else.
+ *
+ * Staff work from wherever they happen to be — a phone between classes, a
+ * laptop in the office, a lab machine — and locking them to one device turns
+ * every device change into an account recovery. The rule exists to stop
+ * students sharing one paid account, so it applies to students and to nobody
+ * else.
+ *
+ * What is NOT relaxed, for any role: every session stays pinned to the device
+ * that created it, so a stolen staff token is still refused from anywhere else.
  */
-const isMultiDeviceRole = (role) => role === ROLES.SUPER_ADMIN;
+const isMultiDeviceRole = (role) =>
+  role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN || role === ROLES.TEACHER;
 
 /**
  * Whether this account may hold several authorized devices: the owner always,

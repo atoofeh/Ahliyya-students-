@@ -13,6 +13,7 @@ const { paginatedQuery } = require('../../core/pagination');
 const Announcement = require('../../models/Announcement');
 const Enrollment = require('../../models/Enrollment');
 const { notifyMany } = require('../notifications/notifications.service');
+const { staffCourseFilter } = require('../courses/courseStaff');
 
 const announcementSchema = z.object({
   title: z.string().min(1).max(200).trim(),
@@ -34,7 +35,7 @@ router.get('/feed', asyncHandler(async (req, res) => {
     courseIds = enrollments.map((e) => e.course);
   } else if (req.user.role === 'teacher') {
     const Course = require('../../models/Course');
-    const courses = await Course.find({ teacher: req.user.id, deletedAt: null }).select('_id');
+    const courses = await Course.find({ ...staffCourseFilter(req.user.id), deletedAt: null }).select('_id');
     courseIds = courses.map((c) => c._id);
   }
 

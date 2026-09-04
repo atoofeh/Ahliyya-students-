@@ -11,6 +11,7 @@ const Assignment = require('../../models/Assignment');
 const Submission = require('../../models/Submission');
 const Enrollment = require('../../models/Enrollment');
 const { notifyUser, notifyMany } = require('../notifications/notifications.service');
+const { staffCourseFilter } = require('../courses/courseStaff');
 
 const assignmentSchema = z.object({
   title: z.string().min(1).max(200).trim(),
@@ -114,7 +115,7 @@ router.post('/submissions/:submissionId/grade', authorize('teacher', 'admin'), v
   if (!submission) throw ApiError.notFound('Submission not found');
   if (req.user.role === 'teacher') {
     const Course = require('../../models/Course');
-    const owns = await Course.findOne({ _id: submission.course, teacher: req.user.id });
+    const owns = await Course.findOne({ _id: submission.course, ...staffCourseFilter(req.user.id) });
     if (!owns) throw ApiError.forbidden('Not your course');
   }
   submission.pointsAwarded = Math.min(req.body.points, submission.assignment.maxPoints);

@@ -66,12 +66,6 @@ class EnrollmentService {
     return EnrollmentService.#enroll(studentId, course, { joinedViaCode: code, ip });
   }
 
-  static async enrollPublic(studentId, courseId, ip) {
-    const course = await Course.findOne({ _id: courseId, deletedAt: null, isPublished: true, visibility: 'public' });
-    if (!course) throw ApiError.notFound('Course not available for enrollment');
-    return EnrollmentService.#enroll(studentId, course, { ip });
-  }
-
   static async assignStudent(courseId, studentIdentifier, actorId, ip) {
     const course = await Course.findOne({ _id: courseId, deletedAt: null });
     if (!course) throw ApiError.notFound('Course not found');

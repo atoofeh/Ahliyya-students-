@@ -7,6 +7,7 @@ const router = require('express').Router();
 router.use('/auth', require('../modules/auth/auth.routes'));
 router.use('/admin', require('../modules/admin/admin.routes'));
 router.use('/courses', require('../modules/courses/courses.routes'));
+router.use('/co-teaching', require('../modules/courses/coteach.routes'));
 router.use('/enrollments', require('../modules/enrollments/enrollments.routes'));
 router.use('/videos', require('../modules/videos/videos.routes'));
 router.use('/quizzes', require('../modules/quizzes/quizzes.routes'));
