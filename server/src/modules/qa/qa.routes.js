@@ -6,6 +6,7 @@ const ApiError = require('../../core/ApiError');
 const audit = require('../../core/audit');
 const { requireCourseAccess } = require('../../middleware/courseAccess');
 const { validate, paginationSchema, objectId } = require('../../middleware/validate');
+const { qaAskLimiter } = require('../../middleware/rateLimiters');
 const { paginatedQuery } = require('../../core/pagination');
 const QAThread = require('../../models/QAThread');
 const Course = require('../../models/Course');
@@ -31,7 +32,7 @@ router.use(authenticate);
  * Ask a question. It is held for moderation: nobody but the asker and the
  * course staff can see it until a teacher approves it.
  */
-router.post('/courses/:courseId', requireCourseAccess, validate(threadSchema), asyncHandler(async (req, res) => {
+router.post('/courses/:courseId', qaAskLimiter, requireCourseAccess, validate(threadSchema), asyncHandler(async (req, res) => {
   const staff = isCourseStaff(req.course, req.user);
   const thread = await QAThread.create({
     ...req.body,

@@ -154,6 +154,30 @@ Back closes the topmost open layer first — any `Modal`, or the course player's
 itself with `pushBackHandler` — then goes back in history, then asks for a second press to exit.
 The Capacitor plugin modules are imported dynamically so the web bundle never carries them.
 
+### Phone notifications — and what they cannot do
+
+`src/api/deviceNotifications.js` posts a real notification into the phone's
+notification shade whenever the unread count grows: `NotificationsBell` already
+polls `/notifications/unread-count` every 30 seconds, and when that number goes
+up it fetches the new items and hands them to `@capacitor/local-notifications`.
+Tapping one opens the app on the linked screen. Permission (`POST_NOTIFICATIONS`
+on Android 13+) is requested the first time there is something to show, not on a
+cold start, and a refusal is never re-asked during the session. The plugin is
+imported dynamically, so the web bundle does not carry it and the whole module
+is inert in a browser.
+
+**This is a local notification, not a push.** The app posts it itself; nothing
+about a question or a course leaves the device to a third-party service, and no
+Google project is involved. The price is that it only fires while the app
+process is alive — open, or recently backgrounded. **With the app fully closed
+or swept away, no notification arrives.**
+
+Delivering those requires Firebase Cloud Messaging: a (free) Firebase project,
+its `google-services.json` in `client/android/app/`, the FCM server key held as
+a server secret, a device-token registration endpoint, and a sender in the
+notification service. Nothing here blocks that — it is additive — but it cannot
+be built without the Google project, which only the platform owner can create.
+
 ### Safe areas
 
 `index.html` carries `viewport-fit=cover`, and Capacitor's built-in `SystemBars` plugin publishes

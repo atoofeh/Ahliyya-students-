@@ -6,6 +6,7 @@ const ApiError = require('../../core/ApiError');
 const audit = require('../../core/audit');
 const { requireCourseOwnership } = require('../../middleware/courseAccess');
 const { validate } = require('../../middleware/validate');
+const { coTeachInviteLimiter } = require('../../middleware/rateLimiters');
 const { ROLES } = require('../../config/constants');
 const { isAdminRole } = require('../../core/permissions');
 const { courseStaffIds } = require('./courseStaff');
@@ -47,7 +48,7 @@ router.get('/courses/:courseId', requireCourseOwnership, asyncHandler(async (req
 }));
 
 /** Invite another teacher to co-teach. */
-router.post('/courses/:courseId/invite', requireCourseOwnership, validate(inviteSchema), asyncHandler(async (req, res) => {
+router.post('/courses/:courseId/invite', coTeachInviteLimiter, requireCourseOwnership, validate(inviteSchema), asyncHandler(async (req, res) => {
   const key = req.body.teacher.toLowerCase();
   const invitee = await User.findOne({
     $or: [{ username: key }, { email: key }],
