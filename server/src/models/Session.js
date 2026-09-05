@@ -41,6 +41,8 @@ const sessionSchema = new mongoose.Schema(
 
 sessionSchema.index({ user: 1, isActive: 1 });
 sessionSchema.index({ lastActivityAt: 1 });
+// The idle sweep's exact query: active, not remembered, idle since a cutoff.
+sessionSchema.index({ isActive: 1, rememberMe: 1, lastActivityAt: 1 });
 sessionSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Session', sessionSchema);

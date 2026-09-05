@@ -189,18 +189,27 @@ export default function LoginPage() {
                 hint={mode !== MODES.LOGIN ? '8+ characters with uppercase, lowercase and a digit' : undefined} />
             )}
             {mode === MODES.LOGIN && (
-              <div className="-my-1.5 flex flex-wrap items-center justify-between gap-x-4 text-[13px]">
-                {/* 44px is the smallest reliable touch target; the negative
-                    margin above keeps the visual spacing as it was. */}
-                <label className="flex min-h-[44px] cursor-pointer select-none items-center gap-2.5 py-2 text-surface-600 dark:text-surface-300">
-                  <input type="checkbox" checked={form.rememberMe} onChange={set('rememberMe')}
-                    className="h-[18px] w-[18px] rounded accent-brand-600" />
-                  Remember me
-                </label>
-                <button type="button" className="min-h-[44px] py-2 font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300" onClick={() => setMode(MODES.FORGOT)}>
-                  Forgot password?
-                </button>
-              </div>
+              <>
+                <div className="-my-1.5 flex flex-wrap items-center justify-between gap-x-4 text-[13px]">
+                  {/* 44px is the smallest reliable touch target; the negative
+                      margin above keeps the visual spacing as it was. */}
+                  <label className="flex min-h-[44px] cursor-pointer select-none items-center gap-2.5 py-2 text-surface-600 dark:text-surface-300">
+                    <input type="checkbox" checked={form.rememberMe} onChange={set('rememberMe')}
+                      className="h-[18px] w-[18px] rounded accent-brand-600" />
+                    Keep me signed in
+                  </label>
+                  <button type="button" className="min-h-[44px] py-2 font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300" onClick={() => setMode(MODES.FORGOT)}>
+                    Forgot password?
+                  </button>
+                </div>
+                {/* The consequence is easy to miss and matters most on a phone:
+                    signed out means no notifications. */}
+                <p className="-mt-1 text-[12.5px] leading-relaxed text-surface-400">
+                  {form.rememberMe
+                    ? 'This device stays signed in until you sign out — so notifications keep arriving.'
+                    : 'Without this you are signed out after a spell of inactivity, and notifications stop.'}
+                </p>
+              </>
             )}
             <Button type="submit" loading={busy} className="w-full" size="lg">
               {mode === MODES.LOGIN ? 'Sign in' : mode === MODES.FORGOT ? 'Send reset code' : 'Reset password'}

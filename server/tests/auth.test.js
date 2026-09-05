@@ -196,15 +196,15 @@ test('unticked "remember me" issues a session cookie, not a persistent one', asy
     `an unticked login must not outlive the browser session, got: ${cookie}`);
 });
 
-test('ticked "remember me" issues a 30-day cookie', async () => {
+test('ticked "remember me" issues a long-lived cookie', async () => {
   await app.createUser(admin.token, { name: 'Remember Me', username: 'rememberme', password: 'Learn@1234', role: 'student' }, 'dev-admin');
   const r = await api('POST', '/auth/login', {
     deviceId: 'dev-remember-0001',
     body: { username: 'rememberme', password: 'Learn@1234', deviceId: 'dev-remember-0001', rememberMe: true },
   });
   assert.equal(r.status, 200);
-  assert.ok(maxAgeOf(refreshCookie(r)) > 29 * 86400,
-    `expected roughly 30 days, got ${refreshCookie(r)}`);
+  assert.ok(maxAgeOf(refreshCookie(r)) > 300 * 86400,
+    `a remembered login should not expire on a clock, got ${refreshCookie(r)}`);
 });
 
 test('refreshing does not downgrade a remembered session', async () => {
@@ -218,6 +218,54 @@ test('refreshing does not downgrade a remembered session', async () => {
     deviceId: 'dev-keep-0001', platform: 'android', body: { refreshToken: r.data.refreshToken },
   });
   assert.equal(refreshed.status, 200);
-  assert.ok(maxAgeOf(refreshCookie(refreshed)) > 29 * 86400,
-    `a refresh must preserve the 30-day lifetime, got ${refreshCookie(refreshed)}`);
+  assert.ok(maxAgeOf(refreshCookie(refreshed)) > 300 * 86400,
+    `a refresh must preserve the remembered lifetime, got ${refreshCookie(refreshed)}`);
+});
+
+/**
+ * The idle sweep and the authenticate middleware have to agree about what
+ * "remember me" means. They did not: the middleware let a remembered session
+ * through and the sweep closed it anyway, so ticking the box and closing the
+ * app still signed you out — and on a phone that ended the notifications too.
+ */
+test('the idle sweep leaves a remembered session alone and still closes an unticked one', async () => {
+  const Session = require('../src/models/Session');
+  const { sweepStaleSessions } = require('../src/jobs');
+
+  await app.createUser(admin.token, { name: 'Stay In', username: 'stayin', password: 'Teach@1234', role: 'teacher' }, 'dev-admin');
+  await app.createUser(admin.token, { name: 'Sign Out', username: 'signout', password: 'Teach@1234', role: 'teacher' }, 'dev-admin');
+
+  const login = (username, rememberMe, deviceId) => api('POST', '/auth/login', {
+    deviceId, body: { username, password: 'Teach@1234', deviceId, rememberMe },
+  });
+  const remembered = await login('stayin', true, 'dev-stayin-0001');
+  const forgotten = await login('signout', false, 'dev-signout-001');
+  assert.equal(remembered.status, 200);
+  assert.equal(forgotten.status, 200);
+
+  // Both go quiet for far longer than any timeout.
+  const longAgo = new Date(Date.now() - 30 * 86400000);
+  await Session.updateMany({ isActive: true }, { $set: { lastActivityAt: longAgo } });
+
+  await sweepStaleSessions();
+
+  const stateOf = async (username) => {
+    const User = require('../src/models/User');
+    const user = await User.findOne({ username });
+    const session = await Session.findOne({ user: user._id }).sort({ createdAt: -1 });
+    return { isActive: session.isActive, endReason: session.endReason };
+  };
+  const kept = await stateOf('stayin');
+  const closed = await stateOf('signout');
+
+  assert.equal(kept.isActive, true, 'the sweep closed a remembered session');
+  assert.equal(kept.endReason, null);
+  assert.equal(closed.isActive, false, 'the sweep must still close an unticked idle session');
+  assert.equal(closed.endReason, 'inactivity_timeout');
+
+  // And the remembered session is still usable, not merely marked active.
+  const me = await api('GET', '/auth/me', { token: remembered.data.accessToken, deviceId: 'dev-stayin-0001' });
+  assert.equal(me.status, 200, 'a remembered session must still authenticate after a long silence');
+  const gone = await api('GET', '/auth/me', { token: forgotten.data.accessToken, deviceId: 'dev-signout-001' });
+  assert.equal(gone.status, 401, 'an unticked idle session must be over');
 });

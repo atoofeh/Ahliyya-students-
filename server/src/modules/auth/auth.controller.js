@@ -2,6 +2,7 @@ const asyncHandler = require('../../core/asyncHandler');
 const AuthService = require('./auth.service');
 const DeviceService = require('./device.service');
 const env = require('../../config/env');
+const { REMEMBERED_SESSION_DAYS } = require('../../config/constants');
 
 /**
  * Refresh tokens travel in an httpOnly cookie. The web client never sees
@@ -24,7 +25,9 @@ const cookieOptions = (rememberMe) => ({
   secure: env.NODE_ENV === 'production' || env.REFRESH_COOKIE_SAMESITE === 'none',
   sameSite: env.REFRESH_COOKIE_SAMESITE,
   path: '/api/v1/auth',
-  ...(rememberMe && { maxAge: 30 * 24 * 60 * 60 * 1000 }),
+  // Matches the refresh token's own lifetime; a cookie that expires first
+  // would sign the browser out while the token it holds is still valid.
+  ...(rememberMe && { maxAge: REMEMBERED_SESSION_DAYS * 24 * 60 * 60 * 1000 }),
 });
 
 const clientIp = (req) => req.ip || req.socket?.remoteAddress || '';

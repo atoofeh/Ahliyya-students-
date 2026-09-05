@@ -6,14 +6,23 @@ const { logger } = require('../config/logger');
  * the job bodies are already side-effect safe / idempotent.
  */
 
-/** End sessions idle past the configured timeout (belt-and-braces sweep). */
+/**
+ * End sessions idle past the configured timeout (belt-and-braces sweep).
+ *
+ * Remembered sessions are exempt, exactly as they are in `authenticate`. They
+ * were not before, and the two disagreed: the middleware let a remembered
+ * session through while this job — running every five minutes — closed it half
+ * an hour after the app stopped making requests. Ticking "Remember me" and
+ * closing the app therefore signed you out anyway, which is the opposite of
+ * what the checkbox promises, and on a phone it also ended the notifications.
+ */
 const sweepStaleSessions = async () => {
   const Session = require('../models/Session');
   const { getSettings } = require('../config/settingsCache');
   const settings = await getSettings();
   const cutoff = new Date(Date.now() - (settings.sessionTimeoutMinutes || 30) * 60000);
   const result = await Session.updateMany(
-    { isActive: true, lastActivityAt: { $lt: cutoff } },
+    { isActive: true, rememberMe: { $ne: true }, lastActivityAt: { $lt: cutoff } },
     { $set: { isActive: false, endedAt: new Date(), endReason: 'inactivity_timeout' } }
   );
   if (result.modifiedCount) logger.info(`Session sweep: closed ${result.modifiedCount} idle session(s)`);

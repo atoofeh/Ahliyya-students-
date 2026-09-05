@@ -24,6 +24,15 @@ module.exports = {
   // new course and enrollment follows.
   DEFAULT_CURRENCY: 'JOD',
 
+  // How long a session survives when the user ticked "Remember me".
+  //
+  // Refresh tokens rotate on every use, so each visit renews this window: for
+  // anyone who opens the app the session simply does not end. The bound exists
+  // for the token that is never used again — a phone left in a drawer — rather
+  // than as a deadline for anyone real. Ending a remembered session is done by
+  // logging out, revoking the device, or a password change, never by a clock.
+  REMEMBERED_SESSION_DAYS: 365,
+
   LESSON_TYPES: ['video', 'pdf', 'document', 'quiz', 'assignment', 'text'],
 
   // What a student signed up for. 'mid' and 'final' cover one exam period each;

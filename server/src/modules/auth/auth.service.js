@@ -8,6 +8,7 @@ const { sendMail, templates } = require('../../core/mailer');
 const { sha256, safeEqual, randomToken } = require('../../core/cryptoUtils');
 const { getSettings } = require('../../config/settingsCache');
 const { isMultiDeviceUser } = require('../../core/permissions');
+const { REMEMBERED_SESSION_DAYS } = require('../../config/constants');
 const User = require('../../models/User');
 const Session = require('../../models/Session');
 const LoginHistory = require('../../models/LoginHistory');
@@ -36,7 +37,7 @@ class AuthService {
     // jti makes every refresh token unique even when issued within the same second,
     // so rotation always changes the stored hash and replay detection can work.
     const refreshToken = jwt.sign({ ...payload, jti: randomToken(8) }, env.JWT_REFRESH_SECRET, {
-      expiresIn: rememberMe ? '30d' : env.JWT_REFRESH_EXPIRES_IN,
+      expiresIn: rememberMe ? `${REMEMBERED_SESSION_DAYS}d` : env.JWT_REFRESH_EXPIRES_IN,
     });
     return { accessToken, refreshToken };
   }

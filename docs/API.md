@@ -7,7 +7,7 @@ Roles: **P** public · **A** any authenticated · **S** student · **T** teacher
 ## Auth — `/auth`
 | Method | Path | Access | Notes |
 |---|---|---|---|
-| POST | `/login` | P | `{username, password, deviceId, fingerprint?, rememberMe?}` → `{user, accessToken}` + httpOnly refresh cookie (body also includes `refreshToken` when `x-client-platform` is `android`/`ios`). `403 DEVICE_NOT_AUTHORIZED` from a second device. Ends other sessions. |
+| POST | `/login` | P | `{username, password, deviceId, fingerprint?, rememberMe?}` → `{user, accessToken}` + httpOnly refresh cookie (body also includes `refreshToken` when `x-client-platform` is `android`/`ios`). `403 DEVICE_NOT_AUTHORIZED` from a second device. Ends other sessions (multi-device roles excepted). With `rememberMe` the session is exempt from the idle timeout and its refresh token lasts a year, rotating on every use, so it does not expire on a clock; without it the cookie is a browser-session cookie and the ordinary inactivity timeout applies. |
 | POST | `/refresh` | P | cookie (or body for native clients); rotates; reuse or device mismatch ends the session. Checks `Origin`. |
 | POST | `/forgot-password`, `/reset-password` | P | 6-digit emailed code |
 | POST | `/logout` | A | `{forgetDevice?: boolean}` — ends the session; with `forgetDevice` also revokes the authorized device. Checks `Origin`. |
