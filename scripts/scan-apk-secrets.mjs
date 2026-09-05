@@ -49,6 +49,32 @@ const SECRET_PATTERNS = [
 /** Entries whose own bytes legitimately look like anything (compiled/binary blobs). */
 const PATTERN_SCAN_ONLY = /^(assets\/public\/|assets\/[^/]+\.js$|res\/raw\/|AndroidManifest\.xml$|resources\.arsc$)/;
 
+/**
+ * Values that are *meant* to be in the package.
+ *
+ * Firebase's Android API key is the one legitimate example: `google-services.json`
+ * is compiled into the app so the phone can reach Firebase at all, and Google
+ * restricts that key to this package name and signing certificate rather than
+ * treating it as a secret. The shape rule still stands for every other Google
+ * API key — a server key or a Maps key in here would be a real leak — so the
+ * exception is limited to the exact values this project ships, read from the
+ * file itself rather than pasted in.
+ *
+ * The admin service-account key is a different thing entirely: it is a private
+ * key, it lives only in server/.env, and it is checked by value like every
+ * other secret above.
+ */
+const EXPECTED_PUBLIC_VALUES = (() => {
+  const path = 'client/android/app/google-services.json';
+  if (!existsSync(path)) return [];
+  try {
+    const json = JSON.parse(readFileSync(path, 'utf8'));
+    return (json.client || []).flatMap((c) => (c.api_key || []).map((k) => k.current_key)).filter(Boolean);
+  } catch {
+    return [];
+  }
+})();
+
 if (!existsSync(APK)) {
   console.error(`No APK at ${APK}. Build one first: cd client && npm run android:apk`);
   process.exit(1);
@@ -132,7 +158,7 @@ try {
     if (PATTERN_SCAN_ONLY.test(entry)) {
       for (const { name, re } of SECRET_PATTERNS) {
         const found = utf8.match(re);
-        if (found) {
+        if (found && !EXPECTED_PUBLIC_VALUES.includes(found[0])) {
           console.error(`LEAK  ${name} shape found in ${entry}: ${found[0].slice(0, 24)}…`);
           hits++;
         }

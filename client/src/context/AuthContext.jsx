@@ -53,6 +53,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async ({ forgetDevice = false } = {}) => {
+    // Drop this phone's push address first, while the session can still
+    // authorise it — otherwise the server keeps pushing to a signed-out device.
+    const { unregisterPush } = await import('../api/pushNotifications');
+    await unregisterPush();
     try { await api.post('/auth/logout', { forgetDevice }); } catch { /* session may already be gone */ }
     clearAccessToken();
     await clearRefreshToken();

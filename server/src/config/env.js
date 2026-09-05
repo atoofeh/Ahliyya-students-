@@ -35,6 +35,12 @@ const envSchema = z.object({
 
   // Media key rotation: new videos wrap with MEDIA_MASTER_KEY (MEDIA_KEY_VERSION);
   // videos wrapped under the previous version unwrap with MEDIA_MASTER_KEY_PREVIOUS.
+  // Firebase admin credentials, base64 of the service-account JSON. Present
+  // means the server can push to phones that have the app closed; absent means
+  // notifications still work in the app and in its shade while it runs, which
+  // is why this is optional rather than required.
+  FIREBASE_SERVICE_ACCOUNT_KEY: optional(z.string().min(100)),
+
   MEDIA_KEY_VERSION: z.coerce.number().int().min(1).default(1),
   MEDIA_MASTER_KEY_PREVIOUS: optional(z.string().min(32)),
 

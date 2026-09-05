@@ -29,6 +29,17 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+
+        <!--
+            Which channel Firebase posts to when the app is not running. Without
+            this, a message arriving while the app is closed has no channel on
+            Android 8+ and the system may drop it silently — exactly the case
+            push exists to cover. The id matches the channel the app creates on
+            startup and the channel_id the server sends.
+        -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default" />
     </application>
 
     <!-- Permissions -->

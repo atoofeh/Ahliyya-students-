@@ -7,6 +7,7 @@ import {
   notifyOnDevice, onNotificationTap, notificationState,
   requestNotificationPermission, openSystemNotificationSettings,
 } from '../api/deviceNotifications';
+import { registerForPush, isPushRegistered } from '../api/pushNotifications';
 import { Button, EmptyState, Spinner } from './ui';
 
 const timeAgo = (d) => {
@@ -59,6 +60,9 @@ export default function NotificationsBell() {
       const seen = readSeen(userId);
       const fresh = data.items.filter((n) => !seen || new Date(n.createdAt) > new Date(seen));
       if (fresh.length === 0) return;
+      // With push registered, Firebase already delivered these — raising them
+      // locally as well would show every notification twice.
+      if (isPushRegistered()) { writeSeen(userId, fresh[0].createdAt); return; }
       if (await notifyOnDevice(fresh)) writeSeen(userId, fresh[0].createdAt);
     } catch { /* the bell still works without the phone alert */ }
   }, [userId]);
@@ -110,6 +114,15 @@ export default function NotificationsBell() {
     const t = setTimeout(announceNew, 0);
     return () => clearTimeout(t);
   }, [phone, announceNew]);
+
+  // Once notifications are permitted, give this phone an address Firebase can
+  // reach even with the app closed. Registering earlier would produce a token
+  // that can never deliver anything.
+  useEffect(() => {
+    if (phone !== 'granted' || !userId) return undefined;
+    const t = setTimeout(() => registerForPush(navigate), 0);
+    return () => clearTimeout(t);
+  }, [phone, userId, navigate]);
 
   useEffect(() => {
     const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };

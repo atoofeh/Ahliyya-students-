@@ -19,6 +19,10 @@ process.env.JWT_SECRET = 'test-jwt-secret-0123456789';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-0123456789';
 process.env.CLIENT_URL = 'http://localhost:5173';
 process.env.SMTP_HOST = '';
+// Explicitly unset, so a developer's real .env can never make the suite send
+// live push notifications through Google. dotenv does not override values that
+// are already present, so setting it blank here wins.
+process.env.FIREBASE_SERVICE_ACCOUNT_KEY = '';
 process.env.ADMIN_EMAIL = 'admin@test.local';
 process.env.ADMIN_PASSWORD = 'Admin@12345';
 process.env.SUPER_ADMIN_NAME = 'Test Owner';

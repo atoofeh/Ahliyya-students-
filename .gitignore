@@ -33,3 +33,14 @@ Thumbs.db
 
 # built app packages
 *.apk
+
+# Firebase.
+# client/android/app/google-services.json IS committed: it ships inside every
+# APK by design, Google scopes that key to this package and signing key, and a
+# missing copy makes the Gradle build silently skip the push plugin — the app
+# then builds fine and simply never receives anything.
+# The admin SDK key is the opposite: a private key that can send as this
+# project. It lives only in server/.env and must never enter git or an APK.
+*-firebase-adminsdk-*.json
+firebase-adminsdk*.json
+/google-services.json

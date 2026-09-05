@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "692817015617",
+    "project_id": "students-alahliyya",
+    "storage_bucket": "students-alahliyya.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:692817015617:android:99274471c32a8fb6f5a7c0",
+        "android_client_info": {
+          "package_name": "com.alahliyya.lms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAU91SgTEhmGoqDyw5kGaOTDL5Cad7NkPU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
