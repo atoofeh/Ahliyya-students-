@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   PlayCircle, FileText, HelpCircle, ClipboardList, AlignLeft, CheckCircle2, CircleDot,
   Circle, AlarmClock, Bookmark, ChevronDown, ChevronLeft, ChevronRight, Megaphone,
-  MessageSquareText, Send, Star, Lock, ListTree, X,
+  MessageSquareText, Send, Star, Lock, ListTree, X, Clock,
 } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
@@ -227,9 +227,13 @@ export default function CoursePlayer() {
                   Pass mark {lesson.quiz.passingScore}% · {lesson.quiz.maxAttempts || '∞'} attempt(s)
                 </p>
               </div>
-              {lesson.quiz.isLocked
-                ? <Badge color="red"><Lock size={12} className="mr-1" /> Locked</Badge>
-                : <Button onClick={() => navigate(`/student/courses/${courseId}/quiz/${lesson.quiz._id}`)}>Start quiz</Button>}
+              {/* A lesson can be published before the quiz on it is. Offering "Start
+                  quiz" for a draft only ever produced an error on the next screen. */}
+              {lesson.quiz.isPublished === false
+                ? <Badge color="gray"><Clock size={12} className="mr-1" /> Not open yet</Badge>
+                : lesson.quiz.isLocked
+                  ? <Badge color="red"><Lock size={12} className="mr-1" /> Locked</Badge>
+                  : <Button onClick={() => navigate(`/student/courses/${courseId}/quiz/${lesson.quiz._id}`)}>Start quiz</Button>}
             </div>
           </Card>
         )}

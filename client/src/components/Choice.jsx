@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import api from '../api/axios';
+import AuthedImage from './AuthedImage';
 
 const cx = (...a) => a.filter(Boolean).join(' ');
 
@@ -62,8 +62,8 @@ export default function ChoiceGroup({ multiple, options, value = [], onChange, n
             )}>
               {on && <span className={cx('bg-white', multiple ? 'h-2 w-2.5 rounded-[1px]' : 'h-2 w-2 rounded-full')} />}
             </span>
-            {o.image && <img src={`${api.defaults.baseURL}/files/${o.image}/content`} alt="" className="h-16 rounded" />}
-            <span>{o.text}</span>
+            {o.image && <AuthedImage fileId={o.image} className="h-20 rounded" />}
+            {o.text && <span>{o.text}</span>}
           </button>
         );
       })}

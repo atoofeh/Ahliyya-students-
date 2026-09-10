@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle, MinusCircle, Trophy, ArrowLeft } from 'lucide-re
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { Card, Badge, Button } from '../../components/ui';
+import AuthedImage from '../../components/AuthedImage';
 import { SkeletonCard } from '../../components/Skeletons';
 
 export default function AttemptResult() {
@@ -64,6 +65,7 @@ export default function AttemptResult() {
                 <p className="font-medium text-surface-900 dark:text-white">
                   {i + 1}. {q.type === 'fill_blanks' ? q.text.replace(/\{\{blank\}\}/g, '_____') : q.text}
                 </p>
+                {q.image && <AuthedImage fileId={q.image} alt={`Image for question ${i + 1}`} className="mt-2 max-h-56 rounded-lg" />}
 
                 {['multiple_choice', 'true_false', 'image_choice'].includes(q.type) && (
                   <div className="mt-2 space-y-1">
@@ -75,6 +77,7 @@ export default function AttemptResult() {
                           correct ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
                             : chosen ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300'
                             : 'text-surface-500'}`}>
+                          {o.image && <AuthedImage fileId={o.image} className="mb-1 h-20 rounded" />}
                           {o.text}
                           {chosen && <span className="ml-2 text-xs">(your answer)</span>}
                           {correct && <span className="ml-2 text-xs">✓ correct</span>}

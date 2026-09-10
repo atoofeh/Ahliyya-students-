@@ -7,6 +7,7 @@ import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import useAntiCheat from '../../hooks/useAntiCheat';
 import { Button, Card, Spinner, Badge, Modal } from '../../components/ui';
 import ChoiceGroup from '../../components/Choice';
+import AuthedImage from '../../components/AuthedImage';
 import OfflineBanner from '../../components/OfflineBanner';
 
 /**
@@ -173,7 +174,8 @@ export default function QuizRunner() {
           <Badge color="primary">{q.points} pt{q.points !== 1 && 's'}</Badge>
         </div>
 
-        {q.image && <img src={`${api.defaults.baseURL}/files/${q.image}/content`} alt="Question" className="max-h-72 rounded-lg" />}
+        {/* The prompt's picture, whatever the answer format below it turns out to be. */}
+        {q.image && <AuthedImage fileId={q.image} alt={`Image for question ${index + 1}`} className="max-h-72 rounded-lg" />}
 
         {['multiple_choice', 'true_false', 'image_choice'].includes(q.type) && (
           <div className="space-y-2">
