@@ -6,7 +6,7 @@ import api, { API_BASE, apiError } from '../api/axios';
  * Protected video player.
  *  - Fetches a short-lived signed stream token (renewed before expiry) — the
  *    raw file is never exposed; the server decrypts on the fly per Range.
- *  - Moving dynamic watermark (name / id / timestamp) rendered as an overlay.
+ *  - Intermittent dynamic watermark (name / id / timestamp), fullscreen included.
  *  - Download & PiP disabled, context menu blocked, playback pauses when the
  *    tab is hidden (limits screen-capture-while-hidden and casting tricks).
  *  - Resume: seeks to last saved position; progress heartbeat every 10s.
@@ -15,14 +15,31 @@ import api, { API_BASE, apiError } from '../api/axios';
  * capture, phone cameras, virtual displays). The watermark ties any leak to a
  * student identity, which is the strongest deterrent the web platform allows.
  */
+
+/**
+ * Watermark cadence. The mark blinks rather than sits: a few seconds on, most
+ * of a minute off. Anyone filming the screen with a second phone for longer
+ * than a minute captures the student's identity, while a student who is simply
+ * watching the lesson has an unobstructed picture ~87% of the time. The gap is
+ * jittered so its timing cannot be learned and recorded around.
+ */
+const WM_SHOW_MS = 6000;
+const WM_GAP_MIN_MS = 38000;
+const WM_GAP_JITTER_MS = 14000;
+const WM_FIRST_MS = 5000;
+
+const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
 export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress }) {
   const videoRef = useRef(null);
+  const containerRef = useRef(null);
   const watchedRef = useRef(0);
   const lastBeat = useRef(0);
   const [src, setSrc] = useState(null);
   const [error, setError] = useState(null);
   const [watermark, setWatermark] = useState(null);
   const [wmPos, setWmPos] = useState({ top: '8%', left: '6%' });
+  const [wmShown, setWmShown] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const fetchToken = useCallback(async () => {
     const { data } = await api.post(`/videos/${videoId}/token`);
@@ -65,14 +82,51 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     return () => clearInterval(interval);
   }, [src, fetchToken]);
 
-  // Moving watermark position (defeats static cropping)
+  // Show the watermark in bursts, each at a fresh random position so cropping a
+  // fixed corner never removes it. Runs while paused too — a still photograph of
+  // a paused frame should carry the same risk of catching the mark.
   useEffect(() => {
     if (!watermark) return undefined;
-    const move = setInterval(() => {
+    let timer;
+    function show() {
       setWmPos({ top: `${8 + Math.random() * 74}%`, left: `${5 + Math.random() * 60}%` });
-    }, 7000);
-    return () => clearInterval(move);
+      setWmShown(true);
+      timer = setTimeout(hide, WM_SHOW_MS);
+    }
+    function hide() {
+      setWmShown(false);
+      timer = setTimeout(show, WM_GAP_MIN_MS + Math.random() * WM_GAP_JITTER_MS);
+    }
+    timer = setTimeout(show, WM_FIRST_MS);
+    return () => clearTimeout(timer);
   }, [watermark]);
+
+  /**
+   * A fullscreened <video> paints alone: a sibling overlay is not part of the
+   * fullscreen element, so the watermark used to disappear at exactly the moment
+   * a screen is most worth filming. Redirect fullscreen onto the wrapper — which
+   * does contain the overlay — whenever the native control fullscreens the video.
+   */
+  useEffect(() => {
+    const onChange = () => {
+      const fs = fullscreenElement();
+      if (fs && fs === videoRef.current && containerRef.current) {
+        // Requesting on an ancestor swaps the fullscreen element without leaving
+        // fullscreen; the click that started it still counts as the activation.
+        const box = containerRef.current;
+        const request = box.requestFullscreen || box.webkitRequestFullscreen;
+        try { Promise.resolve(request?.call(box)).catch(() => {}); } catch { /* stays native */ }
+        return;
+      }
+      setIsFullscreen(!!fs && fs === containerRef.current);
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange);
+    };
+  }, []);
 
   // Pause when tab hidden
   useEffect(() => {
@@ -116,7 +170,12 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-black select-none" onContextMenu={(e) => e.preventDefault()}>
+    <div
+      ref={containerRef}
+      className={`relative select-none overflow-hidden bg-black ${
+        isFullscreen ? 'flex h-screen w-screen items-center justify-center' : 'rounded-xl'}`}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <video
         ref={videoRef}
         src={src}
@@ -124,7 +183,7 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
         controlsList="nodownload noremoteplayback noplaybackrate"
         disablePictureInPicture
         playsInline
-        className="aspect-video w-full"
+        className={isFullscreen ? 'max-h-full max-w-full' : 'aspect-video w-full'}
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={(e) => { if (startAt > 2) e.target.currentTime = startAt; }}
         onPause={() => heartbeat(videoRef.current?.currentTime || 0)}
@@ -132,7 +191,9 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
       />
       {watermark && (
         <div
-          className="pointer-events-none absolute z-10 rounded bg-black/25 px-2 py-1 text-[11px] leading-tight text-white/60 transition-all duration-1000"
+          aria-hidden="true"
+          className={`pointer-events-none absolute z-10 rounded bg-black/25 px-2 py-1 text-[11px] leading-tight text-white/60 transition-opacity duration-700 ${
+            wmShown ? 'opacity-100' : 'opacity-0'}`}
           style={wmPos}
         >
           {watermark.map((line, i) => <div key={i}>{line}</div>)}
