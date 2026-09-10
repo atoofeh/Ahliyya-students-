@@ -152,7 +152,8 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
           {form.type === 'quiz' && (
             <Select label="Quiz" value={form.quiz || ''} onChange={(e) => setForm((f) => ({ ...f, quiz: e.target.value }))}
               options={[{ value: '', label: '— select quiz (Quizzes tab) —' },
-                ...quizzes.map((q) => ({ value: q._id, label: q.title }))]} />
+                // A draft attached here is invisible to students until it is published.
+                ...quizzes.map((q) => ({ value: q._id, label: q.isPublished ? q.title : `${q.title} (draft — publish it first)` }))]} />
           )}
           {form.type === 'assignment' && (
             <Select label="Assignment" value={form.assignment || ''} onChange={(e) => setForm((f) => ({ ...f, assignment: e.target.value }))}

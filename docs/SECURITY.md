@@ -82,7 +82,7 @@ Detected and reported (batched, server-side weighted risk score, optional auto-s
 
 We implement every feasible deterrent:
 
-- Dynamic **moving watermark** on all video (student name + ID + timestamp, optionally IP) — leaked footage identifies its source. This is the industry-standard control and the single most effective one.
+- Dynamic **moving watermark** on all video (student name + ID + timestamp, optionally IP) — leaked footage identifies its source. This is the industry-standard control and the single most effective one. It appears in bursts of a few seconds roughly every 45 seconds, at a fresh random position, with the gap jittered so its timing cannot be learned and recorded around; anything filmed for over a minute carries it. The player redirects fullscreen from the `<video>` element onto its wrapper, because a fullscreened video paints alone and would otherwise drop the overlay exactly where a screen is most worth filming. iOS is the exception: its fullscreen is fully native and admits no overlay, so the watermark is only present there while the video plays inline.
 - Playback pauses when the tab is hidden; download, remote playback, and picture-in-picture are disabled; context menu blocked; stream URLs expire in minutes and are session-bound.
 - PrintScreen and known screenshot/devtools shortcuts are intercepted **during quizzes**, with clipboard overwrite as a best effort.
 

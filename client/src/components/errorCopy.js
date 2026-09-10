@@ -14,6 +14,7 @@ const COPY = {
   ENROLLMENT_EXPIRED: { icon: Clock, title: 'Your access to this course has ended', body: 'Ask your teacher to extend it.' },
   COURSE_EXPIRED: { icon: Clock, title: 'This course has ended', body: 'Its content is no longer available.' },
   QUIZ_LOCKED: { icon: LockKeyhole, title: 'This quiz is locked', body: 'Your instructor will unlock it when it is ready.' },
+  QUIZ_NOT_PUBLISHED: { icon: Clock, title: 'This quiz is not open yet', body: 'Your instructor is still preparing it.' },
   QUIZ_CLOSED: { icon: Clock, title: 'The quiz window has closed', body: 'Contact your instructor if you missed it.' },
   QUIZ_NOT_OPEN: { icon: Clock, title: 'This quiz has not opened yet', body: 'Come back when it starts.' },
   ATTEMPTS_EXHAUSTED: { icon: AlertTriangle, title: 'No attempts left', body: 'You have used every attempt for this quiz.' },

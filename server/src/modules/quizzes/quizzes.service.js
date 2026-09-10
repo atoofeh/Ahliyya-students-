@@ -69,6 +69,11 @@ class QuizService {
     if (choiceTypes.includes(data.type)) {
       const options = data.options || [];
       if (options.length < 2) throw ApiError.badRequest('Choice questions need at least 2 options');
+      // An option is what the student clicks. With neither a label nor a picture
+      // it is a blank target, so image_choice options may drop the text but not both.
+      if (options.some((o) => !String(o.text || '').trim() && !o.image)) {
+        throw ApiError.badRequest('Every option needs text or an image');
+      }
       const correct = options.filter((o) => o.isCorrect);
       if (!correct.length) throw ApiError.badRequest('Mark at least one option as correct');
       if (!data.multipleCorrect && correct.length > 1) {
@@ -151,7 +156,10 @@ class QuizService {
 
   static async startAttempt(quizId, courseId, studentId, ip) {
     const quiz = await Quiz.findOne({ _id: quizId, course: courseId, deletedAt: null });
-    if (!quiz || !quiz.isPublished) throw ApiError.notFound('Quiz not found');
+    if (!quiz) throw ApiError.notFound('Quiz not found');
+    // A draft attached to a published lesson used to answer "Quiz not found", which
+    // sent teachers hunting for a deleted quiz instead of the Published toggle.
+    if (!quiz.isPublished) throw ApiError.forbidden('This quiz has not been published yet', 'QUIZ_NOT_PUBLISHED');
     if (quiz.isLocked) throw ApiError.forbidden('This quiz is currently locked', 'QUIZ_LOCKED');
     const now = new Date();
     if (quiz.availableFrom && now < quiz.availableFrom) {
