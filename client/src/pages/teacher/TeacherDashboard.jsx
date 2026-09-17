@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ClipboardCheck, ShieldAlert, BookOpen } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
+import { useLanguage } from '../../hooks/useLanguage';
 import { Card, EmptyState, Badge, Button, ProgressBar, PageIntro, SectionTitle } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 import ErrorState from '../../components/ErrorState';
@@ -15,6 +16,7 @@ const CHIP = {
 export default function TeacherDashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const { t } = useLanguage();
 
   const load = useCallback(async () => {
     try {
@@ -39,16 +41,16 @@ export default function TeacherDashboard() {
 
   const { stats, courses } = data;
   const attention = [
-    { key: 'grade', label: 'awaiting grading', value: stats.pendingGrading, icon: ClipboardCheck, tone: 'amber' },
-    { key: 'cheat', label: 'cheat events this week', value: stats.cheatEventsThisWeek, icon: ShieldAlert, tone: 'rose' },
+    { key: 'grade', label: t('tea.awaitingGrading'), value: stats.pendingGrading, icon: ClipboardCheck, tone: 'amber' },
+    { key: 'cheat', label: t('tea.cheatThisWeek'), value: stats.cheatEventsThisWeek, icon: ShieldAlert, tone: 'rose' },
   ].filter((a) => a.value > 0);
 
   return (
     <div className="space-y-6">
       <PageIntro
-        title="Instructor dashboard"
-        subtitle="Your courses, your students, and what needs you today."
-        actions={<Link to="/teacher/courses"><Button>Manage courses</Button></Link>}
+        title={t('tea.title')}
+        subtitle={t('tea.subtitle')}
+        actions={<Link to="/teacher/courses"><Button>{t('tea.manageCourses')}</Button></Link>}
       />
 
       {attention.length > 0 ? (
@@ -62,16 +64,16 @@ export default function TeacherDashboard() {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-surface-500">Nothing needs your attention right now.</p>
+        <p className="text-sm text-surface-500">{t('tea.allClear')}</p>
       )}
 
       <div>
-        <SectionTitle title="Course performance" subtitle="Students, attempts and progress per course" />
+        <SectionTitle title={t('tea.performance')} subtitle={t('tea.performanceSub')} />
         {courses.length === 0 ? (
           <Card>
-            <EmptyState icon={<BookOpen size={26} />} title="No courses yet"
-              subtitle="Create your first course to start teaching."
-              action={<Link to="/teacher/courses"><Button>Create course</Button></Link>} />
+            <EmptyState icon={<BookOpen size={26} />} title={t('tea.noCourses')}
+              subtitle={t('tea.noCoursesHint')}
+              action={<Link to="/teacher/courses"><Button>{t('tea.createCourse')}</Button></Link>} />
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -80,19 +82,19 @@ export default function TeacherDashboard() {
                 <Card hover className="h-full overflow-hidden">
                   <CourseCover title={c.title} category={c.category} className="h-20">
                     <span className="absolute end-3 top-3">
-                      <Badge color={c.isPublished ? 'green' : 'gray'}>{c.isPublished ? 'Live' : 'Draft'}</Badge>
+                      <Badge color={c.isPublished ? 'green' : 'gray'}>{t(c.isPublished ? 'tea.live' : 'tea.draft')}</Badge>
                     </span>
                   </CourseCover>
                   <div className="p-4">
-                    <h3 className="mb-3 font-display font-bold text-surface-900 line-clamp-1 dark:text-white">{c.title}</h3>
+                    <h3 dir="auto" className="mb-3 font-display font-bold text-surface-900 line-clamp-1 dark:text-white">{c.title}</h3>
                     <div className="grid grid-cols-3 divide-x divide-surface-100 rounded-xl bg-surface-50 py-2.5 text-center text-[11px] text-surface-400 dark:divide-surface-700 dark:bg-surface-800/60">
-                      <div><p className="font-display text-lg font-extrabold text-surface-900 dark:text-white">{c.students}</p>students</div>
-                      <div><p className="font-display text-lg font-extrabold text-surface-900 dark:text-white">{c.quizAttempts}</p>attempts</div>
-                      <div><p className="font-display text-lg font-extrabold text-surface-900 dark:text-white">{c.avgQuizScore || 0}%</p>avg score</div>
+                      <div><p className="font-display text-lg font-extrabold text-surface-900 dark:text-white">{c.students}</p>{t('tea.students')}</div>
+                      <div><p className="font-display text-lg font-extrabold text-surface-900 dark:text-white">{c.quizAttempts}</p>{t('tea.attempts')}</div>
+                      <div><p className="font-display text-lg font-extrabold text-surface-900 dark:text-white">{c.avgQuizScore || 0}%</p>{t('tea.avgScore')}</div>
                     </div>
                     <div className="mt-3">
                       <div className="mb-1 flex justify-between text-xs text-surface-400">
-                        <span>Avg progress</span>
+                        <span>{t('tea.avgProgress')}</span>
                         <span className="font-semibold text-surface-600 dark:text-surface-300">{c.avgProgress}%</span>
                       </div>
                       <ProgressBar value={c.avgProgress} />

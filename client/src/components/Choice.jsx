@@ -48,7 +48,7 @@ export default function ChoiceGroup({ multiple, options, value = [], onChange, n
             onClick={() => toggle(o.id)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cx(
-              'flex w-full items-center gap-3 rounded-xl border-2 p-3.5 text-left text-sm transition-colors',
+              'flex w-full items-center gap-3 rounded-xl border-2 p-3.5 text-start text-sm transition-colors',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-900',
               on
                 ? 'border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-900/20 dark:text-brand-200'

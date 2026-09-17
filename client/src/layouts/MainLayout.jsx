@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
@@ -15,7 +15,7 @@ import NotificationsBell from '../components/NotificationsBell';
 import GlobalSearch from '../components/GlobalSearch';
 import { LogoMark } from '../components/Logo';
 import OfflineBanner from '../components/OfflineBanner';
-import { ROLE_LABEL, navFor } from '../utils/roles';
+import { navFor } from '../utils/roles';
 
 const ICONS = {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
@@ -27,22 +27,10 @@ const THEME_ICON = { light: Sun, dark: Moon, system: Laptop };
 export default function MainLayout() {
   const { user, logout } = useAuth();
   const { theme, cycle } = useTheme();
-  const { t, lang, setLang } = useLanguage();
-  // Arabic covers the student side; the teacher and administrator consoles are
-  // still written in English. Flipping the document to RTL around English text
-  // pushes full stops to the wrong end and reverses units like "0.00 GB", so
-  // staff keep the English layout and are not offered the switch. A language
-  // chosen on the sign-in screen is undone here if an administrator signs in.
-  const canSwitchLanguage = !user || user.role === 'student';
-  useEffect(() => {
-    if (canSwitchLanguage || lang === 'en') return undefined;
-    const timer = setTimeout(() => setLang('en'), 0);
-    return () => clearTimeout(timer);
-  }, [canSwitchLanguage, lang, setLang]);
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const ThemeIcon = THEME_ICON[theme] || Laptop;
-  // An entry without a `key` has no Arabic wording, so it keeps its English label.
   const nav = navFor(user?.role).map((item) => ({
     ...item,
     label: item.key ? t(item.key) : item.label,
@@ -77,7 +65,9 @@ export default function MainLayout() {
       <div className="relative px-5 pb-4">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[10.5px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-white/10">
           <span className="h-1.5 w-1.5 rounded-full bg-gold-400" />
-          {user?.role === 'student' ? t('nav.studentPortal') : `${ROLE_LABEL[user?.role]} Portal`}
+          {user?.role === 'student'
+            ? t('nav.studentPortal')
+            : t('nav.portal', { role: t(`role.${user?.role}`) })}
         </span>
       </div>
 
@@ -146,12 +136,12 @@ export default function MainLayout() {
         <header className="glass pt-safe sticky top-0 z-20 flex items-center gap-3 border-b border-surface-200/70 px-4 py-2.5 dark:border-surface-800"
           style={{ ['--pt-safe-extra']: '0.625rem' }}>
           <button className="rounded-xl p-2 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800 lg:hidden"
-            onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+            onClick={() => setSidebarOpen(true)} aria-label={t('nav.openNavigation')}>
             <Menu size={20} />
           </button>
           <GlobalSearch />
           <div className="ms-auto flex items-center gap-1">
-            {canSwitchLanguage && <LanguageToggle className="me-1" />}
+            <LanguageToggle className="me-1" />
             <button onClick={cycle} title={`Theme: ${theme}`} aria-label={`Theme: ${theme}. Change theme`}
               className="rounded-xl p-2 text-surface-500 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800">
               <ThemeIcon size={18} />

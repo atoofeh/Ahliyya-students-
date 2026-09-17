@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { MessageSquareText, Send, Check, X } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
+import { useLanguage } from '../../../hooks/useLanguage';
 import { Card, Button, Input, Badge, EmptyState, Modal, Textarea } from '../../../components/ui';
 import { SkeletonCard } from '../../../components/Skeletons';
 import ErrorState from '../../../components/ErrorState';
@@ -14,20 +15,21 @@ import ErrorState from '../../../components/ErrorState';
  * common case — read it, answer it — stays one action.
  */
 const FILTERS = [
-  { key: 'pending', label: 'Awaiting approval' },
-  { key: 'approved', label: 'Published' },
-  { key: 'rejected', label: 'Rejected' },
-  { key: '', label: 'All' },
+  { key: 'pending', label: 'qa.awaiting' },
+  { key: 'approved', label: 'qa.published' },
+  { key: 'rejected', label: 'qa.rejected' },
+  { key: '', label: 'qa.all' },
 ];
 
 const STATUS_BADGE = {
-  pending: { color: 'amber', label: 'Awaiting approval' },
-  approved: { color: 'green', label: 'Published' },
-  rejected: { color: 'red', label: 'Rejected' },
+  pending: { color: 'amber', label: 'qa.awaiting' },
+  approved: { color: 'green', label: 'qa.published' },
+  rejected: { color: 'red', label: 'qa.rejected' },
 };
 
 export default function QaTab({ courseId }) {
   const toast = useToast();
+  const { t } = useLanguage();
   const [filter, setFilter] = useState('pending');
   const [page, setPage] = useState(null);
   const [error, setError] = useState(null);
@@ -56,14 +58,14 @@ export default function QaTab({ courseId }) {
 
   const approve = (threadId) => run(
     () => api.post(`/qa/${threadId}/approve`),
-    'Published — the class can see it now'
+    t('qa.toastPublished')
   );
 
   const reject = () => run(async () => {
     await api.post(`/qa/${rejecting._id}/reject`, { reason: reason.trim() || undefined });
     setRejecting(null);
     setReason('');
-  }, 'Rejected — it stays hidden from the class');
+  }, t('qa.toastRejected'));
 
   const sendReply = (threadId, wasPending) => {
     const body = reply[threadId]?.trim();
@@ -71,7 +73,7 @@ export default function QaTab({ courseId }) {
     return run(async () => {
       await api.post(`/qa/${threadId}/replies`, { body });
       setReply((r) => ({ ...r, [threadId]: '' }));
-    }, wasPending ? 'Answered and published' : 'Reply posted');
+    }, t(wasPending ? 'qa.toastAnswered' : 'qa.toastReplied'));
   };
 
   if (error) return <ErrorState code={error.code} message={error.message} onRetry={load} />;
@@ -92,7 +94,7 @@ export default function QaTab({ courseId }) {
                 : 'bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-700/50 dark:text-surface-300 dark:hover:bg-surface-700'
             }`}
           >
-            {f.label}
+            {t(f.label)}
             {f.key === 'pending' && page.pendingCount > 0 && (
               <span className={`ms-1.5 rounded-full px-1.5 text-xs font-bold ${filter === 'pending' ? 'bg-white/20' : 'bg-amber-500 text-white'}`}>
                 {page.pendingCount}
@@ -106,62 +108,61 @@ export default function QaTab({ courseId }) {
         <Card>
           <EmptyState
             icon={<MessageSquareText size={24} />}
-            title={filter === 'pending' ? 'Nothing waiting for you' : 'No questions here'}
-            subtitle={filter === 'pending'
-              ? 'New questions land here first. Students only see them once you publish them.'
-              : 'Questions asked in this course appear here, newest first.'}
+            title={t(filter === 'pending' ? 'qa.nothingWaiting' : 'qa.noQuestions')}
+            subtitle={t(filter === 'pending' ? 'qa.pendingHint' : 'qa.allHint')}
           />
         </Card>
-      ) : threads.map((t) => {
-        const status = STATUS_BADGE[t.status] || STATUS_BADGE.pending;
-        const pending = t.status === 'pending';
+      ) : threads.map((thread) => {
+        const status = STATUS_BADGE[thread.status] || STATUS_BADGE.pending;
+        const pending = thread.status === 'pending';
         return (
-          <Card key={t._id} className={`p-4 ${pending ? 'ring-1 ring-amber-300 dark:ring-amber-500/40' : ''}`}>
+          <Card key={thread._id} className={`p-4 ${pending ? 'ring-1 ring-amber-300 dark:ring-amber-500/40' : ''}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-medium text-surface-900 dark:text-white">{t.title}</p>
+              <p dir="auto" className="font-medium text-surface-900 dark:text-white">{thread.title}</p>
               <div className="flex shrink-0 gap-1.5">
-                <Badge color={status.color}>{status.label}</Badge>
-                {t.resolved && t.status === 'approved' && <Badge color="green">Answered</Badge>}
+                <Badge color={status.color}>{t(status.label)}</Badge>
+                {thread.resolved && thread.status === 'approved' && <Badge color="green">{t('qa.answered')}</Badge>}
               </div>
             </div>
-            <p className="mt-1 text-sm text-surface-600 dark:text-surface-300">{t.body}</p>
-            <p className="mt-1 text-xs text-surface-400">{t.author?.name} · {new Date(t.createdAt).toLocaleString()}</p>
-            {t.status === 'rejected' && t.rejectionReason && (
+            <p dir="auto" className="mt-1 text-sm text-surface-600 dark:text-surface-300">{thread.body}</p>
+            <p className="mt-1 text-xs text-surface-400">{thread.author?.name} · {new Date(thread.createdAt).toLocaleString()}</p>
+            {thread.status === 'rejected' && thread.rejectionReason && (
               <p className="mt-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-                Reason given: {t.rejectionReason}
+                {t('qa.reasonGiven', { reason: thread.rejectionReason })}
               </p>
             )}
 
-            {t.replies.map((r) => (
+            {thread.replies.map((r) => (
               <div key={r._id} className="mt-2 rounded-lg bg-surface-50 p-2.5 text-sm dark:bg-surface-700/40">
-                <p className="text-surface-700 dark:text-surface-200">{r.body}</p>
+                <p dir="auto" className="text-surface-700 dark:text-surface-200">{r.body}</p>
                 <p className="mt-0.5 text-xs text-surface-400">{r.author?.name}</p>
               </div>
             ))}
 
             {pending && (
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button size="sm" disabled={busy} onClick={() => approve(t._id)}>
-                  <Check size={14} /> Publish to the class
+                <Button size="sm" disabled={busy} onClick={() => approve(thread._id)}>
+                  <Check size={14} /> {t('qa.publishToClass')}
                 </Button>
-                <Button size="sm" variant="outline" disabled={busy} onClick={() => { setRejecting(t); setReason(''); }}>
-                  <X size={14} /> Reject
+                <Button size="sm" variant="outline" disabled={busy} onClick={() => { setRejecting(thread); setReason(''); }}>
+                  <X size={14} /> {t('qa.reject')}
                 </Button>
               </div>
             )}
 
-            {t.status !== 'rejected' && (
+            {thread.status !== 'rejected' && (
               <div className="mt-2 flex gap-2">
                 {/* Input renders its own <label> wrapper, so the flex item is that
                     wrapper — it needs the growth, not the field inside it. */}
                 <div className="min-w-0 flex-1">
                   <Input
-                    placeholder={pending ? 'Answer it — this publishes the question too…' : 'Reply as instructor…'}
-                    value={reply[t._id] || ''}
-                    onChange={(e) => setReply((r) => ({ ...r, [t._id]: e.target.value }))}
+                    dir="auto"
+                    placeholder={t(pending ? 'qa.answerAndPublish' : 'qa.replyAsInstructor')}
+                    value={reply[thread._id] || ''}
+                    onChange={(e) => setReply((r) => ({ ...r, [thread._id]: e.target.value }))}
                   />
                 </div>
-                <Button size="sm" disabled={busy} onClick={() => sendReply(t._id, pending)} aria-label="Send reply">
+                <Button size="sm" disabled={busy} onClick={() => sendReply(thread._id, pending)} aria-label={t('qa.sendReply')}>
                   <Send size={14} />
                 </Button>
               </div>
@@ -170,20 +171,20 @@ export default function QaTab({ courseId }) {
         );
       })}
 
-      <Modal open={!!rejecting} onClose={() => setRejecting(null)} title="Reject this question">
+      <Modal open={!!rejecting} onClose={() => setRejecting(null)} title={t('qa.rejectTitle')}>
         <div className="space-y-4">
           <p className="text-sm text-surface-500">
-            “{rejecting?.title}” stays hidden from the class. {rejecting?.author?.name} is told it was not published,
-            along with your reason if you give one.
+            {t('qa.rejectExplain', { title: rejecting?.title || '', name: rejecting?.author?.name || '' })}
           </p>
           <Textarea
-            label="Reason (optional, shown to the student)"
+            label={t('qa.reasonLabel')}
+            dir="auto"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
-            placeholder="e.g. This is already covered in the syllabus."
+            placeholder={t('qa.reasonPlaceholder')}
           />
-          <Button className="w-full" variant="danger" loading={busy} onClick={reject}>Reject question</Button>
+          <Button className="w-full" variant="danger" loading={busy} onClick={reject}>{t('qa.rejectQuestion')}</Button>
         </div>
       </Modal>
     </div>

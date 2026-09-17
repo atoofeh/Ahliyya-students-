@@ -138,7 +138,7 @@ export function Textarea({ label, error, className = '', ...props }) {
   );
 }
 
-export function Select({ label, options = [], className = '', ...props }) {
+export function Select({ label, options = [], hint, className = '', ...props }) {
   return (
     <label className="block">
       {label && <span className="mb-1.5 block text-[13px] font-semibold text-surface-700 dark:text-surface-200">{label}</span>}
@@ -147,6 +147,7 @@ export function Select({ label, options = [], className = '', ...props }) {
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>
+      {hint && <span className="mt-1 block text-xs text-surface-400">{hint}</span>}
     </label>
   );
 }

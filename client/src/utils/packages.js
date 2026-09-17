@@ -3,9 +3,9 @@
  * Mirrors ENROLLMENT_PACKAGES on the server.
  */
 export const PACKAGES = [
-  { value: 'mid', label: 'Midterm', short: 'Mid', color: 'amber' },
-  { value: 'final', label: 'Final', short: 'Final', color: 'blue' },
-  { value: 'full', label: 'Full course', short: 'Full', color: 'green' },
+  { value: 'mid', key: 'pkg.mid', label: 'Midterm', short: 'Mid', color: 'amber' },
+  { value: 'final', key: 'pkg.final', label: 'Final', short: 'Final', color: 'blue' },
+  { value: 'full', key: 'pkg.full', label: 'Full course', short: 'Full', color: 'green' },
 ];
 
 export const packageOf = (value) => PACKAGES.find((p) => p.value === value) || PACKAGES[2];

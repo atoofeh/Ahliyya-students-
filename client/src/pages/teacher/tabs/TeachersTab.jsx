@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { UserPlus, Crown, X, Users } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
+import { useLanguage } from '../../../hooks/useLanguage';
 import { Card, Button, Input, Textarea, Badge, EmptyState, Modal } from '../../../components/ui';
 import { SkeletonCard } from '../../../components/Skeletons';
 
@@ -13,6 +14,7 @@ import { SkeletonCard } from '../../../components/Skeletons';
  * creator (or an administrator) can remove one again.
  */
 export default function TeachersTab({ courseId }) {
+  const { t } = useLanguage();
   const toast = useToast();
   const [data, setData] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -42,16 +44,16 @@ export default function TeachersTab({ courseId }) {
     });
     setInviteOpen(false);
     setForm({ teacher: '', message: '' });
-  }, 'Invitation sent');
+  }, t('cot.toastSent'));
 
   const cancelInvite = (inviteId) => run(
     () => api.post(`/co-teaching/courses/${courseId}/invites/${inviteId}/cancel`),
-    'Invitation withdrawn'
+    t('cot.toastWithdrawn')
   );
 
   const removeTeacher = (teacher) => {
-    if (!window.confirm(`Remove ${teacher.name} from this course? They lose access to it immediately.`)) return;
-    return run(() => api.delete(`/co-teaching/courses/${courseId}/teachers/${teacher._id}`), 'Co-teacher removed');
+    if (!window.confirm(t('cot.confirmRemove', { name: teacher.name }))) return;
+    return run(() => api.delete(`/co-teaching/courses/${courseId}/teachers/${teacher._id}`), t('cot.toastRemoved'));
   };
 
   if (!data) return <SkeletonCard lines={4} />;
@@ -60,12 +62,10 @@ export default function TeachersTab({ courseId }) {
     <div className="max-w-2xl space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="font-semibold text-surface-800 dark:text-surface-100">Teaching this course</h3>
-          <p className="text-sm text-surface-500">
-            A co-teacher shares full control of the course with you — lessons, students, grading and Q&amp;A.
-          </p>
+          <h3 className="font-semibold text-surface-800 dark:text-surface-100">{t('cot.teaching')}</h3>
+          <p className="text-sm text-surface-500">{t('cot.sharesControl')}</p>
         </div>
-        <Button onClick={() => setInviteOpen(true)}><UserPlus size={15} /> Invite a teacher</Button>
+        <Button onClick={() => setInviteOpen(true)}><UserPlus size={15} /> {t('cot.inviteTeacher')}</Button>
       </div>
 
       <Card className="divide-y divide-surface-100 dark:divide-surface-700">
@@ -75,20 +75,20 @@ export default function TeachersTab({ courseId }) {
             <p className="text-sm font-medium text-surface-800 dark:text-surface-100">
               {data.owner?.name} <span className="text-xs text-surface-400">@{data.owner?.username}</span>
             </p>
-            <p className="text-xs text-surface-400">Created the course</p>
+            <p className="text-xs text-surface-400">{t('cot.createdCourse')}</p>
           </div>
         </div>
-        {data.coTeachers.map((t) => (
-          <div key={t._id} className="flex items-center gap-3 px-4 py-3">
+        {data.coTeachers.map((co) => (
+          <div key={co._id} className="flex items-center gap-3 px-4 py-3">
             <Users size={16} className="shrink-0 text-surface-400" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-surface-800 dark:text-surface-100">
-                {t.name} <span className="text-xs text-surface-400">@{t.username}</span>
+                {co.name} <span className="text-xs text-surface-400">@{co.username}</span>
               </p>
-              <p className="text-xs text-surface-400">Co-teacher · same authority as the creator</p>
+              <p className="text-xs text-surface-400">{t('cot.coTeacherRole')}</p>
             </div>
             {data.canManage && (
-              <Button size="sm" variant="ghost" disabled={busy} onClick={() => removeTeacher(t)} aria-label={`Remove ${t.name}`}>
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => removeTeacher(co)} aria-label={t('cot.removeName', { name: co.name })}>
                 <X size={14} className="text-rose-400" />
               </Button>
             )}
@@ -98,14 +98,14 @@ export default function TeachersTab({ courseId }) {
 
       {!data.canManage && data.coTeachers.length > 0 && (
         <p className="text-xs text-surface-400">
-          Only {data.owner?.name}, who created this course, can remove a co-teacher.
+          {t('cot.onlyCreator', { name: data.owner?.name || '' })}
         </p>
       )}
 
       <div className="space-y-2">
-        <h3 className="font-semibold text-surface-800 dark:text-surface-100">Waiting for an answer</h3>
+        <h3 className="font-semibold text-surface-800 dark:text-surface-100">{t('cot.waiting')}</h3>
         {data.pendingInvites.length === 0 ? (
-          <Card><EmptyState title="No open invitations" subtitle="Invited teachers appear here until they accept or decline." /></Card>
+          <Card><EmptyState title={t('cot.noInvites')} subtitle={t('cot.noInvitesHint')} /></Card>
         ) : (
           <Card className="divide-y divide-surface-100 dark:divide-surface-700">
             {data.pendingInvites.map((inv) => (
@@ -115,38 +115,37 @@ export default function TeachersTab({ courseId }) {
                     {inv.invitee?.name} <span className="text-xs text-surface-400">@{inv.invitee?.username}</span>
                   </p>
                   <p className="text-xs text-surface-400">
-                    Invited by {inv.invitedBy?.name} · {new Date(inv.createdAt).toLocaleDateString()}
+                    {t('cot.invitedBy', { name: inv.invitedBy?.name || '', date: new Date(inv.createdAt).toLocaleDateString() })}
                   </p>
                 </div>
-                <Badge color="amber">Pending</Badge>
-                <Button size="sm" variant="ghost" disabled={busy} onClick={() => cancelInvite(inv._id)}>Withdraw</Button>
+                <Badge color="amber">{t('cot.pending')}</Badge>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => cancelInvite(inv._id)}>{t('cot.withdraw')}</Button>
               </div>
             ))}
           </Card>
         )}
       </div>
 
-      <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Invite a teacher to co-teach">
+      <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title={t('cot.inviteTitle')}>
         <div className="space-y-4">
-          <p className="text-sm text-surface-500">
-            They get an invitation in their notifications. If they accept, they can edit the course, manage its
-            students, grade work and moderate questions — exactly as you can.
-          </p>
+          <p className="text-sm text-surface-500">{t('cot.inviteExplain')}</p>
           <Input
-            label="Their username or email"
+            label={t('cot.identifier')}
+            dir="ltr"
             value={form.teacher}
             onChange={(e) => setForm((f) => ({ ...f, teacher: e.target.value }))}
-            placeholder="e.g. abdullah.dabbas"
+            placeholder={t('cot.identifierPlaceholder')}
           />
           <Textarea
-            label="Message (optional)"
+            label={t('cot.messageLabel')}
+            dir="auto"
             rows={3}
             value={form.message}
             onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-            placeholder="Why you are inviting them."
+            placeholder={t('cot.messagePlaceholder')}
           />
           <Button className="w-full" loading={busy} onClick={invite} disabled={!form.teacher.trim()}>
-            Send invitation
+            {t('cot.sendInvitation')}
           </Button>
         </div>
       </Modal>

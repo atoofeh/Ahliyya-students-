@@ -3,6 +3,7 @@ import { Users, BookOpen, MonitorSmartphone, LogIn, FileWarning, HardDrive } fro
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, AreaChart, Area } from 'recharts';
 import api from '../../api/axios';
 import { useTheme } from '../../hooks/useTheme';
+import { useLanguage } from '../../hooks/useLanguage';
 import { Card, StatCard, EmptyState, Badge, PageIntro, SectionTitle } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 
@@ -43,6 +44,7 @@ function ChartLegend({ items }) {
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const { isDark } = useTheme();
+  const { t } = useLanguage();
   const C = CHART[isDark ? 'dark' : 'light'];
 
   useEffect(() => {
@@ -65,22 +67,24 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageIntro title="Platform overview" subtitle="Live operational metrics across Students_Alahliyya." />
+      <PageIntro title={t('adm.overviewTitle')} subtitle={t('adm.overviewSubtitle')} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
-        <StatCard icon={<Users size={20} />} label="Users" value={users.total}
-          sub={`${users.byRole.student || 0} students · ${users.byRole.teacher || 0} teachers`} />
-        <StatCard icon={<BookOpen size={20} />} label="Courses" value={courses.total} sub={`${courses.published} published`} color="green" />
-        <StatCard icon={<MonitorSmartphone size={20} />} label="Active sessions" value={activity.activeSessions} color="sky" />
-        <StatCard icon={<LogIn size={20} />} label="Logins (7d)" value={activity.logins7d} color="primary" />
-        <StatCard icon={<FileWarning size={20} />} label="Cheat events (7d)" value={activity.cheat7d} color="rose" />
-        <StatCard icon={<HardDrive size={20} />} label="Storage" value={`${(storageTotal / 1073741824).toFixed(2)} GB`} color="amber" />
+        <StatCard icon={<Users size={20} />} label={t('adm.users')} value={users.total}
+          sub={t('adm.usersSub', { students: users.byRole.student || 0, teachers: users.byRole.teacher || 0 })} />
+        <StatCard icon={<BookOpen size={20} />} label={t('adm.courses')} value={courses.total} sub={t('adm.published', { n: courses.published })} color="green" />
+        <StatCard icon={<MonitorSmartphone size={20} />} label={t('adm.activeSessions')} value={activity.activeSessions} color="sky" />
+        <StatCard icon={<LogIn size={20} />} label={t('adm.logins7d')} value={activity.logins7d} color="primary" />
+        <StatCard icon={<FileWarning size={20} />} label={t('adm.cheat7d')} value={activity.cheat7d} color="rose" />
+        {/* The unit belongs beside its number whichever way the page reads. */}
+        <StatCard icon={<HardDrive size={20} />} label={t('adm.storage')}
+          value={<span dir="ltr">{`${(storageTotal / 1073741824).toFixed(2)} GB`}</span>} color="amber" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-5">
-          <SectionTitle title="Login activity" subtitle="Last 14 days"
-            action={<ChartLegend items={[['Successful', C.success], ['Failed', C.failed]]} />} />
+          <SectionTitle title={t('adm.loginActivity')} subtitle={t('adm.last14Days')}
+            action={<ChartLegend items={[[t('adm.successful'), C.success], [t('adm.failed'), C.failed]]} />} />
           {trend.length ? (
             <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={trend} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
@@ -104,14 +108,14 @@ export default function AdminDashboard() {
                   fill="url(#gradFailed)" dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: isDark ? '#101F38' : '#fff' }} />
               </AreaChart>
             </ResponsiveContainer>
-          ) : <EmptyState title="No login data yet" />}
+          ) : <EmptyState title={t('adm.noLoginData')} />}
         </Card>
 
         <Card className="p-5">
-          <SectionTitle title="Devices" subtitle="30-day sessions by OS" />
+          <SectionTitle title={t('adm.devices')} subtitle={t('adm.devicesSub')} />
           {deviceStats?.length ? (
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={deviceStats.map((d) => ({ os: d._id || 'Unknown', sessions: d.count }))}
+              <BarChart data={deviceStats.map((d) => ({ os: d._id || t('adm.unknown'), sessions: d.count }))}
                 margin={{ top: 4, right: 4, left: -18, bottom: 0 }} barCategoryGap="28%">
                 <CartesianGrid stroke={C.grid} strokeDasharray="4 6" vertical={false} />
                 <XAxis dataKey="os" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: C.axis }} dy={6} />
@@ -120,13 +124,13 @@ export default function AdminDashboard() {
                 <Bar dataKey="sessions" fill={C.bar} radius={[4, 4, 0, 0]} maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
-          ) : <EmptyState title="No session data yet" />}
+          ) : <EmptyState title={t('adm.noSessionData')} />}
         </Card>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-5">
-          <SectionTitle title="Most popular courses" subtitle="By enrollment" />
+          <SectionTitle title={t('adm.popularCourses')} subtitle={t('adm.byEnrollment')} />
           {popularCourses?.length ? popularCourses.map((c, i) => (
             <div key={c._id} className="flex items-center gap-3 border-b border-surface-100 py-2.5 last:border-0 dark:border-surface-700">
               <span className={`flex h-6 w-6 items-center justify-center rounded-lg text-[11px] font-extrabold ${
@@ -135,24 +139,24 @@ export default function AdminDashboard() {
                 : 'bg-surface-100 text-surface-400 dark:bg-surface-800'}`}>
                 {i + 1}
               </span>
-              <span className="flex-1 truncate text-sm font-medium text-surface-700 dark:text-surface-200">{c.title}</span>
-              <Badge color="primary">{c.students} students</Badge>
+              <span dir="auto" className="flex-1 truncate text-sm font-medium text-surface-700 dark:text-surface-200">{c.title}</span>
+              <Badge color="primary">{t('adm.studentsCount', { n: c.students })}</Badge>
             </div>
-          )) : <EmptyState title="No enrollments yet" />}
+          )) : <EmptyState title={t('adm.noEnrollments')} />}
         </Card>
 
         <Card className="p-5">
-          <SectionTitle title="Account health" subtitle="Roles and account states" />
+          <SectionTitle title={t('adm.accountHealth')} subtitle={t('adm.accountHealthSub')} />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {[['Admins', users.byRole.admin || 0, 'text-brand-600 dark:text-brand-300'],
-              ['Teachers', users.byRole.teacher || 0, 'text-sky-600 dark:text-sky-300'],
-              ['Students', users.byRole.student || 0, 'text-emerald-600 dark:text-emerald-300'],
-              ['Suspended', users.suspended, 'text-amber-600 dark:text-amber-300'],
-              ['Banned', users.banned, 'text-rose-600 dark:text-rose-300'],
-              ['Attempts (7d)', activity.attempts7d, 'text-surface-700 dark:text-surface-200']].map(([label, value, tone]) => (
-              <div key={label} className="rounded-xl border border-surface-100 bg-surface-50 p-3 dark:border-surface-700/60 dark:bg-surface-800/60">
+            {[['adm.admins', users.byRole.admin || 0, 'text-brand-600 dark:text-brand-300'],
+              ['adm.teachers', users.byRole.teacher || 0, 'text-sky-600 dark:text-sky-300'],
+              ['adm.students', users.byRole.student || 0, 'text-emerald-600 dark:text-emerald-300'],
+              ['adm.suspended', users.suspended, 'text-amber-600 dark:text-amber-300'],
+              ['adm.banned', users.banned, 'text-rose-600 dark:text-rose-300'],
+              ['adm.attempts7d', activity.attempts7d, 'text-surface-700 dark:text-surface-200']].map(([key, value, tone]) => (
+              <div key={key} className="rounded-xl border border-surface-100 bg-surface-50 p-3 dark:border-surface-700/60 dark:bg-surface-800/60">
                 <p className={`font-display text-xl font-extrabold ${tone}`}>{value}</p>
-                <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-surface-400">{label}</p>
+                <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-surface-400">{t(key)}</p>
               </div>
             ))}
           </div>

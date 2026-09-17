@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, PlayCircle, FileText, HelpCircle, ClipboardList, AlignLeft, Unlock } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
+import { useLanguage } from '../../../hooks/useLanguage';
 import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState } from '../../../components/ui';
 
 const LESSON_ICONS = { video: PlayCircle, pdf: FileText, document: FileText, quiz: HelpCircle, assignment: ClipboardList, text: AlignLeft };
-const LESSON_TYPES = ['video', 'pdf', 'document', 'text', 'quiz', 'assignment'].map((t) => ({ value: t, label: t }));
+const LESSON_TYPE_KEYS = ['video', 'pdf', 'document', 'text', 'quiz', 'assignment'];
 
 export default function CurriculumTab({ courseId, curriculum, reload }) {
   const toast = useToast();
+  const { t } = useLanguage();
   const [sectionModal, setSectionModal] = useState(null); // null | {} | section
   const [lessonModal, setLessonModal] = useState(null); // null | { section, lesson? }
   const [videos, setVideos] = useState([]);
@@ -36,9 +38,9 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
     if (form._id) await api.put(`/courses/${courseId}/sections/${form._id}`, { title: form.title, description: form.description });
     else await api.post(`/courses/${courseId}/sections`, { title: form.title, description: form.description || '' });
     setSectionModal(null);
-  }, 'Section saved');
+  }, t('cur.sectionSaved'));
 
-  const deleteSection = (id) => run(() => api.delete(`/courses/${courseId}/sections/${id}`), 'Section deleted');
+  const deleteSection = (id) => run(() => api.delete(`/courses/${courseId}/sections/${id}`), t('cur.sectionDeleted'));
 
   const saveLesson = () => run(async () => {
     const payload = {
@@ -57,9 +59,9 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
     if (form._id) await api.put(`/courses/${courseId}/lessons/${form._id}`, payload);
     else await api.post(`/courses/${courseId}/lessons`, payload);
     setLessonModal(null);
-  }, 'Lesson saved');
+  }, t('cur.lessonSaved'));
 
-  const deleteLesson = (id) => run(() => api.delete(`/courses/${courseId}/lessons/${id}`), 'Lesson deleted');
+  const deleteLesson = (id) => run(() => api.delete(`/courses/${courseId}/lessons/${id}`), t('cur.lessonDeleted'));
 
   const moveLesson = (section, lessonIdx, dir) => run(async () => {
     const ids = section.lessons.map((l) => l._id);
@@ -82,23 +84,23 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button onClick={() => { setForm({ title: '', description: '' }); setSectionModal({}); }}>
-          <Plus size={15} /> Add section
+          <Plus size={15} /> {t('cur.addSection')}
         </Button>
       </div>
 
-      {curriculum.length === 0 && <Card><EmptyState title="No sections yet" subtitle="Structure your course into sections, then add lessons." /></Card>}
+      {curriculum.length === 0 && <Card><EmptyState title={t('cur.noSections')} subtitle={t('cur.noSectionsHint')} /></Card>}
 
       {curriculum.map((section) => (
         <Card key={section._id}>
           <div className="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 px-4 py-3">
             <div>
-              <p className="font-semibold text-surface-900 dark:text-white">{section.title}</p>
-              {section.description && <p className="text-xs text-surface-400">{section.description}</p>}
+              <p dir="auto" className="font-semibold text-surface-900 dark:text-white">{section.title}</p>
+              {section.description && <p dir="auto" className="text-xs text-surface-400">{section.description}</p>}
             </div>
             <div className="flex gap-1">
               <Button size="sm" variant="ghost" onClick={() => { setForm(section); setSectionModal(section); }}><Pencil size={14} /></Button>
               <Button size="sm" variant="ghost" onClick={() => deleteSection(section._id)}><Trash2 size={14} className="text-rose-400" /></Button>
-              <Button size="sm" variant="outline" onClick={() => openLessonModal(section)}><Plus size={14} /> Lesson</Button>
+              <Button size="sm" variant="outline" onClick={() => openLessonModal(section)}><Plus size={14} /> {t('cur.lesson')}</Button>
             </div>
           </div>
           {section.lessons.map((l, i) => {
@@ -106,10 +108,10 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
             return (
               <div key={l._id} className="flex items-center gap-2 border-b border-surface-100 dark:border-surface-700/50 px-4 py-2 last:border-0">
                 <Icon size={16} className="shrink-0 text-surface-400" />
-                <span className="flex-1 truncate text-sm text-surface-700 dark:text-surface-200">{l.title}</span>
-                {!l.isPublished && <Badge>Draft</Badge>}
-                {l.isFree && <Badge color='green'><Unlock size={11} className='me-0.5 inline' />Free</Badge>}
-                {l.durationMinutes > 0 && <span className="text-xs text-surface-400">{l.durationMinutes}m</span>}
+                <span dir="auto" className="flex-1 truncate text-sm text-surface-700 dark:text-surface-200">{l.title}</span>
+                {!l.isPublished && <Badge>{t('cur.draft')}</Badge>}
+                {l.isFree && <Badge color='green'><Unlock size={11} className='me-0.5 inline' />{t('cur.free')}</Badge>}
+                {l.durationMinutes > 0 && <span className="text-xs text-surface-400">{t('catalog.minutes', { n: l.durationMinutes })}</span>}
                 <button className="p-1 text-surface-300 hover:text-surface-600 disabled:opacity-30" disabled={i === 0 || busy}
                   onClick={() => moveLesson(section, i, -1)}><ChevronUp size={14} /></button>
                 <button className="p-1 text-surface-300 hover:text-surface-600 disabled:opacity-30" disabled={i === section.lessons.length - 1 || busy}
@@ -122,51 +124,52 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
         </Card>
       ))}
 
-      <Modal open={!!sectionModal} onClose={() => setSectionModal(null)} title={form._id ? 'Edit section' : 'New section'}>
+      <Modal open={!!sectionModal} onClose={() => setSectionModal(null)} title={t(form._id ? 'cur.editSection' : 'cur.newSection')}>
         <div className="space-y-4">
-          <Input label="Title" value={form.title || ''} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-          <Textarea label="Description (optional)" value={form.description || ''} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-          <Button className="w-full" loading={busy} onClick={saveSection} disabled={!form.title?.trim()}>Save section</Button>
+          <Input label={t('cur.title')} dir="auto" value={form.title || ''} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+          <Textarea label={t('cur.descriptionOptional')} dir="auto" value={form.description || ''} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+          <Button className="w-full" loading={busy} onClick={saveSection} disabled={!form.title?.trim()}>{t('cur.saveSection')}</Button>
         </div>
       </Modal>
 
-      <Modal open={!!lessonModal} onClose={() => setLessonModal(null)} title={form._id ? 'Edit lesson' : `New lesson in “${lessonModal?.section?.title}”`}>
+      <Modal open={!!lessonModal} onClose={() => setLessonModal(null)} title={form._id ? t('cur.editLesson') : t('cur.newLessonIn', { section: lessonModal?.section?.title || '' })}>
         <div className="space-y-4">
-          <Input label="Title" value={form.title || ''} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+          <Input label={t('cur.title')} dir="auto" value={form.title || ''} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
           <div className="grid grid-cols-2 gap-3">
-            <Select label="Type" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} options={LESSON_TYPES} />
-            <Input label="Duration (minutes)" type="number" min="0" value={form.durationMinutes || 0}
+            <Select label={t('cur.type')} value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+              options={LESSON_TYPE_KEYS.map((k) => ({ value: k, label: t(`cur.type.${k}`) }))} />
+            <Input label={t('cur.duration')} type="number" min="0" value={form.durationMinutes || 0}
               onChange={(e) => setForm((f) => ({ ...f, durationMinutes: e.target.value }))} />
           </div>
 
           {form.type === 'video' && (
-            <Select label="Video" value={form.video || ''} onChange={(e) => setForm((f) => ({ ...f, video: e.target.value }))}
-              options={[{ value: '', label: '— select uploaded video (Videos tab) —' },
+            <Select label={t('cur.video')} value={form.video || ''} onChange={(e) => setForm((f) => ({ ...f, video: e.target.value }))}
+              options={[{ value: '', label: t('cur.selectVideo') },
                 ...videos.filter((v) => v.status === 'ready').map((v) => ({ value: v._id, label: v.title }))]} />
           )}
           {['pdf', 'document'].includes(form.type) && (
-            <Select label="File" value={form.fileAsset || ''} onChange={(e) => setForm((f) => ({ ...f, fileAsset: e.target.value }))}
-              options={[{ value: '', label: '— select uploaded file (Videos tab → files) —' },
+            <Select label={t('cur.file')} value={form.fileAsset || ''} onChange={(e) => setForm((f) => ({ ...f, fileAsset: e.target.value }))}
+              options={[{ value: '', label: t('cur.selectFile') },
                 ...files.map((fl) => ({ value: fl._id, label: fl.originalName }))]} />
           )}
           {form.type === 'quiz' && (
-            <Select label="Quiz" value={form.quiz || ''} onChange={(e) => setForm((f) => ({ ...f, quiz: e.target.value }))}
-              options={[{ value: '', label: '— select quiz (Quizzes tab) —' },
+            <Select label={t('cur.quiz')} value={form.quiz || ''} onChange={(e) => setForm((f) => ({ ...f, quiz: e.target.value }))}
+              options={[{ value: '', label: t('cur.selectQuiz') },
                 // A draft attached here is invisible to students until it is published.
-                ...quizzes.map((q) => ({ value: q._id, label: q.isPublished ? q.title : `${q.title} (draft — publish it first)` }))]} />
+                ...quizzes.map((q) => ({ value: q._id, label: q.isPublished ? q.title : t('cur.draftSuffix', { title: q.title }) }))]} />
           )}
           {form.type === 'assignment' && (
-            <Select label="Assignment" value={form.assignment || ''} onChange={(e) => setForm((f) => ({ ...f, assignment: e.target.value }))}
-              options={[{ value: '', label: '— select assignment —' },
+            <Select label={t('cur.assignment')} value={form.assignment || ''} onChange={(e) => setForm((f) => ({ ...f, assignment: e.target.value }))}
+              options={[{ value: '', label: t('cur.selectAssignment') },
                 ...assignments.map((a) => ({ value: a._id, label: a.title }))]} />
           )}
           {form.type === 'text' && (
-            <Textarea label="Content" value={form.content || ''} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} rows={6} />
+            <Textarea label={t('cur.content')} dir="auto" value={form.content || ''} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} rows={6} />
           )}
-          <Toggle label="Published" checked={form.isPublished !== false} onChange={(v) => setForm((f) => ({ ...f, isPublished: v }))} />
-          <Toggle label="Free lesson" hint="Anyone signed in can watch this one without enrolling — as long as the course is listed in the catalog."
+          <Toggle label={t('cur.publishedToggle')} checked={form.isPublished !== false} onChange={(v) => setForm((f) => ({ ...f, isPublished: v }))} />
+          <Toggle label={t('cur.freeToggle')} hint={t('cur.freeHint')}
             checked={form.isFree === true} onChange={(v) => setForm((f) => ({ ...f, isFree: v }))} />
-          <Button className="w-full" loading={busy} onClick={saveLesson} disabled={!form.title?.trim()}>Save lesson</Button>
+          <Button className="w-full" loading={busy} onClick={saveLesson} disabled={!form.title?.trim()}>{t('cur.saveLesson')}</Button>
         </div>
       </Modal>
     </div>

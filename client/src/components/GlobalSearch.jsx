@@ -81,7 +81,7 @@ export default function GlobalSearch() {
               </div>
               {results[g.key].map((item) => (
                 <button key={item._id} onClick={() => goto(g.key, item)}
-                  className="block w-full px-4 py-2 text-left text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700/50">
+                  className="block w-full px-4 py-2 text-start text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700/50">
                   {item.title || item.name}
                   {item.username && <span className="ms-2 text-xs text-surface-400">@{item.username}</span>}
                   {item.teacher?.name && <span className="ms-2 text-xs text-surface-400">by {item.teacher.name}</span>}

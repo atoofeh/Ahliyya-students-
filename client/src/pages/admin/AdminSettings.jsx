@@ -3,12 +3,14 @@ import { Save, ShieldCheck, Timer, Video, Wrench, Lock } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../hooks/useLanguage';
 import { Card, Button, Input, Select, Toggle } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 
 export default function AdminSettings() {
   const toast = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const isOwner = user?.role === 'super_admin';
   const [settings, setSettings] = useState(null);
   const [ownerOnly, setOwnerOnly] = useState([]);
@@ -32,12 +34,13 @@ export default function AdminSettings() {
         maxUploadMb: Number(settings.maxUploadMb),
         storageQuotaGb: Number(settings.storageQuotaGb),
         defaultQuizRetakeLimit: Number(settings.defaultQuizRetakeLimit),
+        maxVideoViews: Number(settings.maxVideoViews) || 0,
       };
       // Owner-only keys are rejected server-side for admins; never send them.
       if (!isOwner) for (const k of ownerOnly) delete payload[k];
       const { data } = await api.put('/admin/settings', payload);
       setSettings(data.settings);
-      toast.success('Settings saved — applied platform-wide within seconds');
+      toast.success(t('set.saved'));
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
   };
 
@@ -47,7 +50,7 @@ export default function AdminSettings() {
   const lock = (k) => !isOwner && ownerOnly.includes(k);
   const ownerTag = isOwner ? null : (
     <span className="ms-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-gold-600 dark:text-gold-400">
-      <Lock size={10} /> Owner setting
+      <Lock size={10} /> {t('set.ownerSetting')}
     </span>
   );
 
@@ -55,64 +58,72 @@ export default function AdminSettings() {
     <div className="max-w-3xl space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Platform settings</h1>
-          <p className="text-sm text-surface-500">Changes apply to all users within ~15 seconds (settings cache TTL).</p>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{t('set.title')}</h1>
+          <p className="text-sm text-surface-500">{t('set.subtitle')}</p>
         </div>
-        <Button loading={busy} onClick={save}><Save size={15} /> Save all</Button>
+        <Button loading={busy} onClick={save}><Save size={15} /> {t('set.saveAll')}</Button>
       </div>
 
       <Card className="space-y-3 p-5">
-        <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100"><Wrench size={16} /> General</p>
-        <Input label="Platform name" value={settings.platformName} onChange={set('platformName')} />
-        <Toggle label="Maintenance mode" hint="Blocks all non-admin access immediately"
+        <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100"><Wrench size={16} /> {t('set.general')}</p>
+        <Input label={t('set.platformName')} dir="auto" value={settings.platformName} onChange={set('platformName')} />
+        <Toggle label={t('set.maintenanceMode')} hint={t('set.maintenanceHint')}
           checked={!!settings.maintenanceMode} onChange={setBool('maintenanceMode')} />
-        <Input label="Maintenance message" value={settings.maintenanceMessage} onChange={set('maintenanceMessage')} />
-        <Toggle label="Open enrollment" hint="Allow students to enroll in courses (codes still work when off... admins can always assign)"
+        <Input label={t('set.maintenanceMessage')} dir="auto" value={settings.maintenanceMessage} onChange={set('maintenanceMessage')} />
+        <Toggle label={t('set.openEnrollment')} hint={t('set.openEnrollmentHint')}
           checked={!!settings.enrollmentOpen} onChange={setBool('enrollmentOpen')} />
       </Card>
 
       <Card className="space-y-3 p-5">
         <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100">
-          <Timer size={16} /> Sessions & authentication {ownerTag}
+          <Timer size={16} /> {t('set.sessions')} {ownerTag}
         </p>
-        <Select label="Inactivity timeout" value={String(settings.sessionTimeoutMinutes)} onChange={set('sessionTimeoutMinutes')}
+        <Select label={t('set.inactivityTimeout')} value={String(settings.sessionTimeoutMinutes)} onChange={set('sessionTimeoutMinutes')}
           disabled={lock('sessionTimeoutMinutes')}
-          options={[15, 30, 60, 120].map((m) => ({ value: String(m), label: `${m} minutes` }))} />
+          options={[15, 30, 60, 120].map((m) => ({ value: String(m), label: t('set.minutesValue', { n: m }) }))} />
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Max failed logins before lockout" type="number" min="3" max="20" disabled={lock('maxLoginAttempts')}
+          <Input label={t('set.maxFailedLogins')} type="number" min="3" max="20" disabled={lock('maxLoginAttempts')}
             value={settings.maxLoginAttempts} onChange={set('maxLoginAttempts')} />
-          <Input label="Lockout duration (minutes)" type="number" min="1" max="1440" disabled={lock('lockoutMinutes')}
+          <Input label={t('set.lockoutDuration')} type="number" min="1" max="1440" disabled={lock('lockoutMinutes')}
             value={settings.lockoutMinutes} onChange={set('lockoutMinutes')} />
         </div>
-        <Toggle label="Require email verification" checked={!!settings.requireEmailVerification}
+        <Toggle label={t('set.requireEmail')} checked={!!settings.requireEmailVerification}
           onChange={lock('requireEmailVerification') ? () => {} : setBool('requireEmailVerification')} />
-        <Toggle label="One authorized device per account"
-          hint="A second device is refused until an administrator revokes the first one. Sessions stay pinned to their device either way."
+        <Toggle label={t('set.oneDevice')}
+          hint={t('set.oneDeviceHint')}
           checked={!!settings.deviceBindingEnabled}
           onChange={lock('deviceBindingEnabled') ? () => {} : setBool('deviceBindingEnabled')} />
       </Card>
 
       <Card className="space-y-3 p-5">
-        <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100"><Video size={16} /> Content protection</p>
-        <Toggle label="Recording protection" hint="Player-level deterrents: pause on tab-hide, PiP & download disabled"
+        <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100"><Video size={16} /> {t('set.contentProtection')}</p>
+        <Toggle label={t('set.recordingProtection')} hint={t('set.recordingHint')}
           checked={!!settings.recordingProtection} onChange={setBool('recordingProtection')} />
-        <Toggle label="Screenshot protection" hint="Blocks PrintScreen shortcut & clipboard during quizzes (best-effort — see security docs)"
+        <Toggle label={t('set.screenshotProtection')} hint={t('set.screenshotHint')}
           checked={!!settings.screenshotProtection} onChange={setBool('screenshotProtection')} />
-        <Toggle label="Dynamic video watermark" hint="Overlays student name & ID on every video"
+        <Toggle label={t('set.watermark')} hint={t('set.watermarkHint')}
           checked={!!settings.watermarkEnabled} onChange={setBool('watermarkEnabled')} />
-        <Toggle label="Include IP address in watermark" checked={!!settings.watermarkShowIp}
+        <Toggle label={t('set.watermarkIp')} checked={!!settings.watermarkShowIp}
           onChange={setBool('watermarkShowIp')} />
+        {/* The allowance the server enforces. It had no control here at all,
+            so the only way to change it was to edit the database by hand. */}
+        <Select label={t('set.watchLimit')} hint={t('set.watchLimitHint')}
+          value={String(settings.maxVideoViews ?? 4)} onChange={set('maxVideoViews')}
+          options={[0, 1, 2, 3, 4, 5, 6, 8, 10].map((n) => ({
+            value: String(n),
+            label: n === 0 ? t('set.watchLimitOff') : t('set.watchLimitValue', { n }),
+          }))} />
       </Card>
 
       <Card className="space-y-3 p-5">
-        <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100"><ShieldCheck size={16} /> Anti-cheat & storage</p>
-        <Toggle label="Anti-cheat system" checked={!!settings.antiCheatEnabled} onChange={setBool('antiCheatEnabled')} />
-        <Select label="Anti-cheat strictness" value={settings.antiCheatStrictness} onChange={set('antiCheatStrictness')}
-          options={[{ value: 'low', label: 'Low (0.5× weights)' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High (1.5× weights)' }]} />
+        <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100"><ShieldCheck size={16} /> {t('set.anticheatStorage')}</p>
+        <Toggle label={t('set.anticheatSystem')} checked={!!settings.antiCheatEnabled} onChange={setBool('antiCheatEnabled')} />
+        <Select label={t('set.strictness')} value={settings.antiCheatStrictness} onChange={set('antiCheatStrictness')}
+          options={[{ value: 'low', label: t('set.strictLow') }, { value: 'medium', label: t('set.strictMedium') }, { value: 'high', label: t('set.strictHigh') }]} />
         <div className="grid grid-cols-3 gap-3">
-          <Input label="Max upload (MB)" type="number" min="10" value={settings.maxUploadMb} onChange={set('maxUploadMb')} />
-          <Input label="Storage quota (GB)" type="number" min="1" value={settings.storageQuotaGb} onChange={set('storageQuotaGb')} />
-          <Input label="Default quiz retakes" type="number" min="0" value={settings.defaultQuizRetakeLimit} onChange={set('defaultQuizRetakeLimit')} />
+          <Input label={t('set.maxUpload')} type="number" min="10" value={settings.maxUploadMb} onChange={set('maxUploadMb')} />
+          <Input label={t('set.storageQuota')} type="number" min="1" value={settings.storageQuotaGb} onChange={set('storageQuotaGb')} />
+          <Input label={t('set.defaultRetakes')} type="number" min="0" value={settings.defaultQuizRetakeLimit} onChange={set('defaultQuizRetakeLimit')} />
         </div>
       </Card>
     </div>

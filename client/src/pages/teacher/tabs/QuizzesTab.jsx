@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Lock, Unlock, BarChart3, Users, BellRing, HelpCircle } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
+import { useLanguage } from '../../../hooks/useLanguage';
 import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState, Spinner } from '../../../components/ui';
 import { SkeletonCard } from '../../../components/Skeletons';
 
@@ -16,6 +17,7 @@ const emptyQuiz = () => ({
 
 export default function QuizzesTab({ courseId }) {
   const toast = useToast();
+  const { t } = useLanguage();
   const [quizzes, setQuizzes] = useState(null);
   const [bank, setBank] = useState([]);
   const [modal, setModal] = useState(false);
@@ -81,7 +83,7 @@ export default function QuizzesTab({ courseId }) {
       };
       if (form._id) await api.put(`/quizzes/courses/${courseId}/${form._id}`, payload);
       else await api.post(`/quizzes/courses/${courseId}`, payload);
-      toast.success('Quiz saved');
+      toast.success(t('qz.saved'));
       setModal(false);
       load();
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
@@ -90,13 +92,13 @@ export default function QuizzesTab({ courseId }) {
   const toggleLock = async (q) => {
     try {
       await api.put(`/quizzes/courses/${courseId}/${q._id}`, { isLocked: !q.isLocked });
-      toast.success(q.isLocked ? 'Quiz unlocked' : 'Quiz locked');
+      toast.success(t(q.isLocked ? 'qz.unlockedToast' : 'qz.lockedToast'));
       load();
     } catch (err) { toast.error(apiError(err)); }
   };
 
   const remove = async (id) => {
-    if (!window.confirm('Delete this quiz?')) return;
+    if (!window.confirm(t('qz.confirmDelete'))) return;
     try { await api.delete(`/quizzes/courses/${courseId}/${id}`); load(); }
     catch (err) { toast.error(apiError(err)); }
   };
@@ -130,7 +132,7 @@ export default function QuizzesTab({ courseId }) {
         questionId, points: Number(g.points) || 0, feedback: g.feedback,
       }));
       await api.post(`/quizzes/attempts/${gradeModal._id}/grade`, { grades: payload });
-      toast.success('Attempt graded');
+      toast.success(t('qz.graded'));
       setGradeModal(null);
       if (attemptsModal) openAttempts(attemptsModal);
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
@@ -139,7 +141,7 @@ export default function QuizzesTab({ courseId }) {
   const remind = async (q) => {
     try {
       const { data } = await api.post(`/quizzes/courses/${courseId}/${q._id}/remind`, {});
-      toast.success(`Reminder sent to ${data.notified} student(s)`);
+      toast.success(t('qz.reminderSent', { n: data.notified }));
     } catch (err) { toast.error(apiError(err)); }
   };
 
@@ -148,32 +150,43 @@ export default function QuizzesTab({ courseId }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={openNew}><Plus size={15} /> New quiz</Button>
+        <Button onClick={openNew}><Plus size={15} /> {t('qz.new')}</Button>
       </div>
 
       {quizzes.length === 0 ? (
-        <Card><EmptyState icon={<HelpCircle size={24} />} title="No quizzes yet"
-          subtitle="Build questions in the Question bank tab, then assemble quizzes here." /></Card>
+        <Card><EmptyState icon={<HelpCircle size={24} />} title={t('qz.none')}
+          subtitle={t('qz.noneHint')} /></Card>
       ) : quizzes.map((q) => (
         <Card key={q._id} className="p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-semibold text-surface-900 dark:text-white">{q.title}</p>
-                <Badge color={q.isPublished ? 'green' : 'gray'}>{q.isPublished ? 'Published' : 'Draft'}</Badge>
-                {q.isLocked && <Badge color="red">Locked</Badge>}
-                {q.pool?.enabled && <Badge color="blue">Pool: {q.pool.drawCount}</Badge>}
+                <p dir="auto" className="font-semibold text-surface-900 dark:text-white">{q.title}</p>
+                <Badge color={q.isPublished ? 'green' : 'gray'}>{t(q.isPublished ? 'ac2.publishedBadge' : 'ac2.draftBadge')}</Badge>
+                {q.isLocked && <Badge color="red">{t('qz.locked')}</Badge>}
+                {q.pool?.enabled && <Badge color="blue">{t('qz.pool', { n: q.pool.drawCount })}</Badge>}
               </div>
-              <p className="mt-0.5 text-xs text-surface-400">
-                {q.pool?.enabled ? `${q.pool.drawCount} from pool` : `${q.questions?.length || 0} questions`} ·
-                {q.timeLimitMinutes ? ` ${q.timeLimitMinutes} min ·` : ' untimed ·'} pass {q.passingScore}% ·
-                {q.maxAttempts || '∞'} attempts
-                {q.availableUntil && ` · closes ${new Date(q.availableUntil).toLocaleString()}`}
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-surface-400">
+                <span className="bidi-isolate">
+                  {q.pool?.enabled ? t('qz.fromPool', { n: q.pool.drawCount }) : t('qz.questionCount', { n: q.questions?.length || 0 })}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span className="bidi-isolate">{q.timeLimitMinutes ? t('qz.minutes', { n: q.timeLimitMinutes }) : t('qz.untimed')}</span>
+                <span aria-hidden="true">·</span>
+                <span className="bidi-isolate">{t('qz.pass', { n: q.passingScore })}</span>
+                <span aria-hidden="true">·</span>
+                <span className="bidi-isolate">{t('qz.attemptsAllowed', { n: q.maxAttempts || '∞' })}</span>
+                {q.availableUntil && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="bidi-isolate">{t('qz.closesAt', { date: new Date(q.availableUntil).toLocaleString() })}</span>
+                  </>
+                )}
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              <Button size="sm" variant="outline" onClick={() => openStats(q)}><BarChart3 size={14} /> Stats</Button>
-              <Button size="sm" variant="outline" onClick={() => openAttempts(q)}><Users size={14} /> Attempts</Button>
+              <Button size="sm" variant="outline" onClick={() => openStats(q)}><BarChart3 size={14} /> {t('qz.stats')}</Button>
+              <Button size="sm" variant="outline" onClick={() => openAttempts(q)}><Users size={14} /> {t('qz.attempts')}</Button>
               <Button size="sm" variant="outline" onClick={() => remind(q)}><BellRing size={14} /></Button>
               <Button size="sm" variant="outline" onClick={() => toggleLock(q)}>
                 {q.isLocked ? <Unlock size={14} /> : <Lock size={14} />}
@@ -186,30 +199,30 @@ export default function QuizzesTab({ courseId }) {
       ))}
 
       {/* Quiz editor */}
-      <Modal open={modal} onClose={() => setModal(false)} title={form._id ? 'Edit quiz' : 'New quiz'} wide>
+      <Modal open={modal} onClose={() => setModal(false)} title={t(form._id ? 'qz.edit' : 'qz.new')} wide>
         <div className="space-y-4">
-          <Input label="Title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-          <Textarea label="Description" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+          <Input label={t('qz.title')} dir="auto" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+          <Textarea label={t('qz.description')} dir="auto" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
 
-          <Toggle label="Random question pool" hint="Draw random questions instead of a fixed list"
+          <Toggle label={t('qz.randomPool')} hint={t('qz.randomPoolHint')}
             checked={form.poolEnabled} onChange={(v) => setForm((f) => ({ ...f, poolEnabled: v }))} />
 
           {form.poolEnabled ? (
             <div className="grid grid-cols-3 gap-3">
-              <Input label="Questions to draw" type="number" min="1" value={form.poolDrawCount}
+              <Input label={t('qz.drawCount')} type="number" min="1" value={form.poolDrawCount}
                 onChange={(e) => setForm((f) => ({ ...f, poolDrawCount: e.target.value }))} />
-              <Input label="Filter by tags" value={form.poolTags} onChange={(e) => setForm((f) => ({ ...f, poolTags: e.target.value }))} />
-              <Select label="Difficulty filter" value={form.poolDifficulty}
-                options={[{ value: '', label: 'Any' }, ...['easy', 'medium', 'hard'].map((d) => ({ value: d, label: d }))]}
+              <Input label={t('qz.filterTags')} dir="auto" value={form.poolTags} onChange={(e) => setForm((f) => ({ ...f, poolTags: e.target.value }))} />
+              <Select label={t('qz.difficultyFilter')} value={form.poolDifficulty}
+                options={[{ value: '', label: t('qz.any') }, ...['easy', 'medium', 'hard'].map((d) => ({ value: d, label: t(`qb.diff.${d}`) }))]}
                 onChange={(e) => setForm((f) => ({ ...f, poolDifficulty: e.target.value }))} />
             </div>
           ) : (
             <div>
               <span className="mb-1 block text-sm font-medium text-surface-700 dark:text-surface-200">
-                Questions ({form.questions.length} selected)
+                {t('qz.questionsSelected', { n: form.questions.length })}
               </span>
               <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border border-surface-200 dark:border-surface-600 p-2">
-                {bank.length === 0 && <p className="p-2 text-sm text-surface-400">Question bank is empty.</p>}
+                {bank.length === 0 && <p className="p-2 text-sm text-surface-400">{t('qz.bankEmpty')}</p>}
                 {bank.map((qq) => (
                   <label key={qq._id} className="flex items-center gap-2 rounded px-2 py-1 text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700/50">
                     <input type="checkbox" checked={form.questions.includes(qq._id)}
@@ -217,8 +230,8 @@ export default function QuizzesTab({ courseId }) {
                         ...f,
                         questions: e.target.checked ? [...f.questions, qq._id] : f.questions.filter((id) => id !== qq._id),
                       }))} />
-                    <span className="flex-1 truncate">{qq.text}</span>
-                    <Badge>{qq.type.replace(/_/g, ' ')}</Badge>
+                    <span dir="auto" className="flex-1 truncate">{qq.text}</span>
+                    <Badge>{t(`qb.type.${qq.type}`)}</Badge>
                   </label>
                 ))}
               </div>
@@ -226,70 +239,70 @@ export default function QuizzesTab({ courseId }) {
           )}
 
           <div className="grid grid-cols-3 gap-3">
-            <Input label="Time limit (min, 0 = none)" type="number" min="0" value={form.timeLimitMinutes}
+            <Input label={t('qz.timeLimit')} type="number" min="0" value={form.timeLimitMinutes}
               onChange={(e) => setForm((f) => ({ ...f, timeLimitMinutes: e.target.value }))} />
-            <Input label="Passing score %" type="number" min="0" max="100" value={form.passingScore}
+            <Input label={t('qz.passingScore')} type="number" min="0" max="100" value={form.passingScore}
               onChange={(e) => setForm((f) => ({ ...f, passingScore: e.target.value }))} />
-            <Input label="Max attempts (0 = ∞)" type="number" min="0" value={form.maxAttempts}
+            <Input label={t('qz.maxAttempts')} type="number" min="0" value={form.maxAttempts}
               onChange={(e) => setForm((f) => ({ ...f, maxAttempts: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Opens at" type="datetime-local" value={form.availableFrom}
+            <Input label={t('qz.opensAt')} type="datetime-local" value={form.availableFrom}
               onChange={(e) => setForm((f) => ({ ...f, availableFrom: e.target.value }))} />
-            <Input label="Closes at" type="datetime-local" value={form.availableUntil}
+            <Input label={t('qz.closesAtField')} type="datetime-local" value={form.availableUntil}
               onChange={(e) => setForm((f) => ({ ...f, availableUntil: e.target.value }))} />
           </div>
 
           <div className="grid gap-1 sm:grid-cols-2">
-            <Toggle label="Shuffle questions" checked={form.shuffleQuestions} onChange={(v) => setForm((f) => ({ ...f, shuffleQuestions: v }))} />
-            <Toggle label="Shuffle answers" checked={form.shuffleAnswers} onChange={(v) => setForm((f) => ({ ...f, shuffleAnswers: v }))} />
-            <Toggle label="Negative marking" checked={form.negativeMarking} onChange={(v) => setForm((f) => ({ ...f, negativeMarking: v }))} />
-            <Toggle label="Show explanations" checked={form.showExplanations} onChange={(v) => setForm((f) => ({ ...f, showExplanations: v }))} />
-            <Toggle label="Instant results" checked={form.showResultsImmediately} onChange={(v) => setForm((f) => ({ ...f, showResultsImmediately: v }))} />
-            <Toggle label="Leaderboard" checked={form.leaderboardEnabled} onChange={(v) => setForm((f) => ({ ...f, leaderboardEnabled: v }))} />
+            <Toggle label={t('qz.shuffleQuestions')} checked={form.shuffleQuestions} onChange={(v) => setForm((f) => ({ ...f, shuffleQuestions: v }))} />
+            <Toggle label={t('qz.shuffleAnswers')} checked={form.shuffleAnswers} onChange={(v) => setForm((f) => ({ ...f, shuffleAnswers: v }))} />
+            <Toggle label={t('qz.negativeMarking')} checked={form.negativeMarking} onChange={(v) => setForm((f) => ({ ...f, negativeMarking: v }))} />
+            <Toggle label={t('qz.showExplanations')} checked={form.showExplanations} onChange={(v) => setForm((f) => ({ ...f, showExplanations: v }))} />
+            <Toggle label={t('qz.instantResults')} checked={form.showResultsImmediately} onChange={(v) => setForm((f) => ({ ...f, showResultsImmediately: v }))} />
+            <Toggle label={t('qz.leaderboard')} checked={form.leaderboardEnabled} onChange={(v) => setForm((f) => ({ ...f, leaderboardEnabled: v }))} />
           </div>
 
           <div className="rounded-lg border border-surface-200 dark:border-surface-600 p-3">
-            <p className="mb-1 text-sm font-semibold text-surface-800 dark:text-surface-100">Anti-cheat</p>
-            <Toggle label="Enable proctoring" checked={form.acEnabled} onChange={(v) => setForm((f) => ({ ...f, acEnabled: v }))} />
-            <Toggle label="Require fullscreen" checked={form.acFullscreen} onChange={(v) => setForm((f) => ({ ...f, acFullscreen: v }))} />
-            <Toggle label="Block copy/paste" checked={form.acBlockCopy} onChange={(v) => setForm((f) => ({ ...f, acBlockCopy: v }))} />
-            <Input label="Auto-submit after N violations" type="number" min="1" value={form.acMaxViolations}
+            <p className="mb-1 text-sm font-semibold text-surface-800 dark:text-surface-100">{t('qz.antiCheat')}</p>
+            <Toggle label={t('qz.enableProctoring')} checked={form.acEnabled} onChange={(v) => setForm((f) => ({ ...f, acEnabled: v }))} />
+            <Toggle label={t('qz.requireFullscreen')} checked={form.acFullscreen} onChange={(v) => setForm((f) => ({ ...f, acFullscreen: v }))} />
+            <Toggle label={t('qz.blockCopy')} checked={form.acBlockCopy} onChange={(v) => setForm((f) => ({ ...f, acBlockCopy: v }))} />
+            <Input label={t('qz.autoSubmitAfter')} type="number" min="1" value={form.acMaxViolations}
               onChange={(e) => setForm((f) => ({ ...f, acMaxViolations: e.target.value }))} />
           </div>
 
-          <Toggle label="Published" hint="Students only see published quizzes"
+          <Toggle label={t('qz.publishedToggle')} hint={t('qz.publishedHint')}
             checked={form.isPublished} onChange={(v) => setForm((f) => ({ ...f, isPublished: v }))} />
           <Button className="w-full" loading={busy} onClick={save}
             disabled={!form.title.trim() || (!form.poolEnabled && form.questions.length === 0)}>
-            Save quiz
+            {t('qz.saveQuiz')}
           </Button>
         </div>
       </Modal>
 
       {/* Stats */}
-      <Modal open={!!statsModal} onClose={() => setStatsModal(null)} title={`Stats: ${statsModal?.title || ''}`}>
+      <Modal open={!!statsModal} onClose={() => setStatsModal(null)} title={t('qz.statsOf', { title: statsModal?.title || '' })}>
         {!stats ? <Spinner /> : (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3 text-center">
-              {[['Attempts', stats.attempts], ['Students', stats.uniqueStudents || 0], ['Average', `${stats.avgPercent}%`],
-                ['Pass rate', `${stats.passRate}%`], ['Highest', `${stats.highest}%`], ['Flagged', stats.flaggedAttempts]].map(([l, v]) => (
-                <div key={l} className="rounded-lg bg-surface-50 dark:bg-surface-700/40 p-3">
+              {[['qz.statAttempts', stats.attempts], ['qz.statStudents', stats.uniqueStudents || 0], ['qz.statAverage', `${stats.avgPercent}%`],
+                ['qz.statPassRate', `${stats.passRate}%`], ['qz.statHighest', `${stats.highest}%`], ['qz.statFlagged', stats.flaggedAttempts]].map(([k, v]) => (
+                <div key={k} className="rounded-lg bg-surface-50 dark:bg-surface-700/40 p-3">
                   <p className="text-lg font-bold text-surface-900 dark:text-white">{v}</p>
-                  <p className="text-xs text-surface-400">{l}</p>
+                  <p className="text-xs text-surface-400">{t(k)}</p>
                 </div>
               ))}
             </div>
             <div>
-              <p className="mb-2 text-sm font-medium text-surface-700 dark:text-surface-200">Score distribution</p>
+              <p className="mb-2 text-sm font-medium text-surface-700 dark:text-surface-200">{t('qz.distribution')}</p>
               {stats.distribution?.map((b) => (
                 <div key={b.range} className="mb-1 flex items-center gap-2 text-xs">
-                  <span className="w-12 text-surface-400">{b.range}</span>
+                  <span dir="ltr" className="w-12 text-surface-400">{b.range}</span>
                   <div className="h-3 flex-1 rounded bg-surface-100 dark:bg-surface-700">
                     <div className="h-full rounded bg-primary-500"
                       style={{ width: `${stats.attempts ? (b.count / stats.attempts) * 100 : 0}%` }} />
                   </div>
-                  <span className="w-6 text-right text-surface-500">{b.count}</span>
+                  <span className="w-6 text-end text-surface-500">{b.count}</span>
                 </div>
               ))}
             </div>
@@ -298,23 +311,23 @@ export default function QuizzesTab({ courseId }) {
       </Modal>
 
       {/* Attempts + grading */}
-      <Modal open={!!attemptsModal} onClose={() => setAttemptsModal(null)} title={`Attempts: ${attemptsModal?.title || ''}`} wide>
-        {!attempts ? <Spinner /> : attempts.length === 0 ? <EmptyState title="No attempts yet" /> : (
+      <Modal open={!!attemptsModal} onClose={() => setAttemptsModal(null)} title={t('qz.attemptsOf', { title: attemptsModal?.title || '' })} wide>
+        {!attempts ? <Spinner /> : attempts.length === 0 ? <EmptyState title={t('qz.noAttempts')} /> : (
           <div className="divide-y divide-surface-100 dark:divide-surface-700">
             {attempts.map((a) => (
               <div key={a._id} className="flex items-center gap-3 py-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-surface-800 dark:text-surface-100">{a.student?.name} <span className="text-surface-400">@{a.student?.username}</span></p>
+                  <p dir="auto" className="text-sm font-medium text-surface-800 dark:text-surface-100">{a.student?.name} <span dir="ltr" className="text-surface-400">@{a.student?.username}</span></p>
                   <p className="text-xs text-surface-400">
-                    #{a.attemptNumber} · {new Date(a.submittedAt || a.createdAt).toLocaleString()}
-                    {a.riskScore > 0 && <span className="ms-2 text-rose-500">risk {a.riskScore}</span>}
+                    <span dir="ltr">#{a.attemptNumber}</span> · {new Date(a.submittedAt || a.createdAt).toLocaleString()}
+                    {a.riskScore > 0 && <span className="ms-2 text-rose-500">{t('qz.risk', { n: a.riskScore })}</span>}
                   </p>
                 </div>
                 <Badge color={a.pendingManualGrading ? 'amber' : a.passed ? 'green' : a.passed === false ? 'red' : 'gray'}>
-                  {a.pendingManualGrading ? 'Needs grading' : `${a.percent}%`}
+                  {a.pendingManualGrading ? t('qz.needsGrading') : `${a.percent}%`}
                 </Badge>
                 <Button size="sm" variant="outline" onClick={() => openGrading(a._id)}>
-                  {a.pendingManualGrading ? 'Grade' : 'Review'}
+                  {t(a.pendingManualGrading ? 'qz.grade' : 'qz.review')}
                 </Button>
               </div>
             ))}
@@ -322,7 +335,7 @@ export default function QuizzesTab({ courseId }) {
         )}
       </Modal>
 
-      <Modal open={!!gradeModal} onClose={() => setGradeModal(null)} title={`Grade attempt — ${gradeModal?.student?.name || ''}`} wide>
+      <Modal open={!!gradeModal} onClose={() => setGradeModal(null)} title={t('qz.gradeAttempt', { name: gradeModal?.student?.name || '' })} wide>
         {gradeModal && (
           <div className="space-y-4">
             {(gradeModal.questionsSnapshot || []).map((q, i) => {
@@ -330,27 +343,27 @@ export default function QuizzesTab({ courseId }) {
               const manual = q.type === 'essay' || a.needsManualGrading;
               return (
                 <div key={q.questionId} className="rounded-lg border border-surface-200 dark:border-surface-600 p-3">
-                  <p className="text-sm font-medium text-surface-800 dark:text-surface-100">{i + 1}. {q.text}</p>
-                  <p className="mt-1 whitespace-pre-wrap rounded bg-surface-50 dark:bg-surface-700/40 px-2 py-1.5 text-sm text-surface-600 dark:text-surface-300">
-                    {a.textAnswer || (a.selectedOptionIds || []).join(', ') || (a.blanks || []).join(' / ') || '(no answer)'}
+                  <p dir="auto" className="text-sm font-medium text-surface-800 dark:text-surface-100">{i + 1}. {q.text}</p>
+                  <p dir="auto" className="mt-1 whitespace-pre-wrap rounded bg-surface-50 dark:bg-surface-700/40 px-2 py-1.5 text-sm text-surface-600 dark:text-surface-300">
+                    {a.textAnswer || (a.selectedOptionIds || []).join(', ') || (a.blanks || []).join(' / ') || t('qz.noAnswer')}
                   </p>
                   {manual ? (
                     <div className="mt-2 grid grid-cols-[100px_1fr] gap-2">
-                      <Input label={`Points (max ${q.points})`} type="number" min="0" max={q.points}
+                      <Input label={t('qz.pointsMax', { n: q.points })} type="number" min="0" max={q.points}
                         value={grades[q.questionId]?.points ?? 0}
                         onChange={(e) => setGrades((g) => ({ ...g, [q.questionId]: { ...g[q.questionId], points: e.target.value } }))} />
-                      <Input label="Feedback" value={grades[q.questionId]?.feedback ?? ''}
+                      <Input label={t('qz.feedback')} dir="auto" value={grades[q.questionId]?.feedback ?? ''}
                         onChange={(e) => setGrades((g) => ({ ...g, [q.questionId]: { ...g[q.questionId], feedback: e.target.value } }))} />
                     </div>
                   ) : (
-                    <p className="mt-1 text-xs text-surface-400">Auto-graded: {a.pointsAwarded ?? 0}/{q.points} pts</p>
+                    <p className="mt-1 text-xs text-surface-400">{t('qz.autoGraded', { awarded: a.pointsAwarded ?? 0, max: q.points })}</p>
                   )}
                 </div>
               );
             })}
             {Object.keys(grades).length > 0
-              ? <Button className="w-full" loading={busy} onClick={submitGrades}>Save grades</Button>
-              : <p className="text-center text-sm text-surface-400">Nothing needs manual grading.</p>}
+              ? <Button className="w-full" loading={busy} onClick={submitGrades}>{t('qz.saveGrades')}</Button>
+              : <p className="text-center text-sm text-surface-400">{t('qz.nothingManual')}</p>}
           </div>
         )}
       </Modal>

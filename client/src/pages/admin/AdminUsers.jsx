@@ -3,7 +3,7 @@ import { Plus, KeyRound, LogOut, Trash2, Eye, Smartphone } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
-import { ROLE_LABEL } from '../../utils/roles';
+import { useLanguage } from '../../hooks/useLanguage';
 import { Card, Button, Modal, Input, Select, Badge, Spinner, Pagination, EmptyState, Tabs } from '../../components/ui';
 import { SkeletonRows } from '../../components/Skeletons';
 
@@ -13,6 +13,7 @@ const STATUS_COLORS = { active: 'green', suspended: 'amber', banned: 'red', pend
 export default function AdminUsers() {
   const toast = useToast();
   const { user: me } = useAuth();
+  const { t } = useLanguage();
   const isOwner = me?.role === 'super_admin';
   const [result, setResult] = useState(null);
   const [page, setPage] = useState(1);
@@ -45,7 +46,7 @@ export default function AdminUsers() {
     setBusy(true);
     try {
       await api.post('/admin/users', { ...form, email: form.email || undefined });
-      toast.success(`${ROLE_LABEL[form.role] || form.role} account created`);
+      toast.success(t('usr.accountCreated', { role: t(`role.${form.role}`) }));
       setCreateModal(false);
       setForm({ name: '', username: '', email: '', password: '', role: 'student', mustChangePassword: true });
       load();
@@ -63,15 +64,15 @@ export default function AdminUsers() {
   const forceLogout = async (user) => {
     try {
       await api.post(`/admin/users/${user._id}/force-logout`);
-      toast.success('All sessions terminated');
+      toast.success(t('usr.toastLoggedOut'));
     } catch (err) { toast.error(apiError(err)); }
   };
 
   const deleteUser = async (user) => {
-    if (!window.confirm(`Delete ${user.name}? This is a soft delete — records are preserved but the account is disabled.`)) return;
+    if (!window.confirm(t('usr.confirmDelete', { name: user.name }))) return;
     try {
       await api.delete(`/admin/users/${user._id}`);
-      toast.success('User deleted');
+      toast.success(t('usr.toastDeleted'));
       load();
     } catch (err) { toast.error(apiError(err)); }
   };
@@ -80,7 +81,7 @@ export default function AdminUsers() {
     setBusy(true);
     try {
       await api.post(`/admin/users/${resetModal._id}/reset-password`, { password: newPassword });
-      toast.success('Password reset — user must change it at next login');
+      toast.success(t('usr.toastPasswordReset'));
       setResetModal(null); setNewPassword('');
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
   };
@@ -98,7 +99,7 @@ export default function AdminUsers() {
     setBusy(true);
     try {
       await api.post(`/admin/users/${revokeModal.user.id}/device/revoke`, { reason: revokeReason });
-      toast.success('Device revoked — the user is signed out everywhere and can sign in from a new device');
+      toast.success(t('usr.toastDeviceRevoked'));
       setRevokeModal(null); setRevokeReason('');
       viewDetail({ _id: revokeModal.user.id });
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
@@ -108,60 +109,60 @@ export default function AdminUsers() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">User management</h1>
-          <p className="text-sm text-surface-500">Create accounts, control access, reset credentials and devices.</p>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{t('usr.title')}</h1>
+          <p className="text-sm text-surface-500">{t('usr.subtitle')}</p>
         </div>
-        <Button onClick={() => setCreateModal(true)}><Plus size={15} /> Create user</Button>
+        <Button onClick={() => setCreateModal(true)}><Plus size={15} /> {t('usr.createUser')}</Button>
       </div>
 
       <Tabs
         tabs={[
-          { key: '', label: 'All' }, { key: 'student', label: 'Students' }, { key: 'teacher', label: 'Teachers' },
-          ...(isOwner ? [{ key: 'admin', label: 'Admins' }] : []),
+          { key: '', label: t('usr.all') }, { key: 'student', label: t('usr.students') }, { key: 'teacher', label: t('usr.teachers') },
+          ...(isOwner ? [{ key: 'admin', label: t('usr.admins') }] : []),
         ]}
         active={filters.role}
         onChange={(role) => { setPage(1); setFilters((f) => ({ ...f, role })); }}
       />
 
       <div className="flex flex-wrap gap-3">
-        <div className="w-64"><Input placeholder="Search name, username, email..." value={filters.search}
+        <div className="w-64"><Input placeholder={t('usr.searchPlaceholder')} dir="auto" value={filters.search}
           onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, search: e.target.value })); }} /></div>
         <Select value={filters.status} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, status: e.target.value })); }}
-          options={[{ value: '', label: 'All statuses' }, { value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }, { value: 'banned', label: 'Banned' }]} />
+          options={[{ value: '', label: t('usr.allStatuses') }, { value: 'active', label: t('usr.statusActive') }, { value: 'suspended', label: t('usr.statusSuspended') }, { value: 'banned', label: t('usr.statusBanned') }]} />
       </div>
 
       {!result ? <SkeletonRows /> : (
         <>
           <Card className="overflow-x-auto">
-            {result.items.length === 0 ? <EmptyState title="No users match" /> : (
+            {result.items.length === 0 ? <EmptyState title={t('usr.noMatch')} /> : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-surface-200 dark:border-surface-700 text-left text-xs uppercase tracking-wide text-surface-400">
-                    <th className="px-4 py-3">User</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Last login</th><th className="px-4 py-3 text-right">Actions</th>
+                  <tr className="border-b border-surface-200 dark:border-surface-700 text-start text-xs uppercase tracking-wide text-surface-400">
+                    <th className="px-4 py-3">{t('usr.colUser')}</th><th className="px-4 py-3">{t('usr.colRole')}</th><th className="px-4 py-3">{t('usr.colStatus')}</th>
+                    <th className="px-4 py-3">{t('usr.colLastLogin')}</th><th className="px-4 py-3 text-end">{t('usr.colActions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {result.items.map((u) => (
                     <tr key={u._id} className="border-b border-surface-100 dark:border-surface-700/50 hover:bg-surface-50 dark:hover:bg-surface-700/30">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-surface-800 dark:text-surface-100">{u.name}</p>
-                        <p className="text-xs text-surface-400">@{u.username}{u.email && ` · ${u.email}`}</p>
+                        <p dir="auto" className="font-medium text-surface-800 dark:text-surface-100">{u.name}</p>
+                        <p dir="ltr" className="text-xs text-surface-400">@{u.username}{u.email && ` · ${u.email}`}</p>
                       </td>
-                      <td className="px-4 py-3"><Badge color={ROLE_COLORS[u.role]}>{ROLE_LABEL[u.role] || u.role}</Badge></td>
-                      <td className="px-4 py-3"><Badge color={STATUS_COLORS[u.status]}>{u.status}</Badge></td>
-                      <td className="px-4 py-3 text-surface-400">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Never'}</td>
+                      <td className="px-4 py-3"><Badge color={ROLE_COLORS[u.role]}>{t(`role.${u.role}`)}</Badge></td>
+                      <td className="px-4 py-3"><Badge color={STATUS_COLORS[u.status]}>{t(`usr.status${u.status.charAt(0).toUpperCase()}${u.status.slice(1)}`)}</Badge></td>
+                      <td className="px-4 py-3 text-surface-400">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : t('usr.never')}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" title="Details" onClick={() => viewDetail(u)}><Eye size={14} /></Button>
+                          <Button size="sm" variant="ghost" title={t('usr.details')} onClick={() => viewDetail(u)}><Eye size={14} /></Button>
                           {canManage(u) && (
                             <>
-                              <Button size="sm" variant="ghost" title="Reset password" onClick={() => setResetModal(u)}><KeyRound size={14} /></Button>
-                              <Button size="sm" variant="ghost" title="Force logout" onClick={() => forceLogout(u)}><LogOut size={14} /></Button>
+                              <Button size="sm" variant="ghost" title={t('usr.resetPassword')} onClick={() => setResetModal(u)}><KeyRound size={14} /></Button>
+                              <Button size="sm" variant="ghost" title={t('usr.forceLogout')} onClick={() => forceLogout(u)}><LogOut size={14} /></Button>
                               {u.status === 'active'
-                                ? <Button size="sm" variant="ghost" onClick={() => setStatus(u, 'suspended')}>Suspend</Button>
-                                : <Button size="sm" variant="ghost" onClick={() => setStatus(u, 'active')}>Activate</Button>}
-                              {u.status !== 'banned' && <Button size="sm" variant="ghost" onClick={() => setStatus(u, 'banned')}>Ban</Button>}
+                                ? <Button size="sm" variant="ghost" onClick={() => setStatus(u, 'suspended')}>{t('usr.suspend')}</Button>
+                                : <Button size="sm" variant="ghost" onClick={() => setStatus(u, 'active')}>{t('usr.activate')}</Button>}
+                              {u.status !== 'banned' && <Button size="sm" variant="ghost" onClick={() => setStatus(u, 'banned')}>{t('usr.ban')}</Button>}
                               <Button size="sm" variant="ghost" onClick={() => deleteUser(u)}><Trash2 size={14} className="text-rose-400" /></Button>
                             </>
                           )}
@@ -177,57 +178,57 @@ export default function AdminUsers() {
         </>
       )}
 
-      <Modal open={createModal} onClose={() => setCreateModal(false)} title="Create user">
+      <Modal open={createModal} onClose={() => setCreateModal(false)} title={t('usr.createUser')}>
         <div className="space-y-4">
-          <Input label="Full name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          <Input label={t('usr.fullName')} dir="auto" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Username" value={form.username} onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.toLowerCase() }))} />
-            <Select label="Role" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+            <Input label={t('usr.username')} dir="ltr" value={form.username} onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.toLowerCase() }))} />
+            <Select label={t('usr.role')} value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
               options={[
-                { value: 'student', label: 'Student' },
-                { value: 'teacher', label: 'Teacher' },
-                ...(isOwner ? [{ value: 'admin', label: 'Administrator' }] : []),
+                { value: 'student', label: t('usr.roleStudent') },
+                { value: 'teacher', label: t('usr.roleTeacher') },
+                ...(isOwner ? [{ value: 'admin', label: t('usr.roleAdmin') }] : []),
               ]} />
           </div>
-          <Input label="Email (optional)" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-          <Input label="Temporary password" type="text" value={form.password}
+          <Input label={t('usr.emailOptional')} dir="ltr" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+          <Input label={t('usr.tempPassword')} dir="ltr" type="text" value={form.password}
             onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-            hint="8+ chars, upper + lower + digit. User is forced to change it on first login." />
+            hint={t('usr.tempPasswordHint')} />
           <Button className="w-full" loading={busy} onClick={createUser}
-            disabled={!form.name || !form.username || form.password.length < 8}>Create account</Button>
+            disabled={!form.name || !form.username || form.password.length < 8}>{t('usr.createAccount')}</Button>
         </div>
       </Modal>
 
-      <Modal open={!!resetModal} onClose={() => setResetModal(null)} title={`Reset password — ${resetModal?.name || ''}`}>
+      <Modal open={!!resetModal} onClose={() => setResetModal(null)} title={t('usr.resetTitle', { name: resetModal?.name || '' })}>
         <div className="space-y-4">
-          <Input label="New temporary password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-            hint="User is logged out everywhere and must set a new password on next login." />
-          <Button className="w-full" loading={busy} onClick={resetPassword} disabled={newPassword.length < 8}>Reset password</Button>
+          <Input label={t('usr.newTempPassword')} dir="ltr" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+            hint={t('usr.newTempHint')} />
+          <Button className="w-full" loading={busy} onClick={resetPassword} disabled={newPassword.length < 8}>{t('usr.resetPassword')}</Button>
         </div>
       </Modal>
 
-      <Modal open={!!detailModal} onClose={() => setDetailModal(null)} title={`User detail — ${detailModal?.user?.name || ''}`} wide>
+      <Modal open={!!detailModal} onClose={() => setDetailModal(null)} title={t('usr.detailTitle', { name: detailModal?.user?.name || '' })} wide>
         {detailModal?.loading ? <Spinner /> : detailModal && (
           <div className="space-y-5 text-sm">
             <div className="grid grid-cols-2 gap-3">
-              <p><span className="text-surface-400">Username:</span> @{detailModal.user.username}</p>
-              <p><span className="text-surface-400">Email:</span> {detailModal.user.email || '—'} {detailModal.user.emailVerified && <Badge color="green">verified</Badge>}</p>
-              <p><span className="text-surface-400">Role:</span> {ROLE_LABEL[detailModal.user.role] || detailModal.user.role}</p>
-              <p><span className="text-surface-400">Created:</span> {new Date(detailModal.user.createdAt).toLocaleString()}</p>
+              <p><span className="text-surface-400">{t('usr.fieldUsername')}</span> <span dir="ltr">@{detailModal.user.username}</span></p>
+              <p><span className="text-surface-400">{t('usr.fieldEmail')}</span> <span dir="ltr">{detailModal.user.email || '—'}</span> {detailModal.user.emailVerified && <Badge color="green">{t('usr.verified')}</Badge>}</p>
+              <p><span className="text-surface-400">{t('usr.fieldRole')}</span> {t(`role.${detailModal.user.role}`)}</p>
+              <p><span className="text-surface-400">{t('usr.fieldCreated')}</span> {new Date(detailModal.user.createdAt).toLocaleString()}</p>
             </div>
 
             <div>
-              <p className="mb-2 flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100"><Smartphone size={15} /> Authorized device</p>
+              <p className="mb-2 flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100"><Smartphone size={15} /> {t('usr.authorizedDevice')}</p>
               {!detailModal.device?.active ? (
-                <p className="text-xs text-surface-400">No authorized device — the next sign-in will bind one.</p>
+                <p className="text-xs text-surface-400">{t('usr.noDevice')}</p>
               ) : (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-surface-200 px-3 py-2 text-xs dark:border-surface-700">
-                  <span className="font-mono font-semibold text-surface-800 dark:text-surface-100">{detailModal.device.active.publicId}</span>
+                  <span dir="ltr" className="font-mono font-semibold text-surface-800 dark:text-surface-100">{detailModal.device.active.publicId}</span>
                   <span className="text-surface-600 dark:text-surface-300">{detailModal.device.active.platform} · {detailModal.device.active.browser || '—'} · {detailModal.device.active.os || '—'}</span>
-                  <span className="text-surface-400">first {new Date(detailModal.device.active.firstAuthorizedAt).toLocaleString()}</span>
-                  <span className="text-surface-400">last seen {new Date(detailModal.device.active.lastSeenAt).toLocaleString()}</span>
+                  <span className="text-surface-400">{t('usr.firstSeen', { date: new Date(detailModal.device.active.firstAuthorizedAt).toLocaleString() })}</span>
+                  <span className="text-surface-400">{t('usr.lastSeen', { date: new Date(detailModal.device.active.lastSeenAt).toLocaleString() })}</span>
                   {canManage({ _id: detailModal.user.id, role: detailModal.user.role }) && (
-                    <Button size="sm" variant="ghost" className="ms-auto text-rose-500" onClick={() => setRevokeModal({ user: detailModal.user })}>Revoke device</Button>
+                    <Button size="sm" variant="ghost" className="ms-auto text-rose-500" onClick={() => setRevokeModal({ user: detailModal.user })}>{t('usr.revokeDevice')}</Button>
                   )}
                 </div>
               )}
@@ -235,10 +236,10 @@ export default function AdminUsers() {
                 <div className="mt-2 space-y-1">
                   {detailModal.device.history.map((d) => (
                     <div key={d.id} className="flex flex-wrap items-center gap-2 text-[11px] text-surface-400">
-                      <Badge color="gray">revoked</Badge>
-                      <span className="font-mono">{d.publicId}</span>
-                      <span>{d.revocationReason}</span>
-                      <span className="ms-auto">{d.revokedBy?.name ? `by ${d.revokedBy.name} · ` : ''}{new Date(d.revokedAt).toLocaleString()}</span>
+                      <Badge color="gray">{t('usr.revokedBadge')}</Badge>
+                      <span dir="ltr" className="font-mono">{d.publicId}</span>
+                      <span dir="auto">{d.revocationReason}</span>
+                      <span className="ms-auto">{d.revokedBy?.name ? t('usr.revokedBy', { name: d.revokedBy.name }) : ''}{new Date(d.revokedAt).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
@@ -246,23 +247,23 @@ export default function AdminUsers() {
             </div>
 
             <div>
-              <p className="mb-2 font-semibold text-surface-800 dark:text-surface-100">Recent sessions</p>
+              <p className="mb-2 font-semibold text-surface-800 dark:text-surface-100">{t('usr.recentSessions')}</p>
               {detailModal.sessions.map((s) => (
                 <div key={s._id} className="flex items-center gap-2 border-b border-surface-100 dark:border-surface-700 py-1.5 text-xs">
-                  <Badge color={s.isActive ? 'green' : 'gray'}>{s.isActive ? 'active' : s.endReason || 'ended'}</Badge>
+                  <Badge color={s.isActive ? 'green' : 'gray'}>{s.isActive ? t('usr.sessionActive') : s.endReason || t('usr.sessionEnded')}</Badge>
                   <span className="text-surface-600 dark:text-surface-300">{s.browser} · {s.os}</span>
-                  <span className="text-surface-400">{s.ip}</span>
+                  <span dir="ltr" className="text-surface-400">{s.ip}</span>
                   <span className="ms-auto text-surface-400">{new Date(s.createdAt).toLocaleString()}</span>
                 </div>
               ))}
             </div>
             <div>
-              <p className="mb-2 font-semibold text-surface-800 dark:text-surface-100">Login history</p>
+              <p className="mb-2 font-semibold text-surface-800 dark:text-surface-100">{t('usr.loginHistory')}</p>
               <div className="max-h-48 overflow-y-auto">
                 {detailModal.loginHistory.map((h) => (
                   <div key={h._id} className="flex items-center gap-2 border-b border-surface-100 dark:border-surface-700 py-1.5 text-xs">
-                    <Badge color={h.success ? 'green' : 'red'}>{h.success ? 'success' : h.reason}</Badge>
-                    <span className="text-surface-400">{h.ip} · {h.browser}</span>
+                    <Badge color={h.success ? 'green' : 'red'}>{h.success ? t('usr.loginSuccess') : h.reason}</Badge>
+                    <span dir="ltr" className="text-surface-400">{h.ip} · {h.browser}</span>
                     <span className="ms-auto text-surface-400">{new Date(h.createdAt).toLocaleString()}</span>
                   </div>
                 ))}
@@ -270,10 +271,10 @@ export default function AdminUsers() {
             </div>
             {detailModal.enrollments.length > 0 && (
               <div>
-                <p className="mb-2 font-semibold text-surface-800 dark:text-surface-100">Enrollments</p>
+                <p className="mb-2 font-semibold text-surface-800 dark:text-surface-100">{t('usr.enrollments')}</p>
                 {detailModal.enrollments.map((e) => (
                   <div key={e._id} className="flex items-center gap-2 py-1 text-xs">
-                    <span className="text-surface-600 dark:text-surface-300">{e.course?.title}</span>
+                    <span dir="auto" className="text-surface-600 dark:text-surface-300">{e.course?.title}</span>
                     <Badge>{e.status}</Badge>
                     <span className="ms-auto text-surface-400">{e.progressPercent}%</span>
                   </div>
@@ -284,13 +285,11 @@ export default function AdminUsers() {
         )}
       </Modal>
 
-      <Modal open={!!revokeModal} onClose={() => setRevokeModal(null)} title={`Revoke device — ${revokeModal?.user?.name || ''}`}>
+      <Modal open={!!revokeModal} onClose={() => setRevokeModal(null)} title={t('usr.revokeTitle', { name: revokeModal?.user?.name || '' })}>
         <div className="space-y-4">
-          <p className="text-sm text-surface-600 dark:text-surface-300">
-            All sessions end immediately and the account can be signed in from a new device. This is recorded in the audit log.
-          </p>
-          <Input label="Reason" value={revokeReason} onChange={(e) => setRevokeReason(e.target.value)} placeholder="e.g. Student reported the laptop lost" />
-          <Button className="w-full" variant="danger" loading={busy} onClick={revokeDevice} disabled={revokeReason.trim().length < 3}>Revoke device</Button>
+          <p className="text-sm text-surface-600 dark:text-surface-300">{t('usr.revokeExplain')}</p>
+          <Input label={t('usr.reason')} dir="auto" value={revokeReason} onChange={(e) => setRevokeReason(e.target.value)} placeholder={t('usr.reasonPlaceholder')} />
+          <Button className="w-full" variant="danger" loading={busy} onClick={revokeDevice} disabled={revokeReason.trim().length < 3}>{t('usr.revokeDevice')}</Button>
         </div>
       </Modal>
     </div>

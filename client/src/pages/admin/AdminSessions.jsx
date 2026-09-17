@@ -2,11 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { MonitorSmartphone, LogOut } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
+import { useLanguage } from '../../hooks/useLanguage';
 import { Card, Button, Badge, Pagination, EmptyState } from '../../components/ui';
 import { SkeletonRows } from '../../components/Skeletons';
 
 export default function AdminSessions() {
   const toast = useToast();
+  const { t } = useLanguage();
   const [result, setResult] = useState(null);
   const [page, setPage] = useState(1);
 
@@ -18,7 +20,7 @@ export default function AdminSessions() {
   const terminate = async (session) => {
     try {
       await api.post(`/admin/sessions/${session._id}/terminate`);
-      toast.success(`Session for ${session.user?.name} terminated`);
+      toast.success(t('ses.terminated', { name: session.user?.name || '' }));
       load();
     } catch (err) { toast.error(apiError(err)); }
   };
@@ -28,19 +30,17 @@ export default function AdminSessions() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Active sessions</h1>
-        <p className="text-sm text-surface-500">
-          One session per account is enforced platform-wide. Terminating a session logs the device out on its next request.
-        </p>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{t('ses.title')}</h1>
+        <p className="text-sm text-surface-500">{t('ses.subtitle')}</p>
       </div>
 
       <Card className="overflow-x-auto">
-        {result.items.length === 0 ? <EmptyState icon={<MonitorSmartphone size={24} />} title="No active sessions" /> : (
+        {result.items.length === 0 ? <EmptyState icon={<MonitorSmartphone size={24} />} title={t('ses.empty')} /> : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-surface-200 dark:border-surface-700 text-left text-xs uppercase tracking-wide text-surface-400">
-                <th className="px-4 py-3">User</th><th className="px-4 py-3">Device</th><th className="px-4 py-3">IP</th>
-                <th className="px-4 py-3">Signed in</th><th className="px-4 py-3">Last activity</th><th className="px-4 py-3" />
+              <tr className="border-b border-surface-200 dark:border-surface-700 text-start text-xs uppercase tracking-wide text-surface-400">
+                <th className="px-4 py-3">{t('ses.user')}</th><th className="px-4 py-3">{t('ses.device')}</th><th className="px-4 py-3">{t('ses.ip')}</th>
+                <th className="px-4 py-3">{t('ses.signedIn')}</th><th className="px-4 py-3">{t('ses.lastActivity')}</th><th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -51,14 +51,14 @@ export default function AdminSessions() {
                     <p className="text-xs text-surface-400">@{s.user?.username} · <Badge color="primary">{s.user?.role}</Badge></p>
                   </td>
                   <td className="px-4 py-3 text-surface-600 dark:text-surface-300">
-                    {s.browser || 'Unknown browser'}<br />
+                    {s.browser || t('ses.unknownBrowser')}<br />
                     <span className="text-xs text-surface-400">{s.os} · {s.deviceType}</span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-surface-500">{s.ip}</td>
+                  <td dir="ltr" className="px-4 py-3 font-mono text-xs text-surface-500">{s.ip}</td>
                   <td className="px-4 py-3 text-surface-400">{new Date(s.createdAt).toLocaleString()}</td>
                   <td className="px-4 py-3 text-surface-400">{new Date(s.lastActivityAt).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="danger" onClick={() => terminate(s)}><LogOut size={13} /> Force logout</Button>
+                  <td className="px-4 py-3 text-end">
+                    <Button size="sm" variant="danger" onClick={() => terminate(s)}><LogOut size={13} /> {t('ses.forceLogout')}</Button>
                   </td>
                 </tr>
               ))}

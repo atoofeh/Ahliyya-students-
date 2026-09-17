@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Video, Trash2, Eye, FileUp, File as FileIcon, Play, Users } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
+import { useLanguage } from '../../../hooks/useLanguage';
 import ChunkedUploader from '../../../components/ChunkedUploader';
 import { Card, Badge, Button, EmptyState, Spinner, Modal } from '../../../components/ui';
 import VideoPlayer from '../../../components/VideoPlayer';
@@ -12,6 +13,7 @@ const fmtDur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '
 
 export default function VideosTab({ courseId }) {
   const toast = useToast();
+  const { t } = useLanguage();
   // Staff preview. No lessonId is passed, so the player skips its progress
   // heartbeat — watch counts and completion belong to students only.
   const [preview, setPreview] = useState(null);
@@ -35,8 +37,8 @@ export default function VideosTab({ courseId }) {
   }, [videos, load]);
 
   const deleteVideo = async (id) => {
-    if (!window.confirm('Delete this video? Lessons using it will stop playing.')) return;
-    try { await api.delete(`/videos/${id}`); toast.success('Video deleted'); load(); }
+    if (!window.confirm(t('vid.confirmDelete'))) return;
+    try { await api.delete(`/videos/${id}`); toast.success(t('vid.deleted')); load(); }
     catch (err) { toast.error(apiError(err)); }
   };
 
@@ -48,7 +50,7 @@ export default function VideosTab({ courseId }) {
       const form = new FormData();
       form.append('file', file);
       await api.post(`/files/courses/${courseId}/documents`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success('File uploaded');
+      toast.success(t('vid.fileUploaded'));
       load();
     } catch (err) { toast.error(apiError(err)); }
     finally { setUploadingDoc(false); e.target.value = ''; }
@@ -63,61 +65,61 @@ export default function VideosTab({ courseId }) {
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <div className="space-y-4">
-        <h3 className="font-semibold text-surface-800 dark:text-surface-100">Videos</h3>
+        <h3 className="font-semibold text-surface-800 dark:text-surface-100">{t('vid.videos')}</h3>
         <ChunkedUploader courseId={courseId} onUploaded={load} />
         {!videos ? <Spinner /> : videos.length === 0 ? (
-          <Card><EmptyState icon={<Video size={24} />} title="No videos yet" /></Card>
+          <Card><EmptyState icon={<Video size={24} />} title={t('vid.noVideos')} /></Card>
         ) : (
           <Card className="divide-y divide-surface-100 dark:divide-surface-700">
             {videos.map((v) => (
               <div key={v._id} className="flex items-center gap-3 px-4 py-3">
                 <Video size={18} className="shrink-0 text-surface-400" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-surface-800 dark:text-surface-100">{v.title}</p>
+                  <p dir="auto" className="truncate text-sm font-medium text-surface-800 dark:text-surface-100">{v.title}</p>
                   <p className="text-xs text-surface-400">
                     {fmtDur(v.durationSeconds)} · {fmtSize(v.sizeBytes || 0)} · <Eye size={11} className="inline" /> {v.viewCount}
-                    {v.status === 'uploading' && ` · ${v.receivedChunks?.length || 0}/${v.totalChunks} chunks`}
+                    {v.status === 'uploading' && ` · ${t('vid.chunks', { received: v.receivedChunks?.length || 0, total: v.totalChunks })}`}
                   </p>
                 </div>
                 <Badge color={statusColor[v.status]}>{v.status}</Badge>
                 {v.status === 'ready' && (
                   <>
-                    <Button size="sm" variant="ghost" aria-label={`Preview ${v.title}`} onClick={() => setPreview(v)}>
-                      <Play size={14} /> Preview
+                    <Button size="sm" variant="ghost" aria-label={t('vid.previewOf', { title: v.title })} onClick={() => setPreview(v)}>
+                      <Play size={14} /> {t('vid.preview')}
                     </Button>
-                    <Button size="sm" variant="ghost" aria-label={`Who watched ${v.title}`} onClick={() => setViewsOf(v)}>
-                      <Users size={14} /> Views
+                    <Button size="sm" variant="ghost" aria-label={t('vid.whoWatchedOf', { title: v.title })} onClick={() => setViewsOf(v)}>
+                      <Users size={14} /> {t('vid.views')}
                     </Button>
                   </>
                 )}
-                <Button size="sm" variant="ghost" aria-label={`Delete ${v.title}`} onClick={() => deleteVideo(v._id)}><Trash2 size={14} className="text-rose-400" /></Button>
+                <Button size="sm" variant="ghost" aria-label={t('vid.deleteOf', { title: v.title })} onClick={() => deleteVideo(v._id)}><Trash2 size={14} className="text-rose-400" /></Button>
               </div>
             ))}
           </Card>
         )}
         <p className="text-xs text-surface-400">
-          Videos are encrypted at rest and streamed through signed, expiring URLs. Install ffmpeg on the server for automatic duration detection and thumbnails.
+          {t('vid.encryptedNote')}
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-surface-800 dark:text-surface-100">Documents & resources</h3>
+          <h3 className="font-semibold text-surface-800 dark:text-surface-100">{t('vid.documents')}</h3>
           <input ref={fileInput} type="file" className="hidden" onChange={uploadDocument}
             accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.txt,.xls,.xlsx,.png,.jpg,.jpeg" />
           <Button size="sm" variant="outline" loading={uploadingDoc} onClick={() => fileInput.current?.click()}>
-            <FileUp size={14} /> Upload file
+            <FileUp size={14} /> {t('vid.uploadFile')}
           </Button>
         </div>
         {!files ? <Spinner /> : files.length === 0 ? (
-          <Card><EmptyState icon={<FileIcon size={24} />} title="No files yet" subtitle="PDFs, slides, and resources for your lessons." /></Card>
+          <Card><EmptyState icon={<FileIcon size={24} />} title={t('vid.noFiles')} subtitle={t('vid.noFilesHint')} /></Card>
         ) : (
           <Card className="divide-y divide-surface-100 dark:divide-surface-700">
             {files.map((f) => (
               <div key={f._id} className="flex items-center gap-3 px-4 py-3">
                 <FileIcon size={17} className="shrink-0 text-surface-400" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-surface-800 dark:text-surface-100">{f.originalName}</p>
+                  <p dir="auto" className="truncate text-sm font-medium text-surface-800 dark:text-surface-100">{f.originalName}</p>
                   <p className="text-xs text-surface-400">{fmtSize(f.sizeBytes)} · {f.scope}</p>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => deleteFile(f._id)}><Trash2 size={14} className="text-rose-400" /></Button>
@@ -127,12 +129,12 @@ export default function VideosTab({ courseId }) {
         )}
       </div>
       <VideoViewsModal courseId={courseId} video={viewsOf} onClose={() => setViewsOf(null)} />
-      <Modal open={!!preview} onClose={() => setPreview(null)} title={preview?.title || 'Preview'} wide>
+      <Modal open={!!preview} onClose={() => setPreview(null)} title={preview?.title || t('vid.previewTitle')} wide>
         {preview && (
           <div className="space-y-3">
             <VideoPlayer key={preview._id} videoId={preview._id} />
             <p className="text-xs text-surface-400">
-              Staff preview — this does not count as a view and records no progress.
+              {t('vid.staffPreview')}
             </p>
           </div>
         )}

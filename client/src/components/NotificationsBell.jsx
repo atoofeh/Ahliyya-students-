@@ -197,7 +197,7 @@ export default function NotificationsBell() {
               : items.length === 0 ? <EmptyState title={t('common.noNotifications')} />
               : items.map((n) => (
                 <button key={n._id} onClick={() => clickItem(n)}
-                  className={`block w-full border-b border-surface-100 dark:border-surface-700/50 px-4 py-3 text-left hover:bg-surface-50 dark:hover:bg-surface-700/50 ${!n.readAt ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}>
+                  className={`block w-full border-b border-surface-100 dark:border-surface-700/50 px-4 py-3 text-start hover:bg-surface-50 dark:hover:bg-surface-700/50 ${!n.readAt ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}>
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium text-surface-800 dark:text-surface-100">{n.title}</p>
                     {!n.readAt && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary-500" />}

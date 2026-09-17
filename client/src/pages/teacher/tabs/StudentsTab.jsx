@@ -6,12 +6,14 @@ import { isAdminRole } from '../../../utils/roles';
 import { PACKAGES, packageOf, money, DEFAULT_CURRENCY } from '../../../utils/packages';
 import { Card, Button, Modal, Input, Select, Badge, EmptyState, Spinner, ProgressBar, Pagination } from '../../../components/ui';
 import { useAuth } from '../../../hooks/useAuth';
+import { useLanguage } from '../../../hooks/useLanguage';
 
-const PACKAGE_OPTIONS = PACKAGES.map((p) => ({ value: p.value, label: p.label }));
+const packageOptions = (t) => PACKAGES.map((p) => ({ value: p.value, label: t(p.key) }));
 
 export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
   const toast = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const staff = isAdminRole(user?.role);
   const [students, setStudents] = useState(null);
   const [page, setPage] = useState(1);
@@ -81,10 +83,10 @@ export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
       paymentNote: payForm.paymentNote.trim(),
     });
     setPayModal(null);
-  }, 'Payment updated');
+  }, t('stu.paymentUpdated'));
 
   const remove = (studentId) => {
-    if (!window.confirm('Remove this student from the course?')) return;
+    if (!window.confirm(t('stu.confirmRemove'))) return;
     return run(() => api.delete(`/enrollments/courses/${courseId}/students/${studentId}`));
   };
 
@@ -93,23 +95,23 @@ export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
       expiresAt: expireDate ? new Date(expireDate) : null,
     });
     setExpireModal(null);
-  }, 'Access expiry updated');
+  }, t('stu.expiryUpdated'));
 
   const revokeCode = (codeId) => run(() => api.post(`/enrollments/courses/${courseId}/codes/${codeId}/revoke`));
-  const copyCode = (code) => navigator.clipboard.writeText(code).then(() => toast.success('Code copied'));
+  const copyCode = (code) => navigator.clipboard.writeText(code).then(() => toast.success(t('stu.codeCopied')));
 
   return (
     <div className={staff ? 'grid gap-5 lg:grid-cols-[1fr_360px]' : 'space-y-4'}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-semibold text-surface-800 dark:text-surface-100">Enrolled students</h3>
-          {staff && <Button variant="outline" onClick={() => setEnrolModal(true)}><UserPlus size={15} /> Enrol a student</Button>}
+          <h3 className="font-semibold text-surface-800 dark:text-surface-100">{t('stu.enrolled')}</h3>
+          {staff && <Button variant="outline" onClick={() => setEnrolModal(true)}><UserPlus size={15} /> {t('stu.enrolAStudent')}</Button>}
         </div>
         {!students ? <Spinner /> : students.items.length === 0 ? (
           <Card>
             <EmptyState
-              title="No students yet"
-              subtitle={staff ? 'Enrol a student directly, or generate access codes.' : 'Students join with an access code from the office.'}
+              title={t('stu.none')}
+              subtitle={t(staff ? 'stu.noneStaffHint' : 'stu.noneTeacherHint')}
             />
           </Card>
         ) : (
@@ -123,33 +125,33 @@ export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
                       {e.student?.name} <span className="text-xs text-surface-400">@{e.student?.username}</span>
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <Badge color={pkg.color}>{pkg.label}</Badge>
+                      <Badge color={pkg.color}>{t(pkg.key)}</Badge>
                       {/* ProgressBar is w-full; the width has to come from a
                           wrapper, or it eats the whole row on a flex line. */}
                       <span className="flex items-center gap-2">
                         <span className="block w-28"><ProgressBar value={e.progressPercent} /></span>
                         <span className="text-xs tabular-nums text-surface-400">{e.progressPercent}%</span>
                       </span>
-                      {e.status === 'completed' && <Badge color="green">Completed</Badge>}
-                      {e.expiresAt && <Badge color="amber">expires {new Date(e.expiresAt).toLocaleDateString()}</Badge>}
+                      {e.status === 'completed' && <Badge color="green">{t('stu.completed')}</Badge>}
+                      {e.expiresAt && <Badge color="amber">{t('stu.expiresOn', { date: new Date(e.expiresAt).toLocaleDateString() })}</Badge>}
                       {/* Only administrators are sent an amount at all. */}
                       {e.amountPaid !== undefined && (
                         <span className={`text-xs font-semibold ${e.amountPaid > 0 ? 'text-surface-600 dark:text-surface-300' : 'text-amber-600 dark:text-amber-400'}`}>
-                          {e.amountPaid > 0 ? money(e.amountPaid, e.currency) : 'nothing recorded'}
+                          {e.amountPaid > 0 ? money(e.amountPaid, e.currency) : t('stu.nothingRecorded')}
                         </span>
                       )}
                     </div>
                   </div>
                   {staff && (
-                    <Button size="sm" variant="outline" onClick={() => openPayment(e)} aria-label={`Payment for ${e.student?.name}`}>
+                    <Button size="sm" variant="outline" onClick={() => openPayment(e)} aria-label={t('stu.paymentFor', { name: e.student?.name || '' })}>
                       <Wallet size={14} />
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" aria-label={`Access expiry for ${e.student?.name}`}
+                  <Button size="sm" variant="outline" aria-label={t('stu.expiryFor', { name: e.student?.name || '' })}
                     onClick={() => { setExpireModal(e); setExpireDate(e.expiresAt ? e.expiresAt.slice(0, 10) : ''); }}>
                     <CalendarClock size={14} />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => remove(e.student._id)} aria-label={`Remove ${e.student?.name}`}>
+                  <Button size="sm" variant="ghost" onClick={() => remove(e.student._id)} aria-label={t('stu.removeName', { name: e.student?.name || '' })}>
                     <UserMinus size={14} className="text-rose-400" />
                   </Button>
                 </div>
@@ -162,38 +164,36 @@ export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
 
       {staff && (
         <div className="space-y-4">
-          <h3 className="font-semibold text-surface-800 dark:text-surface-100">Access codes</h3>
+          <h3 className="font-semibold text-surface-800 dark:text-surface-100">{t('stu.accessCodes')}</h3>
           <Card className="space-y-3 p-4">
-            <p className="text-xs text-surface-500">
-              A code carries what it was sold as, so students who join with one still appear in the course figures.
-            </p>
+            <p className="text-xs text-surface-500">{t('stu.codesNote')}</p>
             <div className="grid grid-cols-2 gap-2">
-              <Select label="Package" value={codeForm.package} options={PACKAGE_OPTIONS}
+              <Select label={t('stu.package')} value={codeForm.package} options={packageOptions(t)}
                 onChange={(e) => setCodeForm((f) => ({ ...f, package: e.target.value }))} />
-              <Input label={`Price (${currency})`} type="number" min="0" step="0.01" placeholder="0"
+              <Input label={t('stu.priceIn', { currency })} type="number" min="0" step="0.01" placeholder="0"
                 value={codeForm.amountPaid} onChange={(e) => setCodeForm((f) => ({ ...f, amountPaid: e.target.value }))} />
-              <Input label="How many" type="number" min="1" max="500" value={codeForm.count}
+              <Input label={t('stu.howMany')} type="number" min="1" max="500" value={codeForm.count}
                 onChange={(e) => setCodeForm((f) => ({ ...f, count: e.target.value }))} />
-              <Input label="Uses per code" type="number" min="1" value={codeForm.maxUses}
+              <Input label={t('stu.usesPerCode')} type="number" min="1" value={codeForm.maxUses}
                 onChange={(e) => setCodeForm((f) => ({ ...f, maxUses: e.target.value }))} />
-              <Input label="Code expires (days)" type="number" min="1" placeholder="never" value={codeForm.expiresInDays}
+              <Input label={t('stu.codeExpires')} type="number" min="1" placeholder={t('stu.never')} value={codeForm.expiresInDays}
                 onChange={(e) => setCodeForm((f) => ({ ...f, expiresInDays: e.target.value }))} />
-              <Input label="Grants access (days)" type="number" min="0" placeholder="course default" value={codeForm.grantsAccessDays}
+              <Input label={t('stu.grantsAccess')} type="number" min="0" placeholder={t('stu.courseDefault')} value={codeForm.grantsAccessDays}
                 onChange={(e) => setCodeForm((f) => ({ ...f, grantsAccessDays: e.target.value }))} />
             </div>
-            <Button className="w-full" loading={busy} onClick={generate}><KeyRound size={15} /> Generate codes</Button>
+            <Button className="w-full" loading={busy} onClick={generate}><KeyRound size={15} /> {t('stu.generateCodes')}</Button>
           </Card>
 
           {!codes ? <Spinner /> : (
             <Card className="max-h-96 divide-y divide-surface-100 overflow-y-auto dark:divide-surface-700">
-              {codes.length === 0 && <EmptyState title="No codes yet" />}
+              {codes.length === 0 && <EmptyState title={t('stu.noCodes')} />}
               {codes.map((c) => {
                 const exhausted = c.usedCount >= c.maxUses;
                 const pkg = packageOf(c.package);
                 return (
                   <div key={c._id} className="flex items-center gap-2 px-4 py-2.5">
                     <div className="min-w-0 flex-1">
-                      <code className={`block font-mono text-sm ${c.isRevoked || exhausted ? 'text-surface-300 line-through' : 'text-surface-800 dark:text-surface-100'}`}>
+                      <code dir="ltr" className={`block font-mono text-sm ${c.isRevoked || exhausted ? 'text-surface-300 line-through' : 'text-surface-800 dark:text-surface-100'}`}>
                         {c.code}
                       </code>
                       <span className="text-[11px] text-surface-400">
@@ -201,10 +201,10 @@ export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
                       </span>
                     </div>
                     <span className="text-xs text-surface-400">{c.usedCount}/{c.maxUses}</span>
-                    {c.isRevoked ? <Badge color="red">Revoked</Badge> : exhausted ? <Badge>Used</Badge> : (
+                    {c.isRevoked ? <Badge color="red">{t('stu.revoked')}</Badge> : exhausted ? <Badge>{t('stu.used')}</Badge> : (
                       <>
-                        <button onClick={() => copyCode(c.code)} aria-label={`Copy ${c.code}`} className="text-surface-400 hover:text-primary-500"><Copy size={14} /></button>
-                        <button onClick={() => revokeCode(c._id)} className="text-xs text-rose-400 hover:underline">revoke</button>
+                        <button onClick={() => copyCode(c.code)} aria-label={t('stu.copyCode', { code: c.code })} className="text-surface-400 hover:text-primary-500"><Copy size={14} /></button>
+                        <button onClick={() => revokeCode(c._id)} className="text-xs text-rose-400 hover:underline">{t('stu.revoke')}</button>
                       </>
                     )}
                   </div>
@@ -215,51 +215,49 @@ export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
         </div>
       )}
 
-      <Modal open={enrolModal} onClose={() => setEnrolModal(false)} title="Enrol a student">
+      <Modal open={enrolModal} onClose={() => setEnrolModal(false)} title={t('stu.enrolAStudent')}>
         <div className="space-y-4">
-          <Input label="Username or email" value={enrolForm.student} placeholder="e.g. sara.k"
+          <Input label={t('stu.usernameOrEmail')} dir="ltr" value={enrolForm.student} placeholder={t('stu.usernamePlaceholder')}
             onChange={(e) => setEnrolForm((f) => ({ ...f, student: e.target.value }))} />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Select label="What did they take?" value={enrolForm.package} options={PACKAGE_OPTIONS}
+            <Select label={t('stu.whatDidTheyTake')} value={enrolForm.package} options={packageOptions(t)}
               onChange={(e) => setEnrolForm((f) => ({ ...f, package: e.target.value }))} />
-            <Input label={`How much did they pay? (${currency})`} type="number" min="0" step="0.01" placeholder="0"
+            <Input label={t('stu.howMuchPaid', { currency })} type="number" min="0" step="0.01" placeholder="0"
               value={enrolForm.amountPaid} onChange={(e) => setEnrolForm((f) => ({ ...f, amountPaid: e.target.value }))} />
           </div>
-          <Input label="Note (optional)" placeholder="cash, instalment, discount…" value={enrolForm.paymentNote}
+          <Input label={t('stu.noteOptional')} dir="auto" placeholder={t('stu.notePlaceholder')} value={enrolForm.paymentNote}
             onChange={(e) => setEnrolForm((f) => ({ ...f, paymentNote: e.target.value }))} />
-          <p className="text-xs text-surface-400">
-            The teacher sees which package the student took. What they paid stays with administrators and the owner.
-          </p>
+          <p className="text-xs text-surface-400">{t('stu.privacyNote')}</p>
           <Button className="w-full" loading={busy} onClick={enrol} disabled={!enrolForm.student.trim()}>
-            Enrol student
+            {t('stu.enrolStudent')}
           </Button>
         </div>
       </Modal>
 
-      <Modal open={!!payModal} onClose={() => setPayModal(null)} title={`Payment — ${payModal?.student?.name || ''}`}>
+      <Modal open={!!payModal} onClose={() => setPayModal(null)} title={t('stu.paymentTitle', { name: payModal?.student?.name || '' })}>
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Select label="Package" value={payForm.package} options={PACKAGE_OPTIONS}
+            <Select label={t('stu.package')} value={payForm.package} options={packageOptions(t)}
               onChange={(e) => setPayForm((f) => ({ ...f, package: e.target.value }))} />
-            <Input label={`Amount paid (${payModal?.currency || currency})`} type="number" min="0" step="0.01"
+            <Input label={t('stu.amountPaid', { currency: payModal?.currency || currency })} type="number" min="0" step="0.01"
               value={payForm.amountPaid} onChange={(e) => setPayForm((f) => ({ ...f, amountPaid: e.target.value }))} />
           </div>
-          <Input label="Note (optional)" value={payForm.paymentNote}
+          <Input label={t('stu.noteOptional')} dir="auto" value={payForm.paymentNote}
             onChange={(e) => setPayForm((f) => ({ ...f, paymentNote: e.target.value }))} />
           {payModal?.paymentRecordedAt && (
             <p className="text-xs text-surface-400">
-              Last recorded {new Date(payModal.paymentRecordedAt).toLocaleString()}.
+              {t('stu.lastRecorded', { date: new Date(payModal.paymentRecordedAt).toLocaleString() })}
             </p>
           )}
-          <Button className="w-full" loading={busy} onClick={savePayment}>Save</Button>
+          <Button className="w-full" loading={busy} onClick={savePayment}>{t('common.save')}</Button>
         </div>
       </Modal>
 
-      <Modal open={!!expireModal} onClose={() => setExpireModal(null)} title={`Access expiry — ${expireModal?.student?.name || ''}`}>
+      <Modal open={!!expireModal} onClose={() => setExpireModal(null)} title={t('stu.expiryTitle', { name: expireModal?.student?.name || '' })}>
         <div className="space-y-4">
-          <Input label="Access ends on (leave empty for no expiry)" type="date" value={expireDate}
+          <Input label={t('stu.accessEndsOn')} type="date" value={expireDate}
             onChange={(e) => setExpireDate(e.target.value)} />
-          <Button className="w-full" loading={busy} onClick={setExpiry}>Save expiry</Button>
+          <Button className="w-full" loading={busy} onClick={setExpiry}>{t('stu.saveExpiry')}</Button>
         </div>
       </Modal>
     </div>

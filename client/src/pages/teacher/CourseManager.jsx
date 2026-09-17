@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
+import { useLanguage } from '../../hooks/useLanguage';
 import { Card, Button, Badge, Tabs, Toggle, Input, Textarea, Select, ConfirmButton } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 import CurriculumTab from './tabs/CurriculumTab';
@@ -15,23 +16,13 @@ import InsightsTab from './tabs/InsightsTab';
 import QaTab from './tabs/QaTab';
 import TeachersTab from './tabs/TeachersTab';
 
-const TABS = [
-  { key: 'curriculum', label: 'Curriculum' },
-  { key: 'videos', label: 'Videos' },
-  { key: 'questions', label: 'Question bank' },
-  { key: 'quizzes', label: 'Quizzes' },
-  { key: 'assignments', label: 'Assignments' },
-  { key: 'students', label: 'Students & codes' },
-  { key: 'teachers', label: 'Teachers' },
-  { key: 'qa', label: 'Q&A' },
-  { key: 'insights', label: 'Insights' },
-  { key: 'settings', label: 'Settings' },
-];
+const TAB_KEYS = ['curriculum', 'videos', 'questions', 'quizzes', 'assignments', 'students', 'teachers', 'qa', 'insights', 'settings'];
 
 export default function CourseManager() {
   const { courseId, tab = 'curriculum' } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const { t } = useLanguage();
   const [detail, setDetail] = useState(null);
   const [settings, setSettings] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -66,7 +57,7 @@ export default function CourseManager() {
         completionThreshold: Number(settings.completionThreshold) || 80,
         expiresAt: settings.expiresAt ? new Date(settings.expiresAt) : null,
       });
-      toast.success('Course updated');
+      toast.success(t('crs.updated'));
       load();
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
   };
@@ -74,7 +65,7 @@ export default function CourseManager() {
   const deleteCourse = async () => {
     try {
       await api.delete(`/courses/${courseId}`);
-      toast.success('Course deleted');
+      toast.success(t('crs.deleted'));
       navigate('/teacher/courses');
     } catch (err) { toast.error(apiError(err)); }
   };
@@ -86,19 +77,20 @@ export default function CourseManager() {
   return (
     <div className="space-y-4">
       <button onClick={() => navigate('/teacher/courses')} className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline">
-        <ArrowLeft size={15} /> All courses
+        <ArrowLeft size={15} className="rtl:rotate-180" /> {t('crs.allCourses')}
       </button>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-white">{course.title}</h1>
+          <h1 dir="auto" className="text-xl font-bold text-surface-900 dark:text-white">{course.title}</h1>
           <p className="text-sm text-surface-500">
-            {course.enrollmentCount} students · {course.lessonCount} lessons · {course.quizCount} quizzes
+            {t('crs.headerCounts', { students: course.enrollmentCount, lessons: course.lessonCount, quizzes: course.quizCount })}
           </p>
         </div>
-        <Badge color={course.isPublished ? 'green' : 'gray'}>{course.isPublished ? 'Published' : 'Draft'}</Badge>
+        <Badge color={course.isPublished ? 'green' : 'gray'}>{t(course.isPublished ? 'ac2.publishedBadge' : 'ac2.draftBadge')}</Badge>
       </div>
 
-      <Tabs tabs={TABS} active={tab} onChange={(t) => navigate(`/teacher/courses/${courseId}/${t}`)} />
+      <Tabs tabs={TAB_KEYS.map((k) => ({ key: k, label: t(`tab.${k}`) }))} active={tab}
+        onChange={(next) => navigate(`/teacher/courses/${courseId}/${next}`)} />
 
       <div className="pt-1">
         {tab === 'curriculum' && <CurriculumTab courseId={courseId} curriculum={curriculum} reload={load} />}
@@ -113,33 +105,33 @@ export default function CourseManager() {
 
         {tab === 'settings' && (
           <Card className="max-w-2xl space-y-4 p-5">
-            <Input label="Title" value={settings.title} onChange={set('title')} />
-            <Textarea label="Description" value={settings.description} onChange={set('description')} />
+            <Input label={t('crs.title')} dir="auto" value={settings.title} onChange={set('title')} />
+            <Textarea label={t('crs.description')} dir="auto" value={settings.description} onChange={set('description')} />
             <div className="grid gap-3 sm:grid-cols-3">
-              <Input label="Category" value={settings.category} onChange={set('category')} />
-              <Select label="Difficulty" value={settings.difficulty} onChange={set('difficulty')}
-                options={['beginner', 'intermediate', 'advanced', 'expert'].map((d) => ({ value: d, label: d }))} />
-              <Input label="Language" value={settings.language} onChange={set('language')} />
+              <Input label={t('crs.category')} dir="auto" value={settings.category} onChange={set('category')} />
+              <Select label={t('crs.difficulty')} value={settings.difficulty} onChange={set('difficulty')}
+                options={['beginner', 'intermediate', 'advanced', 'expert'].map((d) => ({ value: d, label: t(`diff.${d}`) }))} />
+              <Input label={t('crs.language')} value={settings.language} onChange={set('language')} />
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <Select label="Visibility" value={settings.visibility} onChange={set('visibility')}
-                options={[{ value: 'hidden', label: 'Hidden — enrolled students only' }, { value: 'listed', label: 'Listed — visible in the catalog' }]} />
-              <Input label="Enrollment limit (0 = unlimited)" type="number" min="0" value={settings.enrollmentLimit} onChange={set('enrollmentLimit')} />
-              <Input label="Course end date" type="date" value={settings.expiresAt} onChange={set('expiresAt')} />
+              <Select label={t('crs.visibility')} value={settings.visibility} onChange={set('visibility')}
+                options={[{ value: 'hidden', label: t('crs.hidden') }, { value: 'listed', label: t('crs.listed') }]} />
+              <Input label={t('crs.enrollmentLimit')} type="number" min="0" value={settings.enrollmentLimit} onChange={set('enrollmentLimit')} />
+              <Input label={t('crs.endDate')} type="date" value={settings.expiresAt} onChange={set('expiresAt')} />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input label="Price (future payments)" type="number" min="0" value={settings.price} onChange={set('price')} />
-              <Input label="Certificate threshold %" type="number" min="0" max="100" value={settings.completionThreshold} onChange={set('completionThreshold')} />
+              <Input label={t('crs.price')} type="number" min="0" value={settings.price} onChange={set('price')} />
+              <Input label={t('crs.certThreshold')} type="number" min="0" max="100" value={settings.completionThreshold} onChange={set('completionThreshold')} />
             </div>
-            <Toggle label="Published" hint="Students can only see published courses"
+            <Toggle label={t('crs.publishedToggle')} hint={t('crs.publishedHint')}
               checked={settings.isPublished} onChange={(v) => setSettings((s) => ({ ...s, isPublished: v }))} />
-            <Toggle label="Completion certificates" hint="Issue certificates when students reach the threshold"
+            <Toggle label={t('crs.certToggle')} hint={t('crs.certHint')}
               checked={settings.certificateEnabled} onChange={(v) => setSettings((s) => ({ ...s, certificateEnabled: v }))} />
             <div className="flex items-center justify-between border-t border-surface-200 dark:border-surface-700 pt-4">
-              <ConfirmButton onConfirm={deleteCourse} message="Delete this course? Students lose access immediately.">
-                <Trash2 size={14} /> Delete course
+              <ConfirmButton onConfirm={deleteCourse} message={t('crs.confirmDelete')}>
+                <Trash2 size={14} /> {t('crs.deleteCourse')}
               </ConfirmButton>
-              <Button loading={busy} onClick={saveSettings}>Save changes</Button>
+              <Button loading={busy} onClick={saveSettings}>{t('crs.saveChanges')}</Button>
             </div>
           </Card>
         )}
