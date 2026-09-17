@@ -7,6 +7,9 @@ node_modules/
 !.env.example
 # non-secret build configuration for the Android package (an API URL, nothing else)
 !client/.env.android
+# Same-origin API path for the production build. No secret — and without it a
+# plain `npm run build` bakes in the localhost default and ships a dead client.
+!client/.env.production
 
 # runtime data — encrypted media, temp chunks, logs (1.6 GB+, never commit)
 server/storage/
