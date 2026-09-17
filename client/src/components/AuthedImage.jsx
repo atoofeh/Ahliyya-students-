@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 import { Skeleton } from './ui';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * An image held in the file store.
@@ -12,6 +13,7 @@ import { Skeleton } from './ui';
  * DocumentViewer does for PDFs.
  */
 export default function AuthedImage({ fileId, alt = '', className = '' }) {
+  const { t } = useLanguage();
   // Keyed by fileId so a change never shows the previous question's picture.
   const [loaded, setLoaded] = useState({ id: null, src: null, failed: false });
 
@@ -37,7 +39,7 @@ export default function AuthedImage({ fileId, alt = '', className = '' }) {
   if (!fileId) return null;
   const current = loaded.id === fileId ? loaded : { src: null, failed: false };
   if (current.failed) {
-    return <p className={`text-xs text-surface-400 ${className}`}>Image unavailable</p>;
+    return <p className={`text-xs text-surface-400 ${className}`}>{t('common.imageUnavailable')}</p>;
   }
   if (!current.src) return <Skeleton className={className || 'h-24 w-32'} />;
   return <img src={current.src} alt={alt} className={className} />;

@@ -45,6 +45,11 @@ router.post('/:videoId/token', c.streamToken);
 router.post('/:videoId/progress', authorize('student'), validate(progressSchema), c.saveProgress);
 router.get('/watermark/me', c.watermark);
 
+// Watch allowance (course staff / admin). A student who ran out asks their
+// teacher, and the teacher can see who has watched what before deciding.
+router.get('/courses/:courseId/:videoId/views', requireCourseOwnership, c.videoViews);
+router.post('/courses/:courseId/:videoId/views/:studentId/reset', requireCourseOwnership, c.resetVideoViews);
+
 router.delete('/:videoId', authorize('teacher', 'admin'), c.deleteVideo);
 
 module.exports = router;

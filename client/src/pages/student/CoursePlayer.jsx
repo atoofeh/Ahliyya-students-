@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
+import { useLanguage } from '../../hooks/useLanguage';
 import VideoPlayer from '../../components/VideoPlayer';
 import { Card, Button, Badge, ProgressBar, EmptyState, Textarea, Input, Modal, Skeleton } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
@@ -22,16 +23,17 @@ const LESSON_ICONS = {
 
 /** complete → current → overdue → available. Students never receive unpublished lessons. */
 const STATE_ICON = {
-  complete: { Icon: CheckCircle2, className: 'text-emerald-500', label: 'Completed' },
-  current: { Icon: CircleDot, className: 'text-brand-500', label: 'Current lesson' },
-  overdue: { Icon: AlarmClock, className: 'text-amber-500', label: 'Overdue' },
-  available: { Icon: Circle, className: 'text-surface-300 dark:text-surface-600', label: 'Not started' },
+  complete: { Icon: CheckCircle2, className: 'text-emerald-500', label: 'player.stateCompleted' },
+  current: { Icon: CircleDot, className: 'text-brand-500', label: 'player.stateCurrent' },
+  overdue: { Icon: AlarmClock, className: 'text-amber-500', label: 'player.stateOverdue' },
+  available: { Icon: Circle, className: 'text-surface-300 dark:text-surface-600', label: 'player.stateNotStarted' },
 };
 
 export default function CoursePlayer() {
   const { courseId } = useParams();
   const [params, setParams] = useSearchParams();
   const toast = useToast();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [detail, setDetail] = useState(null);
@@ -102,7 +104,7 @@ export default function CoursePlayer() {
   const markComplete = async () => {
     try {
       await api.post(`/enrollments/courses/${courseId}/lessons/${lesson._id}/complete`);
-      toast.success('Lesson completed');
+      toast.success(t('player.toastCompleted'));
       load();
     } catch (err) { toast.error(apiError(err)); }
   };
@@ -110,7 +112,7 @@ export default function CoursePlayer() {
   const addBookmark = async () => {
     try {
       await api.post('/bookmarks', { lesson: lesson._id, note: bookmarkNote });
-      toast.success('Bookmarked');
+      toast.success(t('player.toastBookmarked'));
       setBookmarkModal(false); setBookmarkNote('');
     } catch (err) { toast.error(apiError(err)); }
   };
@@ -120,7 +122,7 @@ export default function CoursePlayer() {
     try {
       await api.post(`/qa/courses/${courseId}`, { ...qaForm, lesson: lesson?._id || null });
       setQaForm({ title: '', body: '' });
-      toast.success('Question sent — your teacher reviews it before the class sees it');
+      toast.success(t('player.toastQuestionSent'));
       loadQA();
     } catch (err) { toast.error(apiError(err)); }
   };
@@ -148,7 +150,7 @@ export default function CoursePlayer() {
       await api.post(`/assignments/courses/${courseId}/${submitModal._id}/submit`, {
         text: submissionText, attachment: attachmentId,
       });
-      toast.success('Assignment submitted');
+      toast.success(t('player.toastSubmitted'));
       setSubmitModal(null); setSubmissionText(''); setSubmissionFile(null);
       const { data } = await api.get(`/assignments/courses/${courseId}`);
       setAssignments(data);
@@ -199,7 +201,7 @@ export default function CoursePlayer() {
   };
 
   const renderLessonBody = () => {
-    if (!lesson) return <Card><EmptyState title="Select a lesson to begin" subtitle="Open the course contents and pick where to start." /></Card>;
+    if (!lesson) return <Card><EmptyState title={t('player.selectLesson')} subtitle={t('player.selectLessonHint')} /></Card>;
     return (
       <div className="space-y-4">
         {lesson.type === 'video' && lesson.video && (
@@ -207,13 +209,13 @@ export default function CoursePlayer() {
             ? <VideoPlayer key={lesson.video._id} videoId={lesson.video._id} lessonId={lesson._id}
                 startAt={flatLessons.find((l) => l._id === lesson._id)?.progress?.positionSeconds || 0}
                 onProgress={() => {}} />
-            : <Card className="p-6 text-center text-sm text-surface-500">This video is still processing — check back shortly.</Card>
+            : <Card className="p-6 text-center text-sm text-surface-500">{t('player.processing')}</Card>
         )}
         {(lesson.type === 'pdf' || lesson.type === 'document') && lesson.fileAsset && (
           <DocumentViewer fileAsset={lesson.fileAsset} title={lesson.title} />
         )}
         {lesson.type === 'text' && (
-          <Card className="max-w-none whitespace-pre-wrap p-6 text-[15px] leading-relaxed text-surface-700 dark:text-surface-200">
+          <Card dir="auto" className="max-w-none whitespace-pre-wrap p-6 text-[15px] leading-relaxed text-surface-700 dark:text-surface-200">
             {lesson.content}
           </Card>
         )}
@@ -221,42 +223,42 @@ export default function CoursePlayer() {
           <Card className="p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="font-display font-bold text-surface-900 dark:text-white">{lesson.quiz.title}</h3>
+                <h3 dir="auto" className="font-display font-bold text-surface-900 dark:text-white">{lesson.quiz.title}</h3>
                 <p className="mt-1 text-sm text-surface-500">
-                  {lesson.quiz.timeLimitMinutes ? `${lesson.quiz.timeLimitMinutes} min · ` : ''}
-                  Pass mark {lesson.quiz.passingScore}% · {lesson.quiz.maxAttempts || '∞'} attempt(s)
+                  {lesson.quiz.timeLimitMinutes ? `${t('player.minutes', { n: lesson.quiz.timeLimitMinutes })} · ` : ''}
+                  {t('player.passMark', { n: lesson.quiz.passingScore })} · {t('player.attemptsAllowed', { n: lesson.quiz.maxAttempts || '∞' })}
                 </p>
               </div>
               {/* A lesson can be published before the quiz on it is. Offering "Start
                   quiz" for a draft only ever produced an error on the next screen. */}
               {lesson.quiz.isPublished === false
-                ? <Badge color="gray"><Clock size={12} className="mr-1" /> Not open yet</Badge>
+                ? <Badge color="gray"><Clock size={12} className="me-1" /> {t('player.notOpenYet')}</Badge>
                 : lesson.quiz.isLocked
-                  ? <Badge color="red"><Lock size={12} className="mr-1" /> Locked</Badge>
-                  : <Button onClick={() => navigate(`/student/courses/${courseId}/quiz/${lesson.quiz._id}`)}>Start quiz</Button>}
+                  ? <Badge color="red"><Lock size={12} className="me-1" /> {t('player.locked')}</Badge>
+                  : <Button onClick={() => navigate(`/student/courses/${courseId}/quiz/${lesson.quiz._id}`)}>{t('player.startQuiz')}</Button>}
             </div>
           </Card>
         )}
         {lesson.type === 'assignment' && lesson.assignment && (
           <Card className="p-6">
-            <h3 className="font-display font-bold text-surface-900 dark:text-white">{lesson.assignment.title}</h3>
+            <h3 dir="auto" className="font-display font-bold text-surface-900 dark:text-white">{lesson.assignment.title}</h3>
             <p className="mt-1 text-sm text-surface-500">
-              {lesson.assignment.dueAt ? `Due ${new Date(lesson.assignment.dueAt).toLocaleString()}` : 'No due date'} · {lesson.assignment.maxPoints} points
+              {lesson.assignment.dueAt ? t('player.dueAt', { date: new Date(lesson.assignment.dueAt).toLocaleString() }) : t('student.noDueDate')} · {t('player.points', { n: lesson.assignment.maxPoints })}
             </p>
             <Button className="mt-3" variant="outline" onClick={() => { setSection('assignments'); document.getElementById('course-sections')?.scrollIntoView({ behavior: 'smooth' }); }}>
-              Open in assignments
+              {t('player.openInAssignments')}
             </Button>
           </Card>
         )}
 
         <div className="hidden flex-wrap items-center gap-2 lg:flex">
-          <Button variant="outline" size="sm" onClick={() => setBookmarkModal(true)}><Bookmark size={15} /> Bookmark</Button>
+          <Button variant="outline" size="sm" onClick={() => setBookmarkModal(true)}><Bookmark size={15} /> {t('player.bookmark')}</Button>
           {lesson.type !== 'quiz' && (
-            <Button size="sm" onClick={markComplete}><CheckCircle2 size={15} /> Mark as complete</Button>
+            <Button size="sm" onClick={markComplete}><CheckCircle2 size={15} /> {t('player.markComplete')}</Button>
           )}
-          <div className="ml-auto flex gap-2">
-            <Button size="sm" variant="ghost" onClick={() => goRelative(-1)} disabled={!prevLesson}><ChevronLeft size={16} /> Previous</Button>
-            <Button size="sm" variant="ghost" onClick={() => goRelative(1)} disabled={!nextLesson}>Next <ChevronRight size={16} /></Button>
+          <div className="ms-auto flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => goRelative(-1)} disabled={!prevLesson}><ChevronLeft size={16} className="rtl:rotate-180" /> {t('player.previous')}</Button>
+            <Button size="sm" variant="ghost" onClick={() => goRelative(1)} disabled={!nextLesson}>{t('player.next')} <ChevronRight size={16} className="rtl:rotate-180" /></Button>
           </div>
         </div>
       </div>
@@ -265,23 +267,23 @@ export default function CoursePlayer() {
 
   const renderQuizzes = () => (
     <div className="space-y-3">
-      {quizzes.length === 0 ? <EmptyState title="No quizzes yet" subtitle="Quizzes your instructor publishes appear here." /> : quizzes.map((q) => {
+      {quizzes.length === 0 ? <EmptyState title={t('player.noQuizzes')} subtitle={t('player.noQuizzesHint')} /> : quizzes.map((q) => {
         const best = q.myAttempts?.filter((a) => a.percent != null).sort((a, b) => b.percent - a.percent)[0];
         const used = q.myAttempts?.filter((a) => a.status !== 'in_progress').length || 0;
         const exhausted = q.maxAttempts > 0 && used >= q.maxAttempts;
         return (
           <div key={q._id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-200 p-3.5 dark:border-surface-700/60">
             <div className="min-w-0">
-              <p className="font-medium text-surface-900 dark:text-white">{q.title}</p>
+              <p dir="auto" className="font-medium text-surface-900 dark:text-white">{q.title}</p>
               <p className="text-xs text-surface-400">
-                {q.timeLimitMinutes ? `${q.timeLimitMinutes} min · ` : ''}Pass {q.passingScore}% · Attempts {used}/{q.maxAttempts || '∞'}
-                {q.availableUntil && ` · closes ${new Date(q.availableUntil).toLocaleString()}`}
+                {q.timeLimitMinutes ? `${t('player.minutes', { n: q.timeLimitMinutes })} · ` : ''}{t('player.pass', { n: q.passingScore })} · {t('player.attemptsUsed', { used, max: q.maxAttempts || '∞' })}
+                {q.availableUntil && ` · ${t('player.closesAt', { date: new Date(q.availableUntil).toLocaleString() })}`}
               </p>
-              {best && <p className="mt-1 text-xs">Best: <Badge color={best.passed ? 'green' : 'red'}>{best.percent}%</Badge></p>}
+              {best && <p className="mt-1 text-xs">{t('player.best')}: <Badge color={best.passed ? 'green' : 'red'}>{best.percent}%</Badge></p>}
             </div>
-            {q.isLocked ? <Badge color="red"><Lock size={12} className="mr-1" /> Locked</Badge>
-              : exhausted ? <Badge color="amber">No attempts left</Badge>
-              : <Button size="sm" onClick={() => navigate(`/student/courses/${courseId}/quiz/${q._id}`)}>{used > 0 ? 'Retake' : 'Start'}</Button>}
+            {q.isLocked ? <Badge color="red"><Lock size={12} className="me-1" /> {t('player.locked')}</Badge>
+              : exhausted ? <Badge color="amber">{t('player.noAttemptsLeft')}</Badge>
+              : <Button size="sm" onClick={() => navigate(`/student/courses/${courseId}/quiz/${q._id}`)}>{t(used > 0 ? 'player.retake' : 'player.start')}</Button>}
           </div>
         );
       })}
@@ -290,30 +292,30 @@ export default function CoursePlayer() {
 
   const renderAssignments = () => (
     <div className="space-y-3">
-      {assignments.length === 0 ? <EmptyState title="No assignments" subtitle="Work your instructor sets appears here." /> : assignments.map((a) => (
+      {assignments.length === 0 ? <EmptyState title={t('player.noAssignments')} subtitle={t('player.noAssignmentsHint')} /> : assignments.map((a) => (
         <div key={a._id} className="rounded-xl border border-surface-200 p-3.5 dark:border-surface-700/60">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-medium text-surface-900 dark:text-white">{a.title}</p>
+              <p dir="auto" className="font-medium text-surface-900 dark:text-white">{a.title}</p>
               <p className="text-xs text-surface-400">
-                {a.dueAt ? `Due ${new Date(a.dueAt).toLocaleString()}` : 'No due date'} · {a.maxPoints} pts
+                {a.dueAt ? t('player.dueAt', { date: new Date(a.dueAt).toLocaleString() }) : t('student.noDueDate')} · {t('player.pts', { n: a.maxPoints })}
               </p>
-              {a.instructions && <p className="mt-2 whitespace-pre-wrap text-sm text-surface-600 dark:text-surface-300">{a.instructions}</p>}
+              {a.instructions && <p dir="auto" className="mt-2 whitespace-pre-wrap text-sm text-surface-600 dark:text-surface-300">{a.instructions}</p>}
               {a.attachment && (
                 <DownloadButton
                   className="mt-1 inline-block text-xs font-semibold text-brand-600 hover:underline disabled:opacity-60 dark:text-brand-300"
                   fileId={a.attachment._id || a.attachment}
                   filename={a.attachment.originalName || 'attachment'}>
-                  Download attachment
+                  {t('player.downloadAttachment')}
                 </DownloadButton>
               )}
             </div>
-            <div className="text-right">
+            <div className="text-end">
               {a.mySubmission ? (
                 a.mySubmission.status === 'graded'
-                  ? <Badge color="green">{a.mySubmission.pointsAwarded}/{a.maxPoints} pts</Badge>
-                  : <Badge color="blue">Submitted{a.mySubmission.isLate ? ' (late)' : ''}</Badge>
-              ) : <Button size="sm" onClick={() => setSubmitModal(a)}>Submit</Button>}
+                  ? <Badge color="green">{t('player.pts', { n: `${a.mySubmission.pointsAwarded}/${a.maxPoints}` })}</Badge>
+                  : <Badge color="blue">{t(a.mySubmission.isLate ? 'player.submittedLate' : 'player.submitted')}</Badge>
+              ) : <Button size="sm" onClick={() => setSubmitModal(a)}>{t('player.submit')}</Button>}
               {a.mySubmission?.feedback && <p className="mt-1 max-w-[200px] text-xs text-surface-400">“{a.mySubmission.feedback}”</p>}
             </div>
           </div>
@@ -324,13 +326,13 @@ export default function CoursePlayer() {
 
   const renderAnnouncements = () => (
     <div className="space-y-3">
-      {announcements.length === 0 ? <EmptyState icon={<Megaphone size={24} />} title="No announcements" /> : announcements.map((an) => (
+      {announcements.length === 0 ? <EmptyState icon={<Megaphone size={24} />} title={t('player.noAnnouncements')} /> : announcements.map((an) => (
         <div key={an._id} className="rounded-xl border border-surface-200 p-3.5 dark:border-surface-700/60">
           <div className="flex items-center gap-2">
-            {an.pinned && <Badge color="amber">Pinned</Badge>}
-            <p className="font-medium text-surface-900 dark:text-white">{an.title}</p>
+            {an.pinned && <Badge color="amber">{t('player.pinned')}</Badge>}
+            <p dir="auto" className="font-medium text-surface-900 dark:text-white">{an.title}</p>
           </div>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-surface-600 dark:text-surface-300">{an.body}</p>
+          <p dir="auto" className="mt-1 whitespace-pre-wrap text-sm text-surface-600 dark:text-surface-300">{an.body}</p>
           <p className="mt-2 text-xs text-surface-400">{an.author?.name} · {new Date(an.publishedAt).toLocaleString()}</p>
         </div>
       ))}
@@ -340,49 +342,49 @@ export default function CoursePlayer() {
   const renderQA = () => (
     <div className="space-y-4">
       <div className="space-y-3 rounded-xl border border-surface-200 p-3.5 dark:border-surface-700/60">
-        <p className="text-sm font-semibold text-surface-800 dark:text-surface-100">Ask a question</p>
-        <p className="text-xs text-surface-400">Your teacher reads it first. Once they approve it, the rest of the class can see and answer it.</p>
-        <Input placeholder="Question title" value={qaForm.title} onChange={(e) => setQaForm((f) => ({ ...f, title: e.target.value }))} />
-        <Textarea placeholder="Describe your question…" value={qaForm.body} onChange={(e) => setQaForm((f) => ({ ...f, body: e.target.value }))} />
-        <Button size="sm" onClick={askQuestion}><Send size={14} /> Post question</Button>
+        <p className="text-sm font-semibold text-surface-800 dark:text-surface-100">{t('player.askQuestion')}</p>
+        <p className="text-xs text-surface-400">{t('player.askHint')}</p>
+        <Input dir="auto" placeholder={t('player.questionTitle')} value={qaForm.title} onChange={(e) => setQaForm((f) => ({ ...f, title: e.target.value }))} />
+        <Textarea dir="auto" placeholder={t('player.questionBody')} value={qaForm.body} onChange={(e) => setQaForm((f) => ({ ...f, body: e.target.value }))} />
+        <Button size="sm" onClick={askQuestion}><Send size={14} /> {t('player.postQuestion')}</Button>
       </div>
-      {threads.map((t) => (
-        <div key={t._id} className="rounded-xl border border-surface-200 p-3.5 dark:border-surface-700/60">
+      {threads.map((thread) => (
+        <div key={thread._id} className="rounded-xl border border-surface-200 p-3.5 dark:border-surface-700/60">
           <div className="flex items-center justify-between gap-2">
-            <p className="font-medium text-surface-900 dark:text-white">{t.title}</p>
+            <p dir="auto" className="font-medium text-surface-900 dark:text-white">{thread.title}</p>
             <div className="flex shrink-0 gap-1.5">
-              {t.status === 'pending' && <Badge color="amber">Awaiting approval</Badge>}
-              {t.status === 'rejected' && <Badge color="red">Not published</Badge>}
-              {t.resolved && t.status === 'approved' && <Badge color="green">Resolved</Badge>}
+              {thread.status === 'pending' && <Badge color="amber">{t('player.awaitingApproval')}</Badge>}
+              {thread.status === 'rejected' && <Badge color="red">{t('player.notPublished')}</Badge>}
+              {thread.resolved && thread.status === 'approved' && <Badge color="green">{t('player.resolved')}</Badge>}
             </div>
           </div>
-          <p className="mt-1 text-sm text-surface-600 dark:text-surface-300">{t.body}</p>
-          <p className="mt-1 text-xs text-surface-400">{t.author?.name} · {new Date(t.createdAt).toLocaleString()}</p>
-          {t.status === 'pending' && (
+          <p dir="auto" className="mt-1 text-sm text-surface-600 dark:text-surface-300">{thread.body}</p>
+          <p className="mt-1 text-xs text-surface-400">{thread.author?.name} · {new Date(thread.createdAt).toLocaleString()}</p>
+          {thread.status === 'pending' && (
             <p className="mt-2 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-              Only you and your teacher can see this until it is approved.
+              {t('player.pendingHint')}
             </p>
           )}
-          {t.status === 'rejected' && (
+          {thread.status === 'rejected' && (
             <p className="mt-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
-              Your teacher did not publish this question{t.rejectionReason ? `: ${t.rejectionReason}` : '.'}
+              {t('player.rejectedNote')}{thread.rejectionReason ? `: ${thread.rejectionReason}` : '.'}
             </p>
           )}
-          {t.replies.map((r) => (
+          {thread.replies.map((r) => (
             <div key={r._id} className="mt-2 rounded-lg bg-surface-50 p-3 dark:bg-surface-700/40">
-              <p className="text-sm text-surface-700 dark:text-surface-200">{r.body}</p>
+              <p dir="auto" className="text-sm text-surface-700 dark:text-surface-200">{r.body}</p>
               <p className="mt-1 text-xs text-surface-400">
-                {r.author?.name} {r.author?.role !== 'student' && <Badge color="primary" className="ml-1">{r.author?.role}</Badge>}
+                {r.author?.name} {r.author?.role !== 'student' && <Badge color="primary" className="ms-1">{r.author?.role}</Badge>}
               </p>
             </div>
           ))}
-          {t.status === 'approved' && (
+          {thread.status === 'approved' && (
             <div className="mt-2 flex gap-2">
               {/* Input brings its own <label> wrapper — that is the flex item. */}
               <div className="min-w-0 flex-1">
-                <Input placeholder="Reply…" value={reply[t._id] || ''} onChange={(e) => setReply((r) => ({ ...r, [t._id]: e.target.value }))} />
+                <Input dir="auto" placeholder={t('player.reply')} value={reply[thread._id] || ''} onChange={(e) => setReply((r) => ({ ...r, [thread._id]: e.target.value }))} />
               </div>
-              <Button size="sm" variant="outline" onClick={() => sendReply(t._id)} aria-label="Send reply"><MessageSquareText size={14} /></Button>
+              <Button size="sm" variant="outline" onClick={() => sendReply(thread._id)} aria-label={t('player.sendReply')}><MessageSquareText size={14} /></Button>
             </div>
           )}
         </div>
@@ -391,24 +393,24 @@ export default function CoursePlayer() {
   );
 
   const SECTIONS = [
-    { key: 'quizzes', label: 'Quizzes', count: quizzes.length, render: renderQuizzes },
-    { key: 'assignments', label: 'Assignments', count: assignments.length, render: renderAssignments },
-    { key: 'announcements', label: 'Announcements', count: announcements.length, render: renderAnnouncements },
-    { key: 'qa', label: 'Q&A', count: threads.length, render: renderQA },
+    { key: 'quizzes', label: t('player.quizzes'), count: quizzes.length, render: renderQuizzes },
+    { key: 'assignments', label: t('player.assignments'), count: assignments.length, render: renderAssignments },
+    { key: 'announcements', label: t('player.announcements'), count: announcements.length, render: renderAnnouncements },
+    { key: 'qa', label: t('player.qa'), count: threads.length, render: renderQA },
   ];
 
   const renderCurriculum = () => (
     <div>
       <div className="border-b border-surface-200 px-4 py-3 dark:border-surface-700">
-        <p className="text-sm font-semibold text-surface-800 dark:text-surface-100">Course content</p>
-        <p className="text-xs text-surface-400">{totalLessons} lessons · {enrollment?.progressPercent || 0}% complete</p>
+        <p className="text-sm font-semibold text-surface-800 dark:text-surface-100">{t('player.courseContent')}</p>
+        <p className="text-xs text-surface-400">{t('player.lessonsComplete', { total: totalLessons, percent: enrollment?.progressPercent || 0 })}</p>
       </div>
       {curriculum.map((sec) => (
         <div key={sec._id} className="border-b border-surface-100 last:border-0 dark:border-surface-700/50">
           <button onClick={() => setOpenSections((o) => ({ ...o, [sec._id]: !o[sec._id] }))}
             aria-expanded={!!openSections[sec._id]}
-            className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-medium text-surface-700 hover:bg-surface-50 dark:text-surface-200 dark:hover:bg-surface-700/40">
-            {sec.title}
+            className="flex w-full items-center justify-between px-4 py-2.5 text-start text-sm font-medium text-surface-700 hover:bg-surface-50 dark:text-surface-200 dark:hover:bg-surface-700/40">
+            <span dir="auto">{sec.title}</span>
             <ChevronDown size={15} className={`transition-transform ${openSections[sec._id] ? 'rotate-180' : ''}`} />
           </button>
           {openSections[sec._id] && sec.lessons.map((l) => {
@@ -419,13 +421,13 @@ export default function CoursePlayer() {
             return (
               <button key={l._id} onClick={() => openLesson(l._id)}
                 aria-current={active ? 'true' : undefined}
-                className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
+                className={`flex w-full items-center gap-2 px-4 py-2 text-start text-sm transition-colors ${
                   active ? 'bg-brand-50 font-semibold text-brand-700 dark:bg-brand-900/20 dark:text-brand-300'
                     : 'text-surface-600 hover:bg-surface-50 dark:text-surface-300 dark:hover:bg-surface-700/40'}`}>
-                <StateIcon size={15} className={`shrink-0 ${stateClass}`} aria-label={stateLabel} />
+                <StateIcon size={15} className={`shrink-0 ${stateClass}`} aria-label={t(stateLabel)} />
                 <Icon size={15} className="shrink-0 text-surface-400" />
-                <span className="flex-1 truncate">{l.title}</span>
-                {l.durationMinutes > 0 && <span className="text-[11px] text-surface-400">{l.durationMinutes}m</span>}
+                <span dir="auto" className="flex-1 truncate">{l.title}</span>
+                {l.durationMinutes > 0 && <span className="text-[11px] text-surface-400">{t('catalog.minutes', { n: l.durationMinutes })}</span>}
               </button>
             );
           })}
@@ -439,23 +441,23 @@ export default function CoursePlayer() {
       {/* Sticky lesson bar: where you are, how far along, and the way forward. */}
       <div className="sticky top-[57px] z-10 -mx-4 mb-4 border-b border-surface-200/80 bg-surface-50/95 px-4 py-2.5 backdrop-blur dark:border-surface-800 dark:bg-surface-950/95 md:-mx-6 md:px-6">
         <div className="flex items-center gap-3">
-          <button type="button" onClick={() => setSheetOpen(true)} aria-label="Open course content"
+          <button type="button" onClick={() => setSheetOpen(true)} aria-label={t('player.openContents')}
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-surface-700 hover:bg-surface-100 dark:text-surface-200 dark:hover:bg-surface-800 lg:hidden">
-            <ListTree size={16} /> Contents
+            <ListTree size={16} /> {t('player.contents')}
           </button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px] text-surface-400">
               {course.title}{currentSection && <> · {currentSection.title}</>}
             </p>
-            <p className="truncate font-display text-sm font-bold text-surface-900 dark:text-white">{lesson?.title || 'Select a lesson'}</p>
+            <p dir="auto" className="truncate font-display text-sm font-bold text-surface-900 dark:text-white">{lesson?.title || t('player.selectLessonShort')}</p>
           </div>
-          <button onClick={toggleFavorite} aria-label={enrollment?.isFavorite ? 'Remove from favourites' : 'Add to favourites'}
+          <button onClick={toggleFavorite} aria-label={t(enrollment?.isFavorite ? 'player.unfavourite' : 'player.favourite')}
             className="rounded-lg p-1.5 hover:bg-surface-100 dark:hover:bg-surface-800">
             <Star size={17} className={enrollment?.isFavorite ? 'fill-gold-400 text-gold-400' : 'text-surface-300'} />
           </button>
           <div className="hidden items-center gap-1 sm:flex">
-            <Button size="sm" variant="ghost" onClick={() => goRelative(-1)} disabled={!prevLesson} aria-label="Previous lesson"><ChevronLeft size={16} /></Button>
-            <Button size="sm" variant="ghost" onClick={() => goRelative(1)} disabled={!nextLesson} aria-label="Next lesson"><ChevronRight size={16} /></Button>
+            <Button size="sm" variant="ghost" onClick={() => goRelative(-1)} disabled={!prevLesson} aria-label={t('player.previous')}><ChevronLeft size={16} className="rtl:rotate-180" /></Button>
+            <Button size="sm" variant="ghost" onClick={() => goRelative(1)} disabled={!nextLesson} aria-label={t('player.next')}><ChevronRight size={16} className="rtl:rotate-180" /></Button>
           </div>
         </div>
         <ProgressBar value={enrollment?.progressPercent || 0} className="mt-2 h-1" />
@@ -471,9 +473,9 @@ export default function CoursePlayer() {
               <Card key={key}>
                 <button type="button" onClick={() => setSection((s) => (s === key ? null : key))}
                   aria-expanded={section === key}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left">
+                  className="flex w-full items-center justify-between px-4 py-3 text-start">
                   <span className="font-display text-sm font-bold text-surface-900 dark:text-white">
-                    {label}<span className="ml-2 text-xs font-semibold text-surface-400">{count}</span>
+                    {label}<span className="ms-2 text-xs font-semibold text-surface-400">{count}</span>
                   </span>
                   <ChevronDown size={16} className={`text-surface-400 transition-transform ${section === key ? 'rotate-180' : ''}`} />
                 </button>
@@ -490,11 +492,11 @@ export default function CoursePlayer() {
       {sheetOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-brand-950/50 backdrop-blur-sm" onClick={() => setSheetOpen(false)} />
-          <div role="dialog" aria-label="Course content"
+          <div role="dialog" aria-label={t('player.courseContent')}
             className="pb-safe absolute inset-x-0 bottom-0 max-h-[75vh] animate-slide-up overflow-y-auto rounded-t-2xl bg-white shadow-float dark:bg-surface-900">
             <div className="sticky top-0 flex items-center justify-between border-b border-surface-200 bg-white px-4 py-3 dark:border-surface-700 dark:bg-surface-900">
-              <p className="font-display text-sm font-bold text-surface-900 dark:text-white">Course content</p>
-              <button onClick={() => setSheetOpen(false)} aria-label="Close course content"
+              <p className="font-display text-sm font-bold text-surface-900 dark:text-white">{t('player.courseContent')}</p>
+              <button onClick={() => setSheetOpen(false)} aria-label={t('player.closeContents')}
                 className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800"><X size={17} /></button>
             </div>
             {renderCurriculum()}
@@ -505,36 +507,36 @@ export default function CoursePlayer() {
       {/* Mobile: the actions you need while studying, always in reach */}
       <div className="pb-safe fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-surface-200 bg-white/95 px-3 py-2 backdrop-blur dark:border-surface-800 dark:bg-surface-900/95 lg:hidden"
         style={{ ['--pb-safe-extra']: '0.5rem' }}>
-        <Button size="sm" variant="ghost" onClick={() => goRelative(-1)} disabled={!prevLesson} aria-label="Previous lesson"><ChevronLeft size={16} /></Button>
-        <Button size="sm" variant="ghost" onClick={() => setBookmarkModal(true)} aria-label="Bookmark this lesson"><Bookmark size={16} /></Button>
+        <Button size="sm" variant="ghost" onClick={() => goRelative(-1)} disabled={!prevLesson} aria-label={t('player.previous')}><ChevronLeft size={16} className="rtl:rotate-180" /></Button>
+        <Button size="sm" variant="ghost" onClick={() => setBookmarkModal(true)} aria-label={t('player.bookmarkThis')}><Bookmark size={16} /></Button>
         {lesson && lesson.type !== 'quiz' && (
-          <Button size="sm" variant="ghost" onClick={markComplete} aria-label="Mark lesson complete"><CheckCircle2 size={16} /></Button>
+          <Button size="sm" variant="ghost" onClick={markComplete} aria-label={t('player.markCompleteShort')}><CheckCircle2 size={16} /></Button>
         )}
-        <Button size="sm" variant="ghost" aria-label="Ask a question"
+        <Button size="sm" variant="ghost" aria-label={t('player.askQuestion')}
           onClick={() => { setSection('qa'); document.getElementById('course-sections')?.scrollIntoView({ behavior: 'smooth' }); }}>
           <MessageSquareText size={16} />
         </Button>
-        <Button size="sm" className="ml-auto" onClick={() => goRelative(1)} disabled={!nextLesson}>Next <ChevronRight size={16} /></Button>
+        <Button size="sm" className="ms-auto" onClick={() => goRelative(1)} disabled={!nextLesson}>{t('player.next')} <ChevronRight size={16} className="rtl:rotate-180" /></Button>
       </div>
 
-      <Modal open={bookmarkModal} onClose={() => setBookmarkModal(false)} title="Bookmark lesson">
+      <Modal open={bookmarkModal} onClose={() => setBookmarkModal(false)} title={t('player.bookmarkLesson')}>
         <div className="space-y-4">
-          <p className="text-sm text-surface-500">{lesson?.title}</p>
-          <Textarea label="Note (optional)" value={bookmarkNote} onChange={(e) => setBookmarkNote(e.target.value)} />
-          <Button className="w-full" onClick={addBookmark}>Save bookmark</Button>
+          <p dir="auto" className="text-sm text-surface-500">{lesson?.title}</p>
+          <Textarea dir="auto" label={t('player.note')} value={bookmarkNote} onChange={(e) => setBookmarkNote(e.target.value)} />
+          <Button className="w-full" onClick={addBookmark}>{t('player.saveBookmark')}</Button>
         </div>
       </Modal>
 
-      <Modal open={!!submitModal} onClose={() => setSubmitModal(null)} title={`Submit: ${submitModal?.title || ''}`}>
+      <Modal open={!!submitModal} onClose={() => setSubmitModal(null)} title={t('player.submitTitle', { title: submitModal?.title || '' })}>
         <div className="space-y-4">
-          <Textarea label="Answer text" value={submissionText} onChange={(e) => setSubmissionText(e.target.value)} />
+          <Textarea dir="auto" label={t('player.answerText')} value={submissionText} onChange={(e) => setSubmissionText(e.target.value)} />
           <div>
-            <span className="mb-1 block text-sm font-medium text-surface-700 dark:text-surface-200">Attachment (optional)</span>
+            <span className="mb-1 block text-sm font-medium text-surface-700 dark:text-surface-200">{t('player.attachment')}</span>
             <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.txt,.png,.jpg,.jpeg"
               onChange={(e) => setSubmissionFile(e.target.files?.[0] || null)}
-              aria-label="Attachment" className="text-sm text-surface-500" />
+              aria-label={t('player.attachment')} className="text-sm text-surface-500" />
           </div>
-          <Button className="w-full" loading={busy} onClick={submitAssignment}>Submit assignment</Button>
+          <Button className="w-full" loading={busy} onClick={submitAssignment}>{t('player.submitAssignment')}</Button>
         </div>
       </Modal>
     </div>

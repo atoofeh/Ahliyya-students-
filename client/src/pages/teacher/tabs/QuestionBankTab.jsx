@@ -165,7 +165,7 @@ export default function QuestionBankTab({ courseId }) {
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <Badge color="primary">{q.type.replace(/_/g, ' ')}</Badge>
                   {(q.image || q.options?.some((o) => o.image)) && (
-                    <Badge color="blue"><ImageIcon size={11} className="mr-1 inline" />image</Badge>
+                    <Badge color="blue"><ImageIcon size={11} className="me-1 inline" />image</Badge>
                   )}
                   <Badge>{q.difficulty}</Badge>
                   <Badge color="blue">{q.points} pt{q.points !== 1 && 's'}</Badge>

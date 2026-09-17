@@ -79,7 +79,7 @@ export default function TeacherDashboard() {
               <Link key={c._id} to={`/teacher/courses/${c._id}`}>
                 <Card hover className="h-full overflow-hidden">
                   <CourseCover title={c.title} category={c.category} className="h-20">
-                    <span className="absolute right-3 top-3">
+                    <span className="absolute end-3 top-3">
                       <Badge color={c.isPublished ? 'green' : 'gray'}>{c.isPublished ? 'Live' : 'Draft'}</Badge>
                     </span>
                   </CourseCover>

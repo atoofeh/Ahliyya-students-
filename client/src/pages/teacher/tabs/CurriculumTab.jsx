@@ -108,7 +108,7 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
                 <Icon size={16} className="shrink-0 text-surface-400" />
                 <span className="flex-1 truncate text-sm text-surface-700 dark:text-surface-200">{l.title}</span>
                 {!l.isPublished && <Badge>Draft</Badge>}
-                {l.isFree && <Badge color='green'><Unlock size={11} className='mr-0.5 inline' />Free</Badge>}
+                {l.isFree && <Badge color='green'><Unlock size={11} className='me-0.5 inline' />Free</Badge>}
                 {l.durationMinutes > 0 && <span className="text-xs text-surface-400">{l.durationMinutes}m</span>}
                 <button className="p-1 text-surface-300 hover:text-surface-600 disabled:opacity-30" disabled={i === 0 || busy}
                   onClick={() => moveLesson(section, i, -1)}><ChevronUp size={14} /></button>

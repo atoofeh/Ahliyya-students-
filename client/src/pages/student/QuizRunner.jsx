@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, ShieldAlert, ChevronLeft, ChevronRight, Send, Maximize } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
+import { useLanguage } from '../../hooks/useLanguage';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import useAntiCheat from '../../hooks/useAntiCheat';
 import { Button, Card, Spinner, Badge, Modal } from '../../components/ui';
@@ -19,6 +20,7 @@ export default function QuizRunner() {
   const { courseId, quizId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const { t } = useLanguage();
 
   const [attempt, setAttempt] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -179,7 +181,7 @@ export default function QuizRunner() {
 
         {['multiple_choice', 'true_false', 'image_choice'].includes(q.type) && (
           <div className="space-y-2">
-            {q.multipleCorrect && <p className="text-xs text-surface-400">Select all that apply</p>}
+            {q.multipleCorrect && <p className="text-xs text-surface-400">{t('quiz.selectAll')}</p>}
             <ChoiceGroup
               multiple={q.multipleCorrect}
               options={q.options}
@@ -192,13 +194,13 @@ export default function QuizRunner() {
 
         {q.type === 'short_answer' && (
           <input value={answer.text} onChange={(e) => setAnswer({ text: e.target.value })}
-            placeholder="Type your answer…" aria-label={`Answer for question ${index + 1}`}
+            dir="auto" placeholder={t('quiz.typeAnswer')} aria-label={t('quiz.answerFor', { n: index + 1 })}
             className="w-full rounded-lg border border-surface-300 bg-white px-4 py-3 text-surface-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-surface-600 dark:bg-surface-900 dark:text-white" />
         )}
 
         {q.type === 'essay' && (
           <textarea value={answer.text} onChange={(e) => setAnswer({ text: e.target.value })}
-            placeholder="Write your essay answer…" rows={8} aria-label={`Answer for question ${index + 1}`}
+            dir="auto" placeholder={t('quiz.essayAnswer')} rows={8} aria-label={t('quiz.answerFor', { n: index + 1 })}
             className="w-full rounded-lg border border-surface-300 bg-white px-4 py-3 text-surface-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-surface-600 dark:bg-surface-900 dark:text-white" />
         )}
 
@@ -211,7 +213,7 @@ export default function QuizRunner() {
                   blanks[i] = e.target.value;
                   setAnswer({ blanks });
                 }}
-                placeholder={`Blank ${i + 1}`} aria-label={`Question ${index + 1}, blank ${i + 1}`}
+                dir="auto" placeholder={t('quiz.blank', { n: i + 1 })} aria-label={t('quiz.blankFor', { n: index + 1, b: i + 1 })}
                 className="w-full rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm text-surface-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-surface-600 dark:bg-surface-900 dark:text-white" />
             ))}
           </div>
@@ -226,21 +228,23 @@ export default function QuizRunner() {
       <div className="sticky top-0 z-20 border-b border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 px-4 py-3">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate font-semibold text-surface-900 dark:text-white">{attempt.quiz.title}</p>
-            <p className="text-xs text-surface-400">Attempt #{attempt.attemptNumber} · {answeredCount}/{attempt.questions.length} answered</p>
+            <p dir="auto" className="truncate font-semibold text-surface-900 dark:text-white">{attempt.quiz.title}</p>
+            <p className="text-xs text-surface-400">
+              <span className="bidi-isolate">{t('quiz.attempt', { n: attempt.attemptNumber })}</span> · <span className="bidi-isolate">{t('quiz.answered', { answered: answeredCount, total: attempt.questions.length })}</span>
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-surface-400 sm:inline">
-              {saveState === 'saving' ? 'Saving…'
-                : !online || saveState === 'offline' ? 'Offline — answers kept on this device'
-                : savedAgo ? `Saved ${savedAgo}s ago`
-                : 'Not saved yet'}
+              {saveState === 'saving' ? t('quiz.saving')
+                : !online || saveState === 'offline' ? t('quiz.offlineKept')
+                : savedAgo ? t('quiz.savedAgo', { n: savedAgo })
+                : t('quiz.notSaved')}
             </span>
             {violations > 0 && (
-              <Badge color="red"><ShieldAlert size={12} className="mr-1" /> {violations} violation{violations !== 1 && 's'}</Badge>
+              <Badge color="red"><ShieldAlert size={12} className="me-1" /> {violations === 1 ? t('quiz.violationOne') : t('quiz.violations', { n: violations })}</Badge>
             )}
             {attempt.quiz.antiCheat?.requireFullscreen && !document.fullscreenElement && (
-              <Button size="sm" variant="outline" onClick={enterFullscreen}><Maximize size={14} /> Fullscreen</Button>
+              <Button size="sm" variant="outline" onClick={enterFullscreen}><Maximize size={14} /> {t('quiz.fullscreen')}</Button>
             )}
             {remaining != null && (
               <div className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-mono text-sm font-bold ${
@@ -256,7 +260,7 @@ export default function QuizRunner() {
 
       {warning && (
         <div className="sticky top-[57px] z-10 bg-rose-500 px-4 py-2 text-center text-sm font-medium text-white animate-fade-in">
-          ⚠ Suspicious activity detected: {warning}. This has been reported to your instructor.
+          ⚠ {t('quiz.suspicious', { what: warning })}
         </div>
       )}
 
@@ -280,33 +284,33 @@ export default function QuizRunner() {
 
         <Card className="p-6">
           <p className="mb-4 text-xs font-medium uppercase tracking-wide text-surface-400">
-            Question {index + 1} of {attempt.questions.length} · {q.type.replace(/_/g, ' ')}
+            {t('quiz.question', { n: index + 1, total: attempt.questions.length })} · {q.type.replace(/_/g, ' ')}
           </p>
           {renderQuestion()}
         </Card>
 
         <div className="mt-4 flex items-center justify-between">
           <Button variant="outline" disabled={index === 0} onClick={() => setIndex((i) => i - 1)}>
-            <ChevronLeft size={16} /> Previous
+            <ChevronLeft size={16} className="rtl:rotate-180" /> {t('quiz.previous')}
           </Button>
           {index < attempt.questions.length - 1 ? (
-            <Button onClick={() => setIndex((i) => i + 1)}>Next <ChevronRight size={16} /></Button>
+            <Button onClick={() => setIndex((i) => i + 1)}>{t('quiz.next')} <ChevronRight size={16} className="rtl:rotate-180" /></Button>
           ) : (
             <Button onClick={() => setConfirmSubmit(true)} loading={submitting}>
-              <Send size={15} /> Submit quiz
+              <Send size={15} /> {t('quiz.submit')}
             </Button>
           )}
         </div>
       </div>
 
-      <Modal open={confirmSubmit} onClose={() => setConfirmSubmit(false)} title="Submit quiz?">
+      <Modal open={confirmSubmit} onClose={() => setConfirmSubmit(false)} title={t('quiz.confirmSubmit')}>
         <p className="text-sm text-surface-600 dark:text-surface-300">
-          You answered {answeredCount} of {attempt.questions.length} questions.
-          {answeredCount < attempt.questions.length && ' Unanswered questions score zero.'}
+          {t('quiz.answeredOf', { answered: answeredCount, total: attempt.questions.length })}
+          {answeredCount < attempt.questions.length && t('quiz.unansweredZero')}
         </p>
         <div className="mt-5 flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => setConfirmSubmit(false)}>Keep working</Button>
-          <Button className="flex-1" loading={submitting} onClick={() => doSubmit(false)}>Submit now</Button>
+          <Button variant="outline" className="flex-1" onClick={() => setConfirmSubmit(false)}>{t('quiz.keepWorking')}</Button>
+          <Button className="flex-1" loading={submitting} onClick={() => doSubmit(false)}>{t('quiz.submitNow')}</Button>
         </div>
       </Modal>
     </div>

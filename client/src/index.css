@@ -102,3 +102,39 @@
   bottom bar would otherwise reserve gesture-bar space that no longer exists.
 */
 .keyboard-open .pb-safe { padding-bottom: var(--pb-safe-extra, 0px); }
+
+/*
+  Right-to-left.
+
+  `dir="rtl"` on the document flips text alignment and flex/grid order, and
+  the components use Tailwind's logical utilities (ps-/pe-, ms-/me-,
+  start-/end-) so padding, margins and pinned positions follow the reading
+  direction on their own. That leaves only the things direction cannot infer:
+  glyphs that point somewhere.
+
+  Prefer the `rtl:` variant inline where an arrow needs turning round. This
+  class exists for the cases where the icon comes from a shared helper and the
+  call site cannot reach its className.
+*/
+[dir='rtl'] .rtl-flip { transform: scaleX(-1); }
+
+/*
+  Fragments of a different direction inside a sentence.
+
+  A line like "3 courses · 2 completed" is a run of Arabic words with Western
+  digits and a separator between them. The digits and the "·" are direction-
+  neutral, so the bidi algorithm hands them to whichever neighbour it reaches
+  first and the separator drifts into the wrong number. Isolating each
+  fragment keeps every piece with the words it belongs to.
+*/
+.bidi-isolate { unicode-bidi: isolate; }
+
+/*
+  Arabic in a Latin-first type stack falls back unpredictably per platform.
+  Naming the common system Arabic faces first keeps headings and body text
+  consistent between a phone, a Mac and a Windows machine.
+*/
+[lang='ar'] body,
+[lang='ar'] .font-display {
+  font-family: 'Segoe UI', Tahoma, 'Noto Naskh Arabic', 'Geeza Pro', 'Arabic Typesetting', system-ui, sans-serif;
+}

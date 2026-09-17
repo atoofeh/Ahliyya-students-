@@ -94,7 +94,7 @@ export default function QaTab({ courseId }) {
           >
             {f.label}
             {f.key === 'pending' && page.pendingCount > 0 && (
-              <span className={`ml-1.5 rounded-full px-1.5 text-xs font-bold ${filter === 'pending' ? 'bg-white/20' : 'bg-amber-500 text-white'}`}>
+              <span className={`ms-1.5 rounded-full px-1.5 text-xs font-bold ${filter === 'pending' ? 'bg-white/20' : 'bg-amber-500 text-white'}`}>
                 {page.pendingCount}
               </span>
             )}

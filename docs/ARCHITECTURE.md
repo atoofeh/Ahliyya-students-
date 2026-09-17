@@ -19,25 +19,27 @@ Request → security stack → rate limit → /api/v1 router
 | `admin` | user CRUD + status + password resets, owner protections, authorized devices, session control, platform settings, audit/login logs |
 | `courses` | courses, sections, lessons, curriculum ordering, catalog, course preview, co-teaching invitations |
 | `enrollments` | access codes, enrollment (code or staff assignment), roster, progress, certificates |
-| `videos` | chunked uploads, encryption, signed streaming, watch progress, watermark data |
+| `videos` | chunked uploads, encryption, signed streaming, watch progress, watermark data, per-student watch allowance |
 | `quizzes` | question bank, quiz CRUD, attempt lifecycle, grading, stats, leaderboards |
 | `assignments` | assignment CRUD, submissions, grading |
 | `files` | validated uploads, authorized serving, global documents, storage stats |
 | `anticheat` | event ingestion, risk scoring, attempt/course/platform reports |
 | `notifications` | in-app + email fan-out, unread counts |
 | `announcements` | platform-wide and course-scoped announcements |
+| `news` | the institution's wall — images and text, pinned or not; a feed, not a notification channel |
 | `analytics` | student/teacher/course/admin dashboards, exportable platform report |
 | `search` | role-scoped global search across 6 entity types |
 | `qa` | student questions, teacher moderation (approve/reject), threaded replies, resolution |
 | `bookmarks` | lesson bookmarks with video timestamps |
 
-## Data model (27 collections)
+## Data model (29 collections)
 
 - **Identity**: `User` (soft-delete, four roles, status, lockout, tokenVersion), `Session` (single-active enforcement, device pinning, refresh hash), `Device` (one active per student — partial unique index; staff roles are exempt via `isMultiDeviceRole`), `LoginHistory`.
 - **Content**: `Course` (creator + `coTeachers[]`; visibility listed/hidden) → `Section` → `Lesson` (typed: video/pdf/document/text/quiz/assignment, `isFree` opens one to any signed-in user), `Video` (upload state + encryption metadata), `FileAsset`. `CoTeachInvite` carries the invitation flow.
 - **Learning**: `Enrollment` (status, expiry, denormalized progress, the package — mid/final/full — and the payment recorded against it, which only `payments.manage` holders may read), `LessonProgress` (resume positions), `Certificate` (verifiable serials), `Bookmark`.
 - **Assessment**: `Question` (bank, answer keys `select:false`), `Quiz` (policy + scheduling + pool), `QuizAttempt` (question snapshots, grading state, risk score), `Assignment`, `Submission`.
-- **Platform**: `Notification` (TTL-indexed), `Announcement`, `AuditLog`, `CheatEvent`, `PlatformSetting` (singleton, cached 15 s).
+- **Platform**: `Notification` (TTL-indexed), `Announcement`, `NewsPost` (author, title, body, image ids, pinned, soft-deleted), `AuditLog`, `CheatEvent`, `PlatformSetting` (singleton, cached 15 s — including `maxVideoViews`).
+- **Watch allowance**: `VideoView`, one row per student per video (unique `student+video`), holding accumulated `watchedSeconds`, whole `completedViews`, the `secondsThisView` remainder, and who reset it when. A view is earned from watch time reaching the video's own length, so seeking and reloading cost nothing.
 - **Community**: `QAThread` (moderated: pending → approved/rejected), `Bookmark`, `AccessCode`.
 - **Ops**: `Migration` (`_migrations` — applied data migrations).
 

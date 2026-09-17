@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { useLanguage } from '../hooks/useLanguage';
+import { Loader2, ShieldCheck, Lock, Eye, AlertTriangle } from 'lucide-react';
 import api, { API_BASE, apiError } from '../api/axios';
 
 /**
@@ -40,9 +41,17 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   const [wmPos, setWmPos] = useState({ top: '8%', left: '6%' });
   const [wmShown, setWmShown] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // The watch allowance, as the server last reported it. null for staff, and
+  // for a student while the platform limit is switched off.
+  const [views, setViews] = useState(null);
+  const [blocked, setBlocked] = useState(false);
+  const { t } = useLanguage();
 
   const fetchToken = useCallback(async () => {
     const { data } = await api.post(`/videos/${videoId}/token`);
+    // Every token issue re-counts the allowance, so the strip below the video
+    // stays honest as the student watches rather than only at first load.
+    setViews(data.viewLimit ? { remaining: data.viewsRemaining, limit: data.viewLimit } : null);
     return `${API_BASE}/videos/${videoId}/stream?token=${encodeURIComponent(data.token)}`;
   }, [videoId]);
 
@@ -50,14 +59,25 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   // continuation; callers remount the player with key={videoId} to reset it.
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchToken(), api.get('/videos/watermark/me')])
-      .then(([url, wm]) => {
-        if (cancelled) return;
-        setSrc(url);
-        if (wm.data.enabled) setWatermark(wm.data.lines);
-      })
-      .catch((err) => !cancelled && setError(apiError(err, 'Could not load video')));
-    return () => { cancelled = true; };
+    // Deferred by a tick: fetchToken() reports the watch allowance back into
+    // state, and setting state straight from an effect body is what the
+    // react-hooks rule forbids.
+    const timer = setTimeout(() => {
+      Promise.all([fetchToken(), api.get('/videos/watermark/me')])
+        .then(([url, wm]) => {
+          if (cancelled) return;
+          setSrc(url);
+          if (wm.data.enabled) setWatermark(wm.data.lines);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          // Out of views is not a failure to report as one — it is a rule the
+          // student needs explained, so it gets its own panel.
+          if (err.response?.data?.code === 'VIDEO_VIEW_LIMIT') setBlocked(true);
+          else setError(apiError(err, 'Could not load video'));
+        });
+    }, 0);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [videoId, fetchToken]);
 
   // Renew the signed URL before the 5-minute token expires.
@@ -158,6 +178,15 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     }
   };
 
+  if (blocked) {
+    return (
+      <div className="flex aspect-video flex-col items-center justify-center gap-2 rounded-xl bg-surface-900 px-6 text-center">
+        <Lock size={26} className="text-amber-400" aria-hidden="true" />
+        <p className="text-sm font-semibold text-white">{t('video.limitReached')}</p>
+        <p className="max-w-sm text-xs leading-relaxed text-surface-400">{t('video.limitHint')}</p>
+      </div>
+    );
+  }
   if (error) {
     return <div className="flex aspect-video items-center justify-center rounded-xl bg-surface-900 text-sm text-rose-400">{error}</div>;
   }
@@ -169,7 +198,10 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     );
   }
 
+  const lastView = views && views.remaining <= 1;
+
   return (
+    <>
     <div
       ref={containerRef}
       className={`relative select-none overflow-hidden bg-black ${
@@ -200,9 +232,27 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
           <div>{new Date().toLocaleString()}</div>
         </div>
       )}
-      <div className="pointer-events-none absolute bottom-14 right-3 z-10 flex items-center gap-1 rounded bg-black/30 px-1.5 py-0.5 text-[10px] text-white/50">
+      <div className="pointer-events-none absolute bottom-14 end-3 z-10 flex items-center gap-1 rounded bg-black/30 px-1.5 py-0.5 text-[10px] text-white/50">
         <ShieldCheck size={11} /> Protected stream
       </div>
     </div>
+
+    {/* The allowance, stated before it runs out rather than at the moment it
+        does. A view is whole-video watch time, so the hint says so — nobody
+        should think opening the page cost them one. */}
+    {views && (
+      <div className={`mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-3 py-2 text-xs ${
+        lastView
+          ? 'bg-amber-50 text-amber-800 dark:bg-amber-900/25 dark:text-amber-200'
+          : 'bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300'
+      }`}>
+        {lastView ? <AlertTriangle size={13} className="shrink-0" /> : <Eye size={13} className="shrink-0" />}
+        <span className="bidi-isolate font-semibold">
+          {lastView ? t('video.lastView') : t('video.viewsLeft', { count: views.remaining, limit: views.limit })}
+        </span>
+        <span className="text-[11px] opacity-80">{t('video.viewsHint')}</span>
+      </div>
+    )}
+    </>
   );
 }

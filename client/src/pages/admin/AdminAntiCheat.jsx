@@ -65,7 +65,7 @@ export default function AdminAntiCheat() {
                 <span className="text-surface-700 dark:text-surface-200">{e.student?.name}</span>
                 {e.course && <span className="text-xs text-surface-400">· {e.course.title}</span>}
                 {e.detail && <span className="text-xs text-surface-400">— {e.detail}</span>}
-                <span className="ml-auto text-xs text-surface-400">{new Date(e.occurredAt).toLocaleString()}</span>
+                <span className="ms-auto text-xs text-surface-400">{new Date(e.occurredAt).toLocaleString()}</span>
               </div>
             ))}
           </div>

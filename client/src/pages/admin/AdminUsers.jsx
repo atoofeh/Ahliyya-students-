@@ -227,7 +227,7 @@ export default function AdminUsers() {
                   <span className="text-surface-400">first {new Date(detailModal.device.active.firstAuthorizedAt).toLocaleString()}</span>
                   <span className="text-surface-400">last seen {new Date(detailModal.device.active.lastSeenAt).toLocaleString()}</span>
                   {canManage({ _id: detailModal.user.id, role: detailModal.user.role }) && (
-                    <Button size="sm" variant="ghost" className="ml-auto text-rose-500" onClick={() => setRevokeModal({ user: detailModal.user })}>Revoke device</Button>
+                    <Button size="sm" variant="ghost" className="ms-auto text-rose-500" onClick={() => setRevokeModal({ user: detailModal.user })}>Revoke device</Button>
                   )}
                 </div>
               )}
@@ -238,7 +238,7 @@ export default function AdminUsers() {
                       <Badge color="gray">revoked</Badge>
                       <span className="font-mono">{d.publicId}</span>
                       <span>{d.revocationReason}</span>
-                      <span className="ml-auto">{d.revokedBy?.name ? `by ${d.revokedBy.name} · ` : ''}{new Date(d.revokedAt).toLocaleString()}</span>
+                      <span className="ms-auto">{d.revokedBy?.name ? `by ${d.revokedBy.name} · ` : ''}{new Date(d.revokedAt).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
@@ -252,7 +252,7 @@ export default function AdminUsers() {
                   <Badge color={s.isActive ? 'green' : 'gray'}>{s.isActive ? 'active' : s.endReason || 'ended'}</Badge>
                   <span className="text-surface-600 dark:text-surface-300">{s.browser} · {s.os}</span>
                   <span className="text-surface-400">{s.ip}</span>
-                  <span className="ml-auto text-surface-400">{new Date(s.createdAt).toLocaleString()}</span>
+                  <span className="ms-auto text-surface-400">{new Date(s.createdAt).toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -263,7 +263,7 @@ export default function AdminUsers() {
                   <div key={h._id} className="flex items-center gap-2 border-b border-surface-100 dark:border-surface-700 py-1.5 text-xs">
                     <Badge color={h.success ? 'green' : 'red'}>{h.success ? 'success' : h.reason}</Badge>
                     <span className="text-surface-400">{h.ip} · {h.browser}</span>
-                    <span className="ml-auto text-surface-400">{new Date(h.createdAt).toLocaleString()}</span>
+                    <span className="ms-auto text-surface-400">{new Date(h.createdAt).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -275,7 +275,7 @@ export default function AdminUsers() {
                   <div key={e._id} className="flex items-center gap-2 py-1 text-xs">
                     <span className="text-surface-600 dark:text-surface-300">{e.course?.title}</span>
                     <Badge>{e.status}</Badge>
-                    <span className="ml-auto text-surface-400">{e.progressPercent}%</span>
+                    <span className="ms-auto text-surface-400">{e.progressPercent}%</span>
                   </div>
                 ))}
               </div>

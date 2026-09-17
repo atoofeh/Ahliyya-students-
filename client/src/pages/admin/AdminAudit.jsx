@@ -68,7 +68,7 @@ export default function AdminAudit() {
                         <span className="font-mono text-xs text-surface-300">{log.ip}</span>
                       </>
                     )}
-                    <span className="ml-auto text-xs text-surface-400">{new Date(log.createdAt).toLocaleString()}</span>
+                    <span className="ms-auto text-xs text-surface-400">{new Date(log.createdAt).toLocaleString()}</span>
                   </div>
                 ))}
               </div>

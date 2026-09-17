@@ -46,7 +46,7 @@ export default function AdminSettings() {
   const setBool = (k) => (v) => setSettings((s) => ({ ...s, [k]: v }));
   const lock = (k) => !isOwner && ownerOnly.includes(k);
   const ownerTag = isOwner ? null : (
-    <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-gold-600 dark:text-gold-400">
+    <span className="ms-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-gold-600 dark:text-gold-400">
       <Lock size={10} /> Owner setting
     </span>
   );

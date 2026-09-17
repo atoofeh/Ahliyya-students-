@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useLanguage } from '../hooks/useLanguage';
 import { Bell, CheckCheck, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
@@ -32,6 +33,7 @@ const writeSeen = (userId, iso) => {
 };
 
 export default function NotificationsBell() {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [items, setItems] = useState(null);
@@ -157,20 +159,20 @@ export default function NotificationsBell() {
 
   return (
     <div className="relative" ref={ref}>
-      <button onClick={openPanel} aria-label="Notifications"
+      <button onClick={openPanel} aria-label={t('nav.notifications')}
         className="relative rounded-lg p-2 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-700 dark:text-surface-300">
         <Bell size={19} />
         {count > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+          <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
             {count > 99 ? '99+' : count}
           </span>
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-40 mt-2 w-80 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-xl animate-fade-in">
+        <div className="absolute end-0 z-40 mt-2 w-80 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-xl animate-fade-in">
           <div className="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 px-4 py-2.5">
-            <span className="text-sm font-semibold text-surface-800 dark:text-surface-100">Notifications</span>
-            <Button size="sm" variant="ghost" onClick={markAll}><CheckCheck size={14} /> Mark all read</Button>
+            <span className="text-sm font-semibold text-surface-800 dark:text-surface-100">{t('nav.notifications')}</span>
+            <Button size="sm" variant="ghost" onClick={markAll}><CheckCheck size={14} /> {t('common.markAllRead')}</Button>
           </div>
 
           {/* Asking here, where the user came looking for notifications, instead
@@ -192,7 +194,7 @@ export default function NotificationsBell() {
           )}
           <div className="max-h-96 overflow-y-auto">
             {!items ? <div className="p-6 text-center"><Spinner /></div>
-              : items.length === 0 ? <EmptyState title="No notifications yet" />
+              : items.length === 0 ? <EmptyState title={t('common.noNotifications')} />
               : items.map((n) => (
                 <button key={n._id} onClick={() => clickItem(n)}
                   className={`block w-full border-b border-surface-100 dark:border-surface-700/50 px-4 py-3 text-left hover:bg-surface-50 dark:hover:bg-surface-700/50 ${!n.readAt ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}>

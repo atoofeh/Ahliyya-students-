@@ -61,7 +61,17 @@ const watermark = asyncHandler(async (req, res) => {
   res.json(await VideoService.watermarkData(req.user, req));
 });
 
+const videoViews = asyncHandler(async (req, res) => {
+  res.json(await VideoService.courseVideoViews(req.course._id, req.params.videoId));
+});
+
+const resetVideoViews = asyncHandler(async (req, res) => {
+  await VideoService.resetViews(req.course._id, req.params.videoId, req.params.studentId, req.user, req.ip);
+  res.json({ message: 'This student can watch the video again' });
+});
+
 module.exports = {
   initUpload, uploadChunk, uploadStatus, completeUpload,
   streamToken, stream, saveProgress, listCourseVideos, deleteVideo, watermark,
+  videoViews, resetVideoViews,
 };

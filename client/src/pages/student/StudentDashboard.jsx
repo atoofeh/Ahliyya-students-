@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Play, Star, KeyRound, ArrowRight, Library, ClipboardList, HelpCircle, Clock } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../hooks/useLanguage';
 import { useToast } from '../../hooks/useToast';
 import { Card, EmptyState, Button, Input, Badge, Modal, SectionTitle, RingProgress, Skeleton } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
@@ -10,19 +11,20 @@ import ErrorState from '../../components/ErrorState';
 import CourseCover from '../../components/CourseCover';
 
 /** Relative due label with the urgency baked in — students scan this column first. */
-const dueLabel = (d) => {
+const dueLabel = (d, t) => {
   if (!d) return null;
   const ms = new Date(d) - Date.now();
   const days = Math.round(ms / 86400000);
-  if (ms < 0) return { label: 'Overdue', tone: 'red' };
-  if (days === 0) return { label: 'Due today', tone: 'amber' };
-  if (days === 1) return { label: 'Due tomorrow', tone: 'amber' };
-  return { label: `Due in ${days} days`, tone: 'gray' };
+  if (ms < 0) return { label: t('student.overdue'), tone: 'red' };
+  if (days === 0) return { label: t('student.dueToday'), tone: 'amber' };
+  if (days === 1) return { label: t('student.dueTomorrow'), tone: 'amber' };
+  return { label: t('student.dueInDays', { days }), tone: 'gray' };
 };
 
 export default function StudentDashboard() {
   const { user } = useAuth();
   const toast = useToast();
+  const { t } = useLanguage();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [upNext, setUpNext] = useState([]);
@@ -64,7 +66,7 @@ export default function StudentDashboard() {
     setBusy(true);
     try {
       await api.post('/enrollments/redeem', { code });
-      toast.success('Enrolled — the course is in your list');
+      toast.success(t('student.enrolledToast'));
       setCodeModal(false); setCode('');
       load();
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
@@ -89,14 +91,25 @@ export default function StudentDashboard() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-display text-[22px] font-extrabold tracking-tight text-surface-900 dark:text-white md:text-[26px]">
-            Welcome back, {user.name.split(' ')[0]}
+            {t('student.welcomeBack', { name: user.name.split(' ')[0] })}
           </h1>
-          <p className="mt-1 text-sm text-surface-500">
-            {stats.enrolledCourses} course{stats.enrolledCourses !== 1 && 's'} · {stats.completedCourses} completed
-            {stats.avgScore != null && <> · {stats.avgScore}% average</>}
+          {/* Flex items rather than one run of text: each stat keeps its own
+              digits, and the separators stay between them in both directions. */}
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-surface-500">
+            <span className="bidi-isolate">
+              {stats.enrolledCourses === 1 ? t('student.courseOne') : t('student.courses', { count: stats.enrolledCourses })}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="bidi-isolate">{t('student.completed', { count: stats.completedCourses })}</span>
+            {stats.avgScore != null && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="bidi-isolate">{t('student.average', { percent: stats.avgScore })}</span>
+              </>
+            )}
           </p>
         </div>
-        <Button variant="outline" onClick={() => setCodeModal(true)}><KeyRound size={15} /> Redeem course code</Button>
+        <Button variant="outline" onClick={() => setCodeModal(true)}><KeyRound size={15} /> {t('student.redeemCourseCode')}</Button>
       </div>
 
       {resume ? (
@@ -106,16 +119,16 @@ export default function StudentDashboard() {
               <div className="flex h-full items-center justify-between gap-4 px-5 py-4 sm:px-7">
                 <div className="flex min-w-0 items-center gap-4">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gold-gradient text-brand-950 shadow-gold-glow transition-transform duration-200 group-hover:scale-110">
-                    <Play size={20} className="ml-0.5 fill-current" />
+                    <Play size={20} className="ms-0.5 fill-current rtl:rotate-180" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gold-300">Continue learning</p>
-                    <p className="truncate font-display text-lg font-bold text-white">{resume.lesson.title}</p>
-                    <p className="truncate text-xs text-white/70">{resume.course?.title}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gold-300">{t('student.continueLearning')}</p>
+                    <p dir="auto" className="truncate font-display text-lg font-bold text-white">{resume.lesson.title}</p>
+                    <p dir="auto" className="truncate text-xs text-white/70">{resume.course?.title}</p>
                   </div>
                 </div>
                 <span className="hidden items-center gap-1.5 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20 backdrop-blur-sm transition-colors group-hover:bg-white/20 sm:inline-flex">
-                  Resume <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                  {t('student.resume')} <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5 rtl:rotate-180" />
                 </span>
               </div>
             </CourseCover>
@@ -125,12 +138,12 @@ export default function StudentDashboard() {
         <Card>
           <EmptyState
             icon={<Library size={26} />}
-            title="Nothing in progress yet"
-            subtitle="Redeem an access code from your teacher, or browse the catalog to see what is on offer."
+            title={t('student.nothingInProgress')}
+            subtitle={t('student.nothingInProgressHint')}
             action={(
               <div className="flex flex-wrap justify-center gap-2">
-                <Button onClick={() => setCodeModal(true)}><KeyRound size={15} /> Redeem code</Button>
-                <Link to="/student/catalog"><Button variant="outline">Browse catalog</Button></Link>
+                <Button onClick={() => setCodeModal(true)}><KeyRound size={15} /> {t('student.redeemCode')}</Button>
+                <Link to="/student/catalog"><Button variant="outline">{t('student.browseCatalog')}</Button></Link>
               </div>
             )}
           />
@@ -139,19 +152,19 @@ export default function StudentDashboard() {
 
       {upNext.length > 0 && (
         <div>
-          <SectionTitle title="Up next" subtitle={`In ${resume?.course?.title}`} />
+          <SectionTitle title={t('student.upNext')} subtitle={t('student.inCourse', { title: resume?.course?.title || '' })} />
           <Card className="divide-y divide-surface-100 dark:divide-surface-700/60">
             {upNext.map((item) => {
-              const d = dueLabel(item.at);
+              const d = dueLabel(item.at, t);
               const Icon = item.kind === 'quiz' ? HelpCircle : ClipboardList;
               return (
                 <Link key={item.id} to={item.to}
                   className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/40">
                   <Icon size={16} className="shrink-0 text-surface-400" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-surface-800 dark:text-surface-100">{item.title}</span>
+                  <span dir="auto" className="min-w-0 flex-1 truncate text-sm font-medium text-surface-800 dark:text-surface-100">{item.title}</span>
                   {d
-                    ? <Badge color={d.tone}><Clock size={11} className="mr-1" />{d.label}</Badge>
-                    : <span className="shrink-0 text-xs text-surface-400">No due date</span>}
+                    ? <Badge color={d.tone}><Clock size={11} className="me-1" />{d.label}</Badge>
+                    : <span className="shrink-0 text-xs text-surface-400">{t('student.noDueDate')}</span>}
                 </Link>
               );
             })}
@@ -161,12 +174,12 @@ export default function StudentDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <SectionTitle title="My courses" subtitle={`${enrollments.length} enrolled`}
-            action={<Link to="/student/catalog" className="text-[13px] font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300">Browse catalog →</Link>} />
+          <SectionTitle title={t('student.myCourses')} subtitle={t('student.enrolledCount', { count: enrollments.length })}
+            action={<Link to="/student/catalog" className="text-[13px] font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300">{t('student.browseCatalog')} <span className="rtl:hidden">→</span><span className="hidden rtl:inline">←</span></Link>} />
           {enrollments.length === 0 ? (
-            <Card><EmptyState icon={<Library size={26} />} title="No courses yet"
-              subtitle="Browse the catalog or redeem an access code from your teacher."
-              action={<Link to="/student/catalog"><Button variant="outline">Browse catalog</Button></Link>} /></Card>
+            <Card><EmptyState icon={<Library size={26} />} title={t('student.noCoursesYet')}
+              subtitle={t('student.noCoursesHint')}
+              action={<Link to="/student/catalog"><Button variant="outline">{t('student.browseCatalog')}</Button></Link>} /></Card>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {enrollments.map((e) => (
@@ -174,19 +187,19 @@ export default function StudentDashboard() {
                   <Card hover className="h-full overflow-hidden">
                     <CourseCover title={e.course.title} category={e.course.category} className="h-24">
                       {e.isFavorite && (
-                        <span className="absolute right-3 top-3 rounded-full bg-white/15 p-1.5 ring-1 ring-white/25 backdrop-blur-sm">
+                        <span className="absolute end-3 top-3 rounded-full bg-white/15 p-1.5 ring-1 ring-white/25 backdrop-blur-sm">
                           <Star size={13} className="fill-gold-400 text-gold-400" />
                         </span>
                       )}
                     </CourseCover>
                     <div className="flex items-center gap-3 p-4">
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-display font-bold leading-snug text-surface-900 line-clamp-2 dark:text-white">{e.course.title}</h3>
+                        <h3 dir="auto" className="font-display font-bold leading-snug text-surface-900 line-clamp-2 dark:text-white">{e.course.title}</h3>
                         <p className="mt-1 truncate text-xs text-surface-400">
-                          {e.course.teacher?.name} · {e.course.lessonCount} lessons
-                          {e.course.expiresAt && <> · ends {new Date(e.course.expiresAt).toLocaleDateString()}</>}
+                          <span className="bidi-isolate">{e.course.teacher?.name}</span> · <span className="bidi-isolate">{t('student.lessonsCount', { count: e.course.lessonCount })}</span>
+                          {e.course.expiresAt && <> · <span className="bidi-isolate">{t('student.endsOn', { date: new Date(e.course.expiresAt).toLocaleDateString() })}</span></>}
                         </p>
-                        {e.status === 'completed' && <Badge color="green" className="mt-1.5">Completed</Badge>}
+                        {e.status === 'completed' && <Badge color="green" className="mt-1.5">{t('student.completedBadge')}</Badge>}
                       </div>
                       <RingProgress value={e.progressPercent} gold={e.status === 'completed'} />
                     </div>
@@ -198,21 +211,21 @@ export default function StudentDashboard() {
         </div>
 
         <div>
-          <SectionTitle title="Recent results"
-            action={<Link to="/student/grades" className="text-[13px] font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300">All grades →</Link>} />
+          <SectionTitle title={t('student.recentResults')}
+            action={<Link to="/student/grades" className="text-[13px] font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300">{t('student.allGrades')} <span className="rtl:hidden">→</span><span className="hidden rtl:inline">←</span></Link>} />
           <Card className="divide-y divide-surface-100 dark:divide-surface-700">
             {recentAttempts.length === 0
-              ? <EmptyState title="No quizzes taken yet" subtitle="Results appear here after your first quiz." />
+              ? <EmptyState title={t('student.noQuizzes')} subtitle={t('student.noQuizzesHint')} />
               : recentAttempts.slice(0, 6).map((a) => (
                 <Link key={a._id} to={`/student/attempts/${a._id}`}
                   className="block px-4 py-3 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/40">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-surface-800 dark:text-surface-100">{a.quiz?.title}</p>
-                      <p className="truncate text-xs text-surface-400">{a.course?.title}</p>
+                      <p dir="auto" className="truncate text-sm font-medium text-surface-800 dark:text-surface-100">{a.quiz?.title}</p>
+                      <p dir="auto" className="truncate text-xs text-surface-400">{a.course?.title}</p>
                     </div>
                     {a.pendingManualGrading
-                      ? <Badge color="amber">Pending</Badge>
+                      ? <Badge color="amber">{t('student.pending')}</Badge>
                       : <Badge color={a.passed ? 'green' : 'red'}>{a.percent}%</Badge>}
                   </div>
                 </Link>
@@ -221,10 +234,10 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      <Modal open={codeModal} onClose={() => { setCodeModal(false); if (params.get('redeem')) setParams({}, { replace: true }); }} title="Redeem access code">
+      <Modal open={codeModal} onClose={() => { setCodeModal(false); if (params.get('redeem')) setParams({}, { replace: true }); }} title={t('student.redeemCourseCode')}>
         <div className="space-y-4">
-          <Input label="Access code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="XXXX-XXXX-XX" />
-          <Button className="w-full" loading={busy} onClick={redeem} disabled={code.length < 4}>Enrol</Button>
+          <Input label={t('student.accessCode')} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={t('student.codePlaceholder')} />
+          <Button className="w-full" loading={busy} onClick={redeem} disabled={code.length < 4}>{t('student.enrol')}</Button>
         </div>
       </Modal>
     </div>

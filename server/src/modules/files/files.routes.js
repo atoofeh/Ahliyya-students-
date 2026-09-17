@@ -35,6 +35,16 @@ router.post('/courses/:courseId/images', uploadLimiter, requireCourseOwnership, 
     res.status(201).json(asset);
   }));
 
+// News images (admin only). Not course-scoped: the feed belongs to the
+// institution. Served like any other file, through the authorised route.
+router.post('/news-image', uploadLimiter, requirePermission(P.ANNOUNCEMENTS_GLOBAL), imageUpload,
+  asyncHandler(async (req, res) => {
+    const asset = await FileService.upload(req.file, {
+      uploadedBy: req.user.id, kind: 'images', scope: 'news',
+    }, req.ip);
+    res.status(201).json(asset);
+  }));
+
 // Global documents (admin only)
 router.post('/global', uploadLimiter, requirePermission(P.FILES_GLOBAL), documentUpload,
   asyncHandler(async (req, res) => {

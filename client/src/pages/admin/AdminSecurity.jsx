@@ -72,7 +72,7 @@ function Overview() {
                 <span className="text-surface-700 dark:text-surface-200">{row.user?.name || 'system'}{row.user?.username && <span className="text-surface-400"> @{row.user.username}</span>}</span>
                 {row.targetUser && <span className="text-surface-400">→ {row.targetUser.name}</span>}
                 {row.ip && <span className="text-surface-400">{row.ip}</span>}
-                <span className="ml-auto text-surface-400">{when(row.createdAt)}</span>
+                <span className="ms-auto text-surface-400">{when(row.createdAt)}</span>
               </div>
             ))}
           </div>

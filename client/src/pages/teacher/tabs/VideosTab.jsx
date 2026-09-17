@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Video, Trash2, Eye, FileUp, File as FileIcon, Play } from 'lucide-react';
+import { Video, Trash2, Eye, FileUp, File as FileIcon, Play, Users } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import ChunkedUploader from '../../../components/ChunkedUploader';
 import { Card, Badge, Button, EmptyState, Spinner, Modal } from '../../../components/ui';
 import VideoPlayer from '../../../components/VideoPlayer';
+import VideoViewsModal from '../../../components/VideoViewsModal';
 
 const fmtSize = (b) => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.ceil(b / 1024)} KB`);
 const fmtDur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '—');
@@ -14,6 +15,7 @@ export default function VideosTab({ courseId }) {
   // Staff preview. No lessonId is passed, so the player skips its progress
   // heartbeat — watch counts and completion belong to students only.
   const [preview, setPreview] = useState(null);
+  const [viewsOf, setViewsOf] = useState(null);
   const [videos, setVideos] = useState(null);
   const [files, setFiles] = useState(null);
   const fileInput = useRef(null);
@@ -79,9 +81,14 @@ export default function VideosTab({ courseId }) {
                 </div>
                 <Badge color={statusColor[v.status]}>{v.status}</Badge>
                 {v.status === 'ready' && (
-                  <Button size="sm" variant="ghost" aria-label={`Preview ${v.title}`} onClick={() => setPreview(v)}>
-                    <Play size={14} /> Preview
-                  </Button>
+                  <>
+                    <Button size="sm" variant="ghost" aria-label={`Preview ${v.title}`} onClick={() => setPreview(v)}>
+                      <Play size={14} /> Preview
+                    </Button>
+                    <Button size="sm" variant="ghost" aria-label={`Who watched ${v.title}`} onClick={() => setViewsOf(v)}>
+                      <Users size={14} /> Views
+                    </Button>
+                  </>
                 )}
                 <Button size="sm" variant="ghost" aria-label={`Delete ${v.title}`} onClick={() => deleteVideo(v._id)}><Trash2 size={14} className="text-rose-400" /></Button>
               </div>
@@ -119,6 +126,7 @@ export default function VideosTab({ courseId }) {
           </Card>
         )}
       </div>
+      <VideoViewsModal courseId={courseId} video={viewsOf} onClose={() => setViewsOf(null)} />
       <Modal open={!!preview} onClose={() => setPreview(null)} title={preview?.title || 'Preview'} wide>
         {preview && (
           <div className="space-y-3">

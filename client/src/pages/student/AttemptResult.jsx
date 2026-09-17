@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { CheckCircle2, XCircle, MinusCircle, Trophy, ArrowLeft } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
+import { useLanguage } from '../../hooks/useLanguage';
 import { Card, Badge, Button } from '../../components/ui';
 import AuthedImage from '../../components/AuthedImage';
 import { SkeletonCard } from '../../components/Skeletons';
@@ -10,6 +11,7 @@ import { SkeletonCard } from '../../components/Skeletons';
 export default function AttemptResult() {
   const { attemptId } = useParams();
   const toast = useToast();
+  const { t } = useLanguage();
   const [attempt, setAttempt] = useState(null);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function AttemptResult() {
     return (
       <Card className="mx-auto max-w-lg p-8 text-center">
         <p className="text-surface-600 dark:text-surface-300">{attempt.message}</p>
-        <Link to="/student" className="mt-4 inline-block"><Button variant="outline"><ArrowLeft size={15} /> Back</Button></Link>
+        <Link to="/student" className="mt-4 inline-block"><Button variant="outline"><ArrowLeft size={15} className="rtl:rotate-180" /> {t('result.back')}</Button></Link>
       </Card>
     );
   }
@@ -34,20 +36,20 @@ export default function AttemptResult() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <Link to={`/student/courses/${attempt.course?._id || attempt.course}`} className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline">
-        <ArrowLeft size={15} /> Back to course
+        <ArrowLeft size={15} className="rtl:rotate-180" /> {t('result.backToCourse')}
       </Link>
 
       <Card className="p-6 text-center">
         <Trophy size={40} className={`mx-auto mb-2 ${attempt.passed ? 'text-amber-400' : 'text-surface-300'}`} />
-        <h1 className="text-xl font-bold text-surface-900 dark:text-white">{attempt.quiz?.title}</h1>
+        <h1 dir="auto" className="text-xl font-bold text-surface-900 dark:text-white">{attempt.quiz?.title}</h1>
         <p className="mt-1 text-4xl font-extrabold text-surface-900 dark:text-white">{attempt.percent}%</p>
-        <p className="text-sm text-surface-400">{attempt.score} / {attempt.maxScore} points · Attempt #{attempt.attemptNumber}</p>
+        <p className="text-sm text-surface-400">{t('result.pointsOf', { score: attempt.score, max: attempt.maxScore })} · {t('quiz.attempt', { n: attempt.attemptNumber })}</p>
         <div className="mt-3 flex items-center justify-center gap-2">
           {attempt.pendingManualGrading
-            ? <Badge color="amber">Some answers await manual grading</Badge>
-            : attempt.passed != null && <Badge color={attempt.passed ? 'green' : 'red'}>{attempt.passed ? 'Passed' : 'Not passed'} (pass mark {attempt.quiz?.passingScore}%)</Badge>}
-          {attempt.status === 'auto_submitted' && <Badge color="amber">Auto-submitted</Badge>}
-          {attempt.status === 'invalidated' && <Badge color="red">Invalidated: {attempt.invalidatedReason}</Badge>}
+            ? <Badge color="amber">{t('result.awaitManual')}</Badge>
+            : attempt.passed != null && <Badge color={attempt.passed ? 'green' : 'red'}>{t(attempt.passed ? 'result.passedWithMark' : 'result.notPassedWithMark', { n: attempt.quiz?.passingScore })}</Badge>}
+          {attempt.status === 'auto_submitted' && <Badge color="amber">{t('result.autoSubmitted')}</Badge>}
+          {attempt.status === 'invalidated' && <Badge color="red">{t('result.invalidated', { reason: attempt.invalidatedReason })}</Badge>}
         </div>
       </Card>
 
@@ -62,10 +64,10 @@ export default function AttemptResult() {
             <div className="flex items-start gap-3">
               {icon}
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-surface-900 dark:text-white">
+                <p dir="auto" className="font-medium text-surface-900 dark:text-white">
                   {i + 1}. {q.type === 'fill_blanks' ? q.text.replace(/\{\{blank\}\}/g, '_____') : q.text}
                 </p>
-                {q.image && <AuthedImage fileId={q.image} alt={`Image for question ${i + 1}`} className="mt-2 max-h-56 rounded-lg" />}
+                {q.image && <AuthedImage fileId={q.image} alt={t('result.imageForQuestion', { n: i + 1 })} className="mt-2 max-h-56 rounded-lg" />}
 
                 {['multiple_choice', 'true_false', 'image_choice'].includes(q.type) && (
                   <div className="mt-2 space-y-1">
@@ -79,8 +81,8 @@ export default function AttemptResult() {
                             : 'text-surface-500'}`}>
                           {o.image && <AuthedImage fileId={o.image} className="mb-1 h-20 rounded" />}
                           {o.text}
-                          {chosen && <span className="ml-2 text-xs">(your answer)</span>}
-                          {correct && <span className="ml-2 text-xs">✓ correct</span>}
+                          {chosen && <span className="ms-2 text-xs">{t('result.yourAnswer')}</span>}
+                          {correct && <span className="ms-2 text-xs">{t('result.correct')}</span>}
                         </div>
                       );
                     })}
@@ -89,11 +91,11 @@ export default function AttemptResult() {
 
                 {['short_answer', 'essay'].includes(q.type) && (
                   <div className="mt-2 space-y-1 text-sm">
-                    <p className="rounded-lg bg-surface-50 dark:bg-surface-700/40 px-3 py-2 text-surface-700 dark:text-surface-200 whitespace-pre-wrap">
-                      {a.textAnswer || <em className="text-surface-400">No answer</em>}
+                    <p dir="auto" className="rounded-lg bg-surface-50 dark:bg-surface-700/40 px-3 py-2 text-surface-700 dark:text-surface-200 whitespace-pre-wrap">
+                      {a.textAnswer || <em className="text-surface-400">{t('result.noAnswer')}</em>}
                     </p>
                     {q.correctAnswers?.length > 0 && (
-                      <p className="text-emerald-600 dark:text-emerald-400 text-xs">Accepted: {q.correctAnswers.join(' / ')}</p>
+                      <p className="text-emerald-600 dark:text-emerald-400 text-xs">{t('result.accepted', { list: q.correctAnswers.join(' / ') })}</p>
                     )}
                   </div>
                 )}
@@ -102,8 +104,8 @@ export default function AttemptResult() {
                   <div className="mt-2 space-y-1 text-sm">
                     {(a.blanks || []).map((b, bi) => (
                       <p key={bi} className="text-surface-600 dark:text-surface-300">
-                        Blank {bi + 1}: <strong>{b || '—'}</strong>
-                        {q.correctAnswers?.[bi] && <span className="ml-2 text-xs text-emerald-600">✓ {q.correctAnswers[bi].split('|').join(' / ')}</span>}
+                        {t('result.blankN', { n: bi + 1 })}: <strong>{b || '—'}</strong>
+                        {q.correctAnswers?.[bi] && <span className="ms-2 text-xs text-emerald-600">✓ {q.correctAnswers[bi].split('|').join(' / ')}</span>}
                       </p>
                     ))}
                   </div>
@@ -111,7 +113,7 @@ export default function AttemptResult() {
 
                 {a.graderFeedback && (
                   <p className="mt-2 rounded-lg bg-sky-50 dark:bg-sky-900/20 px-3 py-2 text-sm text-sky-700 dark:text-sky-300">
-                    Instructor feedback: {a.graderFeedback}
+                    {t('result.feedback', { text: a.graderFeedback })}
                   </p>
                 )}
                 {q.explanation && (

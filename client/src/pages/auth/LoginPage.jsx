@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, PlayCircle, ShieldCheck, Award, BarChart3 } from 'lucide-react';
+import { AlertTriangle, PlayCircle, ShieldCheck, Award, BarChart3, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
+import { useLanguage } from '../../hooks/useLanguage';
+import LanguageToggle from '../../components/LanguageToggle';
+import PoweredByVortex from '../../components/PoweredByVortex';
 import api, { apiError } from '../../api/axios';
 import { Button, Input } from '../../components/ui';
 import Logo, { LogoMark } from '../../components/Logo';
@@ -11,15 +14,16 @@ import { homeFor } from '../../utils/roles';
 const MODES = { LOGIN: 'login', FORGOT: 'forgot', RESET: 'reset' };
 
 const FEATURES = [
-  { icon: PlayCircle, title: 'HD lectures, protected', text: 'Encrypted streaming with resume — your lessons, anywhere.' },
-  { icon: BarChart3, title: 'Smart quizzes & analytics', text: 'Instant grading, explanations, and progress you can see.' },
-  { icon: Award, title: 'Verified certificates', text: 'Earn certificates with publicly verifiable serials.' },
-  { icon: ShieldCheck, title: 'One authorized device', text: 'Your account is linked to one authorized device — nobody else can sign in as you.' },
+  { icon: PlayCircle, key: 'f1' },
+  { icon: BarChart3, key: 'f2' },
+  { icon: Award, key: 'f3' },
+  { icon: ShieldCheck, key: 'f4' },
 ];
 
 export default function LoginPage() {
   const { user, login } = useAuth();
   const toast = useToast();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [mode, setMode] = useState(MODES.LOGIN);
   const [busy, setBusy] = useState(false);
@@ -64,11 +68,11 @@ export default function LoginPage() {
         if (u.mustChangePassword) navigate('/onboarding');
       } else if (mode === MODES.FORGOT) {
         await api.post('/auth/forgot-password', { email: form.email });
-        toast.info('If that email exists, a reset code was sent.');
+        toast.info(t('auth.resetCodeSent'));
         setMode(MODES.RESET);
       } else if (mode === MODES.RESET) {
         await api.post('/auth/reset-password', { email: form.email, code: form.code, password: form.password });
-        toast.success('Password reset — sign in with your new password.');
+        toast.success(t('auth.passwordResetDone'));
         setMode(MODES.LOGIN);
       }
     } catch (err) {
@@ -83,9 +87,9 @@ export default function LoginPage() {
   };
 
   const heading = {
-    [MODES.LOGIN]: ['Welcome back', 'Sign in to continue your journey.'],
-    [MODES.FORGOT]: ['Reset your password', "Enter your email and we'll send a reset code."],
-    [MODES.RESET]: ['Enter reset code', 'Check your inbox for the 6-digit code.'],
+    [MODES.LOGIN]: [t('auth.welcome'), t('auth.subtitle')],
+    [MODES.FORGOT]: [t('auth.forgotTitle'), t('auth.forgotSubtitle')],
+    [MODES.RESET]: [t('auth.resetTitle'), t('auth.resetSubtitle')],
   }[mode];
 
   return (
@@ -111,31 +115,37 @@ export default function LoginPage() {
             </h1>
             <p dir="rtl" className="mt-2 font-sans text-2xl font-medium text-brand-100/90">ارتقِ نحو القمة</p>
             <p className="mt-4 max-w-md text-[15px] leading-relaxed text-brand-100/80">
-              The learning platform of Al Ahliyya students — lectures, quizzes,
-              assignments and certificates, in one beautiful place.
+              {t('auth.blurb')}
             </p>
 
             <div className="mt-10 grid grid-cols-2 gap-4">
-              {FEATURES.map(({ icon: Icon, title, text }) => (
-                <div key={title} className="rounded-2xl bg-white/[0.06] p-4 ring-1 ring-white/10 backdrop-blur-sm">
+              {FEATURES.map(({ icon: Icon, key }) => (
+                <div key={key} className="rounded-2xl bg-white/[0.06] p-4 ring-1 ring-white/10 backdrop-blur-sm">
                   <Icon size={20} className="mb-2 text-gold-400" />
-                  <p className="text-[13px] font-bold text-white">{title}</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-brand-100/70">{text}</p>
+                  <p className="text-[13px] font-bold text-white">{t(`auth.${key}Title`)}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-brand-100/70">{t(`auth.${key}Text`)}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <p className="text-xs text-brand-200/50">© {new Date().getFullYear()} Students_Alahliyya · All rights reserved</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-brand-200/50">{t('auth.rights', { year: new Date().getFullYear() })}</p>
+            <PoweredByVortex tone="dark" />
+          </div>
         </div>
       </div>
 
       {/* ── Form panel ──────────────────────────────────────────── */}
       <div className="flex flex-1 items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-[400px] animate-slide-up">
-          {/* Mobile brand header */}
-          <div className="mb-8 flex justify-center lg:hidden">
-            <Logo size="md" />
+          {/* The switch sits above the form: a student who cannot read the
+              English labels is exactly the person who has to find it. */}
+          {/* Wraps rather than shrinks: the wordmark sets its own width, and
+              at phone size the two would otherwise sit on top of each other. */}
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 lg:justify-end">
+            <Logo size="md" className="lg:hidden" />
+            <LanguageToggle />
           </div>
 
           <h2 className="font-display text-[26px] font-extrabold text-surface-900 dark:text-white">{heading[0]}</h2>
@@ -152,20 +162,20 @@ export default function LoginPage() {
               <div className="flex items-start gap-2.5">
                 <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                 <span>
-                  <strong>This account is already linked to another device.</strong> Contact an administrator or request a device reset.
+                  <strong>{t('auth.deviceLinked')}</strong> {t('auth.deviceLinkedHint')}
                 </span>
               </div>
               {resetSent ? (
-                <p className="mt-2 pl-[26px] font-semibold">Request sent. An administrator will review it.</p>
+                <p className="mt-2 ps-[26px] font-semibold">{t('auth.requestSent')}</p>
               ) : !resetOpen ? (
-                <button type="button" className="mt-2 pl-[26px] font-semibold underline-offset-2 hover:underline" onClick={() => setResetOpen(true)}>
-                  Request a device reset
+                <button type="button" className="mt-2 ps-[26px] font-semibold underline-offset-2 hover:underline" onClick={() => setResetOpen(true)}>
+                  {t('auth.requestReset')}
                 </button>
               ) : (
-                <div className="mt-3 space-y-2 pl-[26px]">
-                  <Input label="Note for the administrator (optional)" value={resetNote} onChange={(e) => setResetNote(e.target.value)} maxLength={300}
-                    placeholder="e.g. My laptop was stolen last night" />
-                  <Button type="button" size="sm" loading={resetBusy} onClick={sendResetRequest} disabled={form.username.length < 3}>Send request</Button>
+                <div className="mt-3 space-y-2 ps-[26px]">
+                  <Input label={t('auth.noteForAdmin')} value={resetNote} onChange={(e) => setResetNote(e.target.value)} maxLength={300}
+                    placeholder={t('auth.notePlaceholder')} />
+                  <Button type="button" size="sm" loading={resetBusy} onClick={sendResetRequest} disabled={form.username.length < 3}>{t('auth.sendRequest')}</Button>
                 </div>
               )}
             </div>
@@ -173,20 +183,20 @@ export default function LoginPage() {
 
           <form onSubmit={submit} className="mt-7 space-y-4">
             {mode === MODES.LOGIN && (
-              <Input label="Username" value={form.username} onChange={set('username')} required minLength={3}
-                placeholder="your.username" autoComplete="username" />
+              <Input label={t('auth.username')} value={form.username} onChange={set('username')} required minLength={3}
+                placeholder={t('auth.usernamePlaceholder')} autoComplete="username" />
             )}
             {(mode === MODES.FORGOT || mode === MODES.RESET) && (
-              <Input label="Email" type="email" value={form.email} onChange={set('email')} required placeholder="you@university.edu" />
+              <Input label={t('auth.email')} type="email" value={form.email} onChange={set('email')} required placeholder="you@university.edu" />
             )}
             {mode === MODES.RESET && (
-              <Input label="Reset code" value={form.code} onChange={set('code')} required minLength={6} maxLength={6} placeholder="6-digit code" />
+              <Input label={t('auth.resetCode')} value={form.code} onChange={set('code')} required minLength={6} maxLength={6} placeholder={t('auth.resetCodePlaceholder')} />
             )}
             {mode !== MODES.FORGOT && (
-              <Input label={mode === MODES.RESET ? 'New password' : 'Password'} type="password" value={form.password}
+              <Input label={mode === MODES.RESET ? t('auth.newPassword') : t('auth.password')} type="password" value={form.password}
                 onChange={set('password')} required minLength={mode === MODES.LOGIN ? 1 : 8} placeholder="••••••••"
                 autoComplete={mode === MODES.LOGIN ? 'current-password' : 'new-password'}
-                hint={mode !== MODES.LOGIN ? '8+ characters with uppercase, lowercase and a digit' : undefined} />
+                hint={mode !== MODES.LOGIN ? t('auth.passwordRule') : undefined} />
             )}
             {mode === MODES.LOGIN && (
               <>
@@ -196,40 +206,41 @@ export default function LoginPage() {
                   <label className="flex min-h-[44px] cursor-pointer select-none items-center gap-2.5 py-2 text-surface-600 dark:text-surface-300">
                     <input type="checkbox" checked={form.rememberMe} onChange={set('rememberMe')}
                       className="h-[18px] w-[18px] rounded accent-brand-600" />
-                    Keep me signed in
+                    {t('auth.keepSignedIn')}
                   </label>
                   <button type="button" className="min-h-[44px] py-2 font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300" onClick={() => setMode(MODES.FORGOT)}>
-                    Forgot password?
+                    {t('auth.forgot')}
                   </button>
                 </div>
                 {/* The consequence is easy to miss and matters most on a phone:
                     signed out means no notifications. */}
                 <p className="-mt-1 text-[12.5px] leading-relaxed text-surface-400">
-                  {form.rememberMe
-                    ? 'This device stays signed in until you sign out — so notifications keep arriving.'
-                    : 'Without this you are signed out after a spell of inactivity, and notifications stop.'}
+                  {t(form.rememberMe ? 'auth.keepHintOn' : 'auth.keepHintOff')}
                 </p>
               </>
             )}
             <Button type="submit" loading={busy} className="w-full" size="lg">
-              {mode === MODES.LOGIN ? 'Sign in' : mode === MODES.FORGOT ? 'Send reset code' : 'Reset password'}
+              {mode === MODES.LOGIN ? t('auth.signIn') : mode === MODES.FORGOT ? t('auth.sendResetCode') : t('auth.resetPassword')}
             </Button>
           </form>
 
           {mode !== MODES.LOGIN && (
             <div className="mt-6 text-center text-[13px] text-surface-500">
-              <button className="font-bold text-brand-600 hover:text-brand-700 dark:text-brand-300" onClick={() => setMode(MODES.LOGIN)}>
-                ← Back to sign in
+              <button className="inline-flex items-center gap-1.5 font-bold text-brand-600 hover:text-brand-700 dark:text-brand-300" onClick={() => setMode(MODES.LOGIN)}>
+                {/* The arrow points back the way the language reads. */}
+                <ArrowLeft size={14} className="rtl:rotate-180" aria-hidden="true" />
+                {t('auth.backToSignIn')}
               </button>
             </div>
           )}
 
           <div className="mt-10 flex items-center justify-center gap-2 text-[11px] text-surface-400">
             <ShieldCheck size={13} className="text-gold-500" />
-            One authorized device per account · Protected content · Encrypted media
+            {t('auth.footer')}
           </div>
         </div>
       </div>
+      <PoweredByVortex className="lg:hidden" />
     </div>
   );
 }
