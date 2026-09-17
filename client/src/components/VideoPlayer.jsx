@@ -30,11 +30,18 @@ const WM_GAP_JITTER_MS = 14000;
 const WM_FIRST_MS = 5000;
 
 const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+
+// The most one `timeupdate` may credit. Ticks arrive ~4x a second, so this
+// covers playback up to 8x and treats anything larger as a seek.
+const MAX_STEP_SECONDS = 2;
 export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const watchedRef = useRef(0);
   const lastBeat = useRef(0);
+  // Where playback was at the previous tick, so watched time can be measured
+  // along the video rather than along the clock.
+  const lastPos = useRef(0);
   const [src, setSrc] = useState(null);
   const [error, setError] = useState(null);
   const [watermark, setWatermark] = useState(null);
@@ -168,13 +175,50 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     } catch { /* non-fatal */ }
   }, [videoId, lessonId, onProgress]);
 
+  /**
+   * Reaching the end is the moment a view is earned, so it is also the moment
+   * the counter above would otherwise start lying — the token that set it was
+   * issued before the watch. Ask again once the final heartbeat has landed.
+   * The player itself stays put: someone who has just finished watching should
+   * not have the video yanked out from under them, and the next visit shows
+   * the locked panel anyway.
+   */
+  const finish = useCallback(async (position) => {
+    await heartbeat(position);
+    try {
+      const { data } = await api.post(`/videos/${videoId}/token`);
+      setViews(data.viewLimit ? { remaining: data.viewsRemaining, limit: data.viewLimit } : null);
+    } catch (err) {
+      if (err.response?.data?.code === 'VIDEO_VIEW_LIMIT') {
+        setViews((v) => (v ? { ...v, remaining: 0 } : v));
+      }
+    }
+  }, [heartbeat, videoId]);
+
+  /**
+   * Watched time, measured along the video.
+   *
+   * `timeupdate` fires about four times a second of *wall clock*, so counting
+   * ticks would credit someone watching at 2x with half of what they actually
+   * saw — and the allowance is meant to count whole viewings of the material,
+   * not minutes spent in front of it. Taking the distance playback moved
+   * instead credits the video's own seconds at any speed.
+   *
+   * Only forward movement counts, and only a step small enough to be playback:
+   * a bigger jump is a seek, and dragging the scrubber to the end must never
+   * earn a view.
+   */
   const onTimeUpdate = () => {
     const video = videoRef.current;
-    if (!video || video.paused) return;
-    watchedRef.current += 0.25; // timeupdate fires ~4x/sec
+    if (!video) return;
+    const position = video.currentTime;
+    const advanced = position - lastPos.current;
+    lastPos.current = position;
+    if (video.paused) return;
+    if (advanced > 0 && advanced <= MAX_STEP_SECONDS) watchedRef.current += advanced;
     if (Date.now() - lastBeat.current > 10000) {
       lastBeat.current = Date.now();
-      heartbeat(video.currentTime);
+      heartbeat(position);
     }
   };
 
@@ -198,7 +242,8 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     );
   }
 
-  const lastView = views && views.remaining <= 1;
+  const spent = views && views.remaining <= 0;
+  const lastView = views && views.remaining === 1;
 
   return (
     <>
@@ -217,9 +262,13 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
         playsInline
         className={isFullscreen ? 'max-h-full max-w-full' : 'aspect-video w-full'}
         onTimeUpdate={onTimeUpdate}
-        onLoadedMetadata={(e) => { if (startAt > 2) e.target.currentTime = startAt; }}
+        onLoadedMetadata={(e) => {
+          if (startAt > 2) e.target.currentTime = startAt;
+          lastPos.current = e.target.currentTime;
+        }}
+        onSeeked={(e) => { lastPos.current = e.target.currentTime; }}
         onPause={() => heartbeat(videoRef.current?.currentTime || 0)}
-        onEnded={() => heartbeat(videoRef.current?.duration || 0)}
+        onEnded={() => finish(videoRef.current?.duration || 0)}
       />
       {watermark && (
         <div
@@ -242,15 +291,17 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
         should think opening the page cost them one. */}
     {views && (
       <div className={`mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-3 py-2 text-xs ${
-        lastView
+        lastView || spent
           ? 'bg-amber-50 text-amber-800 dark:bg-amber-900/25 dark:text-amber-200'
           : 'bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300'
       }`}>
-        {lastView ? <AlertTriangle size={13} className="shrink-0" /> : <Eye size={13} className="shrink-0" />}
+        {lastView || spent ? <AlertTriangle size={13} className="shrink-0" /> : <Eye size={13} className="shrink-0" />}
         <span className="bidi-isolate font-semibold">
-          {lastView ? t('video.lastView') : t('video.viewsLeft', { count: views.remaining, limit: views.limit })}
+          {spent ? t('video.limitReached')
+            : lastView ? t('video.lastView')
+            : t('video.viewsLeft', { count: views.remaining, limit: views.limit })}
         </span>
-        <span className="text-[11px] opacity-80">{t('video.viewsHint')}</span>
+        <span className="text-[11px] opacity-80">{spent ? t('video.limitHint') : t('video.viewsHint')}</span>
       </div>
     )}
     </>
