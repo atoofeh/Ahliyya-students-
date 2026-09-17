@@ -73,7 +73,7 @@ export default function AdminAdmins() {
                   </td>
                   <td className="px-4 py-3">
                     <Badge color={STATUS_COLORS[u.status] || 'gray'}>{u.status}</Badge>
-                    {u.mustChangePassword && <Badge className="ml-1" color="amber">onboarding</Badge>}
+                    {u.mustChangePassword && <Badge className="ms-1" color="amber">onboarding</Badge>}
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {devices[u._id]

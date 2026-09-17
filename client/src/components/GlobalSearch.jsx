@@ -3,6 +3,7 @@ import { Search, BookOpen, FileText, HelpCircle, Video, Users, ClipboardList } f
 import { useNavigate } from 'react-router-dom';
 import { isAdminRole } from '../utils/roles';
 import api from '../api/axios';
+import { useLanguage } from '../hooks/useLanguage';
 import { useAuth } from '../hooks/useAuth';
 
 const GROUPS = [
@@ -15,6 +16,7 @@ const GROUPS = [
 ];
 
 export default function GlobalSearch() {
+  const { t } = useLanguage();
   const [q, setQ] = useState('');
   const [results, setResults] = useState(null);
   const [open, setOpen] = useState(false);
@@ -58,18 +60,20 @@ export default function GlobalSearch() {
 
   return (
     <div className="relative w-full max-w-md" ref={ref}>
-      <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
+      <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-surface-400" />
       <input
         value={q}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => results && setOpen(true)}
-        placeholder="Search courses, lessons, quizzes..."
-        className="w-full rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-900 py-2 pl-9 pr-3 text-sm text-surface-800 dark:text-surface-100 placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        placeholder={t('nav.search')}
+        aria-label={t('nav.search')}
+        dir="auto"
+        className="w-full rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-900 py-2 ps-9 pe-3 text-sm text-surface-800 dark:text-surface-100 placeholder:text-surface-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
       />
       {open && (
         <div className="absolute z-40 mt-2 w-full rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-xl animate-fade-in max-h-96 overflow-y-auto">
           {!hasResults ? (
-            <p className="px-4 py-6 text-center text-sm text-surface-400">No results for “{q}”</p>
+            <p className="px-4 py-6 text-center text-sm text-surface-400">{t('search.noResults', { q })}</p>
           ) : GROUPS.map((g) => results[g.key]?.length ? (
             <div key={g.key}>
               <div className="flex items-center gap-1.5 px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-surface-400">
@@ -79,8 +83,8 @@ export default function GlobalSearch() {
                 <button key={item._id} onClick={() => goto(g.key, item)}
                   className="block w-full px-4 py-2 text-left text-sm text-surface-700 dark:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700/50">
                   {item.title || item.name}
-                  {item.username && <span className="ml-2 text-xs text-surface-400">@{item.username}</span>}
-                  {item.teacher?.name && <span className="ml-2 text-xs text-surface-400">by {item.teacher.name}</span>}
+                  {item.username && <span className="ms-2 text-xs text-surface-400">@{item.username}</span>}
+                  {item.teacher?.name && <span className="ms-2 text-xs text-surface-400">by {item.teacher.name}</span>}
                 </button>
               ))}
             </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { useLanguage } from '../hooks/useLanguage';
+import { Loader2, ShieldCheck, Lock, Eye, AlertTriangle } from 'lucide-react';
 import api, { API_BASE, apiError } from '../api/axios';
 
 /**
@@ -29,20 +30,35 @@ const WM_GAP_JITTER_MS = 14000;
 const WM_FIRST_MS = 5000;
 
 const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+
+// The most one `timeupdate` may credit. Ticks arrive ~4x a second, so this
+// covers playback up to 8x and treats anything larger as a seek.
+const MAX_STEP_SECONDS = 2;
 export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const watchedRef = useRef(0);
   const lastBeat = useRef(0);
+  // Where playback was at the previous tick, so watched time can be measured
+  // along the video rather than along the clock.
+  const lastPos = useRef(0);
   const [src, setSrc] = useState(null);
   const [error, setError] = useState(null);
   const [watermark, setWatermark] = useState(null);
   const [wmPos, setWmPos] = useState({ top: '8%', left: '6%' });
   const [wmShown, setWmShown] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // The watch allowance, as the server last reported it. null for staff, and
+  // for a student while the platform limit is switched off.
+  const [views, setViews] = useState(null);
+  const [blocked, setBlocked] = useState(false);
+  const { t } = useLanguage();
 
   const fetchToken = useCallback(async () => {
     const { data } = await api.post(`/videos/${videoId}/token`);
+    // Every token issue re-counts the allowance, so the strip below the video
+    // stays honest as the student watches rather than only at first load.
+    setViews(data.viewLimit ? { remaining: data.viewsRemaining, limit: data.viewLimit } : null);
     return `${API_BASE}/videos/${videoId}/stream?token=${encodeURIComponent(data.token)}`;
   }, [videoId]);
 
@@ -50,14 +66,25 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   // continuation; callers remount the player with key={videoId} to reset it.
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchToken(), api.get('/videos/watermark/me')])
-      .then(([url, wm]) => {
-        if (cancelled) return;
-        setSrc(url);
-        if (wm.data.enabled) setWatermark(wm.data.lines);
-      })
-      .catch((err) => !cancelled && setError(apiError(err, 'Could not load video')));
-    return () => { cancelled = true; };
+    // Deferred by a tick: fetchToken() reports the watch allowance back into
+    // state, and setting state straight from an effect body is what the
+    // react-hooks rule forbids.
+    const timer = setTimeout(() => {
+      Promise.all([fetchToken(), api.get('/videos/watermark/me')])
+        .then(([url, wm]) => {
+          if (cancelled) return;
+          setSrc(url);
+          if (wm.data.enabled) setWatermark(wm.data.lines);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          // Out of views is not a failure to report as one — it is a rule the
+          // student needs explained, so it gets its own panel.
+          if (err.response?.data?.code === 'VIDEO_VIEW_LIMIT') setBlocked(true);
+          else setError(apiError(err, 'Could not load video'));
+        });
+    }, 0);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [videoId, fetchToken]);
 
   // Renew the signed URL before the 5-minute token expires.
@@ -148,16 +175,62 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     } catch { /* non-fatal */ }
   }, [videoId, lessonId, onProgress]);
 
+  /**
+   * Reaching the end is the moment a view is earned, so it is also the moment
+   * the counter above would otherwise start lying — the token that set it was
+   * issued before the watch. Ask again once the final heartbeat has landed.
+   * The player itself stays put: someone who has just finished watching should
+   * not have the video yanked out from under them, and the next visit shows
+   * the locked panel anyway.
+   */
+  const finish = useCallback(async (position) => {
+    await heartbeat(position);
+    try {
+      const { data } = await api.post(`/videos/${videoId}/token`);
+      setViews(data.viewLimit ? { remaining: data.viewsRemaining, limit: data.viewLimit } : null);
+    } catch (err) {
+      if (err.response?.data?.code === 'VIDEO_VIEW_LIMIT') {
+        setViews((v) => (v ? { ...v, remaining: 0 } : v));
+      }
+    }
+  }, [heartbeat, videoId]);
+
+  /**
+   * Watched time, measured along the video.
+   *
+   * `timeupdate` fires about four times a second of *wall clock*, so counting
+   * ticks would credit someone watching at 2x with half of what they actually
+   * saw — and the allowance is meant to count whole viewings of the material,
+   * not minutes spent in front of it. Taking the distance playback moved
+   * instead credits the video's own seconds at any speed.
+   *
+   * Only forward movement counts, and only a step small enough to be playback:
+   * a bigger jump is a seek, and dragging the scrubber to the end must never
+   * earn a view.
+   */
   const onTimeUpdate = () => {
     const video = videoRef.current;
-    if (!video || video.paused) return;
-    watchedRef.current += 0.25; // timeupdate fires ~4x/sec
+    if (!video) return;
+    const position = video.currentTime;
+    const advanced = position - lastPos.current;
+    lastPos.current = position;
+    if (video.paused) return;
+    if (advanced > 0 && advanced <= MAX_STEP_SECONDS) watchedRef.current += advanced;
     if (Date.now() - lastBeat.current > 10000) {
       lastBeat.current = Date.now();
-      heartbeat(video.currentTime);
+      heartbeat(position);
     }
   };
 
+  if (blocked) {
+    return (
+      <div className="flex aspect-video flex-col items-center justify-center gap-2 rounded-xl bg-surface-900 px-6 text-center">
+        <Lock size={26} className="text-amber-400" aria-hidden="true" />
+        <p className="text-sm font-semibold text-white">{t('video.limitReached')}</p>
+        <p className="max-w-sm text-xs leading-relaxed text-surface-400">{t('video.limitHint')}</p>
+      </div>
+    );
+  }
   if (error) {
     return <div className="flex aspect-video items-center justify-center rounded-xl bg-surface-900 text-sm text-rose-400">{error}</div>;
   }
@@ -169,7 +242,11 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     );
   }
 
+  const spent = views && views.remaining <= 0;
+  const lastView = views && views.remaining === 1;
+
   return (
+    <>
     <div
       ref={containerRef}
       className={`relative select-none overflow-hidden bg-black ${
@@ -185,9 +262,13 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
         playsInline
         className={isFullscreen ? 'max-h-full max-w-full' : 'aspect-video w-full'}
         onTimeUpdate={onTimeUpdate}
-        onLoadedMetadata={(e) => { if (startAt > 2) e.target.currentTime = startAt; }}
+        onLoadedMetadata={(e) => {
+          if (startAt > 2) e.target.currentTime = startAt;
+          lastPos.current = e.target.currentTime;
+        }}
+        onSeeked={(e) => { lastPos.current = e.target.currentTime; }}
         onPause={() => heartbeat(videoRef.current?.currentTime || 0)}
-        onEnded={() => heartbeat(videoRef.current?.duration || 0)}
+        onEnded={() => finish(videoRef.current?.duration || 0)}
       />
       {watermark && (
         <div
@@ -200,9 +281,29 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
           <div>{new Date().toLocaleString()}</div>
         </div>
       )}
-      <div className="pointer-events-none absolute bottom-14 right-3 z-10 flex items-center gap-1 rounded bg-black/30 px-1.5 py-0.5 text-[10px] text-white/50">
+      <div className="pointer-events-none absolute bottom-14 end-3 z-10 flex items-center gap-1 rounded bg-black/30 px-1.5 py-0.5 text-[10px] text-white/50">
         <ShieldCheck size={11} /> Protected stream
       </div>
     </div>
+
+    {/* The allowance, stated before it runs out rather than at the moment it
+        does. A view is whole-video watch time, so the hint says so — nobody
+        should think opening the page cost them one. */}
+    {views && (
+      <div className={`mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg px-3 py-2 text-xs ${
+        lastView || spent
+          ? 'bg-amber-50 text-amber-800 dark:bg-amber-900/25 dark:text-amber-200'
+          : 'bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300'
+      }`}>
+        {lastView || spent ? <AlertTriangle size={13} className="shrink-0" /> : <Eye size={13} className="shrink-0" />}
+        <span className="bidi-isolate font-semibold">
+          {spent ? t('video.limitReached')
+            : lastView ? t('video.lastView')
+            : t('video.viewsLeft', { count: views.remaining, limit: views.limit })}
+        </span>
+        <span className="text-[11px] opacity-80">{spent ? t('video.limitHint') : t('video.viewsHint')}</span>
+      </div>
+    )}
+    </>
   );
 }

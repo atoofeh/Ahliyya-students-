@@ -25,6 +25,10 @@ const DEFAULTS = Object.freeze({
   antiCheatStrictness: 'medium', // low | medium | high
   maxUploadMb: 2048,
   defaultQuizRetakeLimit: 1,
+  // How many whole times a student may watch a lesson video. A view is counted
+  // from playback time, not from opening the player, so browsing costs nothing.
+  // 0 turns the limit off entirely.
+  maxVideoViews: 4,
   enrollmentOpen: true,
   storageQuotaGb: 100,
 });

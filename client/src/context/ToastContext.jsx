@@ -35,7 +35,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+      <div className="fixed bottom-4 end-4 z-[100] flex flex-col gap-2 max-w-sm">
         {toasts.map((t) => (
           <div key={t.id}
             className="flex items-start gap-2 rounded-lg border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-lg px-4 py-3 text-sm text-surface-800 dark:text-surface-100 animate-slide-up">

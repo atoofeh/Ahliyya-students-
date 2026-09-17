@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
+import { LanguageProvider } from './context/LanguageContext';
 import MainLayout from './layouts/MainLayout';
 import NativeShell from './components/NativeShell';
 import LoginPage from './pages/auth/LoginPage';
@@ -35,6 +36,7 @@ const AdminAnnouncements = lazy(() => import('./pages/admin/AdminAnnouncements')
 const AdminSecurity = lazy(() => import('./pages/admin/AdminSecurity'));
 const AdminAdmins = lazy(() => import('./pages/admin/AdminAdmins'));
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'));
+const NewsPage = lazy(() => import('./pages/NewsPage'));
 import { Spinner } from './components/ui';
 import { SkeletonPage } from './components/Skeletons';
 import { roleMatches, homeFor } from './utils/roles';
@@ -59,6 +61,7 @@ function HomeRedirect() {
 export default function App() {
   return (
     <ThemeProvider>
+      <LanguageProvider>
       <ToastProvider>
         <NativeShell />
         <BrowserRouter>
@@ -106,6 +109,7 @@ export default function App() {
 
                 {/* Shared */}
                 <Route path="/announcements" element={<AnnouncementsPage />} />
+                <Route path="/news" element={<NewsPage />} />
               </Route>
 
               <Route path="/" element={<HomeRedirect />} />
@@ -115,6 +119,7 @@ export default function App() {
           </AuthProvider>
         </BrowserRouter>
       </ToastProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

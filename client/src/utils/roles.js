@@ -7,25 +7,35 @@ export const roleMatches = (role, roles) => roles.includes(role) || (role === 's
 
 export const homeFor = (role) => (isAdminRole(role) ? '/admin' : role === 'teacher' ? '/teacher' : '/student');
 
-/** Sidebar entries. `icon` names a lucide icon resolved in MainLayout. */
+/**
+ * Sidebar entries. `icon` names a lucide icon resolved in MainLayout.
+ *
+ * `key` is a translation key, present only on the entries a student can
+ * reach — those are the screens that exist in Arabic. An entry without one
+ * keeps its English `label`, which is what the teacher and administrator
+ * consoles want.
+ */
 export const STUDENT_NAV = [
-  { to: '/student', label: 'Dashboard', icon: 'LayoutDashboard', end: true },
-  { to: '/student/catalog', label: 'Course Catalog', icon: 'Library' },
-  { to: '/student/grades', label: 'My Grades', icon: 'GraduationCap' },
-  { to: '/student/certificates', label: 'Certificates', icon: 'Award' },
-  { to: '/student/bookmarks', label: 'Bookmarks', icon: 'Bookmark' },
-  { to: '/announcements', label: 'Announcements', icon: 'Megaphone' },
+  { to: '/student', label: 'Dashboard', key: 'nav.dashboard', icon: 'LayoutDashboard', end: true },
+  { to: '/student/catalog', label: 'Course Catalog', key: 'nav.catalog', icon: 'Library' },
+  { to: '/news', label: 'News', key: 'nav.news', icon: 'Newspaper' },
+  { to: '/student/grades', label: 'My Grades', key: 'nav.grades', icon: 'GraduationCap' },
+  { to: '/student/certificates', label: 'Certificates', key: 'nav.certificates', icon: 'Award' },
+  { to: '/student/bookmarks', label: 'Bookmarks', key: 'nav.bookmarks', icon: 'Bookmark' },
+  { to: '/announcements', label: 'Announcements', key: 'nav.announcements', icon: 'Megaphone' },
 ];
 export const TEACHER_NAV = [
   { to: '/teacher', label: 'Dashboard', icon: 'LayoutDashboard', end: true },
   { to: '/teacher/courses', label: 'My Courses', icon: 'BookOpen' },
   { to: '/teacher/invitations', label: 'Invitations', icon: 'Handshake' },
+  { to: '/news', label: 'News', icon: 'Newspaper' },
   { to: '/announcements', label: 'Announcements', icon: 'Megaphone' },
 ];
 export const ADMIN_NAV = [
   { to: '/admin', label: 'Overview', icon: 'LayoutDashboard', end: true },
   { to: '/admin/users', label: 'Users', icon: 'Users' },
   { to: '/admin/courses', label: 'Courses', icon: 'BookOpen' },
+  { to: '/news', label: 'News', icon: 'Newspaper' },
   { to: '/admin/sessions', label: 'Sessions', icon: 'MonitorSmartphone' },
   { to: '/admin/anticheat', label: 'Cheat Reports', icon: 'ShieldAlert' },
   { to: '/admin/announcements', label: 'Announcements', icon: 'Megaphone' },

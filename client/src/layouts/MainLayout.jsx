@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
   Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, LogOut,
-  Sun, Moon, Laptop, Menu, Library, Handshake,
+  Sun, Moon, Laptop, Menu, Library, Handshake, Newspaper,
 } from 'lucide-react';
 import { Avatar } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import { useLanguage } from '../hooks/useLanguage';
+import LanguageToggle from '../components/LanguageToggle';
+import PoweredByVortex from '../components/PoweredByVortex';
 import NotificationsBell from '../components/NotificationsBell';
 import GlobalSearch from '../components/GlobalSearch';
 import { LogoMark } from '../components/Logo';
@@ -16,7 +19,7 @@ import { ROLE_LABEL, navFor } from '../utils/roles';
 
 const ICONS = {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
-  Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, Library, Handshake,
+  Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, Library, Handshake, Newspaper,
 };
 
 const THEME_ICON = { light: Sun, dark: Moon, system: Laptop };
@@ -24,10 +27,27 @@ const THEME_ICON = { light: Sun, dark: Moon, system: Laptop };
 export default function MainLayout() {
   const { user, logout } = useAuth();
   const { theme, cycle } = useTheme();
+  const { t, lang, setLang } = useLanguage();
+  // Arabic covers the student side; the teacher and administrator consoles are
+  // still written in English. Flipping the document to RTL around English text
+  // pushes full stops to the wrong end and reverses units like "0.00 GB", so
+  // staff keep the English layout and are not offered the switch. A language
+  // chosen on the sign-in screen is undone here if an administrator signs in.
+  const canSwitchLanguage = !user || user.role === 'student';
+  useEffect(() => {
+    if (canSwitchLanguage || lang === 'en') return undefined;
+    const timer = setTimeout(() => setLang('en'), 0);
+    return () => clearTimeout(timer);
+  }, [canSwitchLanguage, lang, setLang]);
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const ThemeIcon = THEME_ICON[theme] || Laptop;
-  const nav = navFor(user?.role).map((item) => ({ ...item, icon: ICONS[item.icon] || LayoutDashboard }));
+  // An entry without a `key` has no Arabic wording, so it keeps its English label.
+  const nav = navFor(user?.role).map((item) => ({
+    ...item,
+    label: item.key ? t(item.key) : item.label,
+    icon: ICONS[item.icon] || LayoutDashboard,
+  }));
 
   const doLogout = async () => {
     await logout();
@@ -57,7 +77,7 @@ export default function MainLayout() {
       <div className="relative px-5 pb-4">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[10.5px] font-bold uppercase tracking-wider text-brand-100 ring-1 ring-white/10">
           <span className="h-1.5 w-1.5 rounded-full bg-gold-400" />
-          {ROLE_LABEL[user?.role]} Portal
+          {user?.role === 'student' ? t('nav.studentPortal') : `${ROLE_LABEL[user?.role]} Portal`}
         </span>
       </div>
 
@@ -73,7 +93,7 @@ export default function MainLayout() {
               }`}>
             {({ isActive }) => (
               <>
-                <span className={`absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-gold-400 transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`} />
+                <span className={`absolute start-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-e-full bg-gold-400 transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`} />
                 <Icon size={17} className={isActive ? 'text-gold-300' : 'text-brand-200/70 group-hover:text-brand-100'} />
                 {label}
               </>
@@ -90,10 +110,13 @@ export default function MainLayout() {
             <p className="truncate text-[13px] font-semibold text-white">{user?.name}</p>
             <p className="truncate text-[11px] text-brand-200/70">{user?.email || `@${user?.username}`}</p>
           </div>
-          <button onClick={doLogout} title="Sign out" aria-label="Sign out"
+          <button onClick={doLogout} title={t('nav.signOut')} aria-label={t('nav.signOut')}
             className="rounded-lg p-2 text-brand-200/70 transition-colors hover:bg-white/10 hover:text-rose-300">
             <LogOut size={16} />
           </button>
+        </div>
+        <div className="mt-1 flex justify-center">
+          <PoweredByVortex tone="dark" />
         </div>
       </div>
     </div>
@@ -107,18 +130,18 @@ export default function MainLayout() {
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-brand-950/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute left-0 top-0 h-full w-72 shadow-float animate-slide-in">
+          <aside className="absolute start-0 top-0 h-full w-72 shadow-float animate-slide-in">
             {sidebar}
           </aside>
         </div>
       )}
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[268px] lg:block">
+      <aside className="fixed inset-y-0 start-0 z-30 hidden w-[268px] lg:block">
         {sidebar}
       </aside>
 
-      <div className="lg:pl-[268px]">
+      <div className="lg:ps-[268px]">
         <OfflineBanner />
         <header className="glass pt-safe sticky top-0 z-20 flex items-center gap-3 border-b border-surface-200/70 px-4 py-2.5 dark:border-surface-800"
           style={{ ['--pt-safe-extra']: '0.625rem' }}>
@@ -127,7 +150,8 @@ export default function MainLayout() {
             <Menu size={20} />
           </button>
           <GlobalSearch />
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ms-auto flex items-center gap-1">
+            {canSwitchLanguage && <LanguageToggle className="me-1" />}
             <button onClick={cycle} title={`Theme: ${theme}`} aria-label={`Theme: ${theme}. Change theme`}
               className="rounded-xl p-2 text-surface-500 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800">
               <ThemeIcon size={18} />

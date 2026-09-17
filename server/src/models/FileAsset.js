@@ -10,7 +10,9 @@ const fileAssetSchema = new mongoose.Schema(
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', default: null }, // null = global
     kind: { type: String, enum: ['documents', 'images'], required: true },
-    scope: { type: String, enum: ['course', 'global', 'avatar', 'thumbnail', 'question', 'submission'], default: 'course' },
+    // 'news' is institution-wide and readable by anyone signed in — the serving
+    // route's course/enrollment checks apply to 'course' and 'question' only.
+    scope: { type: String, enum: ['course', 'global', 'avatar', 'thumbnail', 'question', 'submission', 'news'], default: 'course' },
     originalName: { type: String, required: true },
     storedName: { type: String, required: true },
     storagePath: { type: String, required: true, select: false },

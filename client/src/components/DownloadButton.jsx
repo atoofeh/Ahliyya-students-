@@ -32,8 +32,8 @@ export default function DownloadButton({
   return (
     <Component type="button" onClick={run} disabled={busy} className={className} {...rest}>
       {showIcon && (busy
-        ? <Loader2 size={13} className="mr-1 inline animate-spin" aria-hidden="true" />
-        : <Download size={13} className="mr-1 inline" aria-hidden="true" />)}
+        ? <Loader2 size={13} className="me-1 inline animate-spin" aria-hidden="true" />
+        : <Download size={13} className="me-1 inline" aria-hidden="true" />)}
       {children}
     </Component>
   );

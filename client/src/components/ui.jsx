@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, X, Inbox, Eye, EyeOff } from 'lucide-react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useLanguage } from '../hooks/useLanguage';
 import { pushBackHandler } from '../app/shell';
 
 /**
@@ -99,7 +100,7 @@ export function Input({ label, error, hint, className = '', ...props }) {
             fieldBase,
             error ? 'border-rose-400' : 'border-surface-300 dark:border-surface-700',
             // Room for the toggle so long passwords never run under it.
-            isPassword && 'pr-11',
+            isPassword && 'pe-11',
             className
           )}
         />
@@ -112,7 +113,7 @@ export function Input({ label, error, hint, className = '', ...props }) {
             tabIndex={-1}
             aria-label={revealed ? 'Hide password' : 'Show password'}
             aria-pressed={revealed}
-            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-surface-400 transition-colors hover:text-surface-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:text-surface-200"
+            className="absolute inset-y-0 end-0 flex w-11 items-center justify-center rounded-e-xl text-surface-400 transition-colors hover:text-surface-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:text-surface-200"
           >
             {revealed ? <EyeOff size={17} /> : <Eye size={17} />}
           </button>
@@ -141,7 +142,7 @@ export function Select({ label, options = [], className = '', ...props }) {
   return (
     <label className="block">
       {label && <span className="mb-1.5 block text-[13px] font-semibold text-surface-700 dark:text-surface-200">{label}</span>}
-      <select className={cx(fieldBase, 'border-surface-300 dark:border-surface-700 pr-8', className)} {...props}>
+      <select className={cx(fieldBase, 'border-surface-300 dark:border-surface-700 pe-8', className)} {...props}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
@@ -168,8 +169,9 @@ export function Toggle({ label, checked, onChange, hint }) {
         )}
       >
         <span className={cx(
-          'absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200',
-          checked ? 'translate-x-5' : 'translate-x-0'
+          'absolute start-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200',
+          // The knob travels toward the end of the line, whichever way that runs.
+          checked ? 'translate-x-5 rtl:-translate-x-5' : 'translate-x-0'
         )} />
       </button>
     </div>
@@ -205,6 +207,7 @@ export function Spinner({ full }) {
 }
 
 export function Modal({ open, onClose, title, children, wide }) {
+  const { t } = useLanguage();
   const panelRef = useRef(null);
   useFocusTrap(panelRef, { active: open, onEscape: onClose });
   // Android back closes the dialog instead of leaving the page behind it.
@@ -227,7 +230,7 @@ export function Modal({ open, onClose, title, children, wide }) {
       >
         <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl border-b border-surface-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-surface-700/60 dark:bg-surface-900/95">
           <h3 className="font-display text-[15px] font-bold text-surface-900 dark:text-white">{title}</h3>
-          <button onClick={onClose} aria-label="Close dialog"
+          <button onClick={onClose} aria-label={t('common.closeDialog')}
             className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200">
             <X size={17} />
           </button>
@@ -310,15 +313,16 @@ export function Tabs({ tabs, active, onChange }) {
 }
 
 export function Pagination({ meta, onPage }) {
+  const { t } = useLanguage();
   if (!meta || meta.totalPages <= 1) return null;
   return (
     <div className="mt-4 flex items-center justify-between text-sm text-surface-500">
       <span className="rounded-full bg-surface-100 px-3 py-1 text-xs font-semibold text-surface-500 dark:bg-surface-800 dark:text-surface-300">
-        Page {meta.page} / {meta.totalPages} · {meta.total} total
+        {t('common.pageOf', { page: meta.page, total: meta.totalPages, count: meta.total })}
       </span>
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" disabled={!meta.hasPrevPage} onClick={() => onPage(meta.page - 1)}>Previous</Button>
-        <Button size="sm" variant="outline" disabled={!meta.hasNextPage} onClick={() => onPage(meta.page + 1)}>Next</Button>
+        <Button size="sm" variant="outline" disabled={!meta.hasPrevPage} onClick={() => onPage(meta.page - 1)}>{t('common.previous')}</Button>
+        <Button size="sm" variant="outline" disabled={!meta.hasNextPage} onClick={() => onPage(meta.page + 1)}>{t('common.next')}</Button>
       </div>
     </div>
   );

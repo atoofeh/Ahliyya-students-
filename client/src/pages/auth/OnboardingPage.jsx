@@ -4,6 +4,9 @@ import { MailCheck, KeyRound, ShieldCheck } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
+import { useLanguage } from '../../hooks/useLanguage';
+import LanguageToggle from '../../components/LanguageToggle';
+import PoweredByVortex from '../../components/PoweredByVortex';
 import { Button, Input, Card } from '../../components/ui';
 import Logo from '../../components/Logo';
 import { homeFor } from '../../utils/roles';
@@ -15,6 +18,7 @@ import { homeFor } from '../../utils/roles';
 export default function OnboardingPage() {
   const { user, refreshProfile } = useAuth();
   const toast = useToast();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [step, setStep] = useState(user?.emailVerified ? 2 : 0);
   const [email, setEmail] = useState(user?.email || '');
@@ -29,27 +33,27 @@ export default function OnboardingPage() {
 
   const sendCode = () => run(async () => {
     await api.post('/auth/resend-verification', { email });
-    toast.success('Verification code sent');
+    toast.success(t('onboard.codeSent'));
     setStep(1);
   });
 
   const verify = () => run(async () => {
     await api.post('/auth/verify-email', { code });
-    toast.success('Email verified');
+    toast.success(t('onboard.emailVerified'));
     setStep(2);
   });
 
   const setNewPassword = () => run(async () => {
     await api.post('/auth/set-password', { password });
     const profile = await refreshProfile();
-    toast.success('All set — welcome!');
+    toast.success(t('onboard.allSet'));
     navigate(homeFor(profile.role));
   });
 
   const steps = [
-    { icon: <MailCheck size={19} />, label: 'Email' },
-    { icon: <KeyRound size={19} />, label: 'Verify' },
-    { icon: <ShieldCheck size={19} />, label: 'Password' },
+    { icon: <MailCheck size={19} />, label: 'onboard.stepEmail' },
+    { icon: <KeyRound size={19} />, label: 'onboard.stepVerify' },
+    { icon: <ShieldCheck size={19} />, label: 'onboard.stepPassword' },
   ];
 
   return (
@@ -59,13 +63,14 @@ export default function OnboardingPage() {
       <div className="absolute -bottom-32 -right-20 h-96 w-96 rounded-full border border-gold-400/10" />
 
       <div className="relative w-full max-w-md animate-slide-up">
-        <div className="mb-6 flex justify-center">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <Logo tone="white" size="md" />
+          <LanguageToggle />
         </div>
 
         <Card className="p-7">
-          <h1 className="font-display text-lg font-extrabold text-surface-900 dark:text-white">Account setup</h1>
-          <p className="mb-6 mt-0.5 text-sm text-surface-500">Hi {user?.name} — let's finish setting up your account.</p>
+          <h1 className="font-display text-lg font-extrabold text-surface-900 dark:text-white">{t('onboard.title')}</h1>
+          <p className="mb-6 mt-0.5 text-sm text-surface-500">{t('onboard.greeting', { name: user?.name || '' })}</p>
 
           <div className="mb-7 flex items-center gap-2">
             {steps.map((s, i) => (
@@ -77,7 +82,7 @@ export default function OnboardingPage() {
                   {s.icon}
                 </div>
                 <span className={`text-[10.5px] font-bold uppercase tracking-wider ${i <= step ? 'text-brand-700 dark:text-brand-300' : 'text-surface-400'}`}>
-                  {s.label}
+                  {t(s.label)}
                 </span>
               </div>
             ))}
@@ -85,25 +90,25 @@ export default function OnboardingPage() {
 
           {step === 0 && (
             <div className="space-y-4">
-              <Input label="Your email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              <Button className="w-full" size="lg" loading={busy} onClick={sendCode}>Send verification code</Button>
+              <Input label={t('onboard.yourEmail')} type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Button className="w-full" size="lg" loading={busy} onClick={sendCode}>{t('onboard.sendCode')}</Button>
             </div>
           )}
           {step === 1 && (
             <div className="space-y-4">
-              <Input label="6-digit verification code" value={code} onChange={(e) => setCode(e.target.value)} maxLength={6} placeholder="——————" />
-              <Button className="w-full" size="lg" loading={busy} onClick={verify}>Verify email</Button>
+              <Input label={t('onboard.codeLabel')} dir="ltr" value={code} onChange={(e) => setCode(e.target.value)} maxLength={6} placeholder="——————" />
+              <Button className="w-full" size="lg" loading={busy} onClick={verify}>{t('onboard.verifyEmail')}</Button>
               <button className="w-full text-center text-sm font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300" onClick={sendCode}>
-                Resend code
+                {t('onboard.resend')}
               </button>
             </div>
           )}
           {step === 2 && (
             <div className="space-y-4">
-              <Input label="Choose a new password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                hint="8+ characters with uppercase, lowercase and a digit" />
+              <Input label={t('onboard.choosePassword')} type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                hint={t('auth.passwordRule')} />
               <Button className="w-full" size="lg" variant="gold" loading={busy} onClick={setNewPassword}>
-                Set password & continue
+                {t('onboard.setAndContinue')}
               </Button>
             </div>
           )}
@@ -111,6 +116,7 @@ export default function OnboardingPage() {
 
         <p className="mt-5 text-center text-[11px] uppercase tracking-[0.3em] text-gold-400/80">Rise to Excellence</p>
       </div>
+      <PoweredByVortex />
     </div>
   );
 }

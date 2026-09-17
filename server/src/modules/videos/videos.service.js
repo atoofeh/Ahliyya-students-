@@ -253,8 +253,31 @@ class VideoService {
     }
     if (video.status !== 'ready') throw ApiError.badRequest('Video is still processing', 'VIDEO_NOT_READY');
 
+    // The watch limit applies to students only. Teachers review their own
+    // material and administrators support it; spending their quota on that
+    // would make the platform unusable for the people running it.
+    let views = null;
+    if (user.role === 'student') {
+      views = await VideoService.viewsFor(user.id, video);
+      if (views.exhausted) {
+        await audit({
+          user: user.id, action: 'VIDEO_VIEWS_EXHAUSTED', course: video.course,
+          resource: `video:${videoId}`, meta: { used: views.used, limit: views.limit },
+        });
+        throw ApiError.forbidden(
+          `You have watched this video the maximum of ${views.limit} times. Ask your teacher if you need it reopened.`,
+          'VIDEO_VIEW_LIMIT'
+        );
+      }
+    }
+
     const token = signStreamToken({ resourceId: String(videoId), userId: String(user.id), sessionId: String(sessionId), ttlSeconds: 300 });
-    return { token, expiresInSeconds: 300 };
+    return {
+      token,
+      expiresInSeconds: 300,
+      // The player shows this so a limit is never a surprise at view four.
+      ...(views && { viewsUsed: views.used, viewsRemaining: views.remaining, viewLimit: views.limit }),
+    };
   }
 
   /**
@@ -338,13 +361,65 @@ class VideoService {
 
   // ── Progress & management ───────────────────────────────────────────
 
+  /**
+   * How many whole times this student has watched this video, and what the
+   * limit is. `remaining: null` means the limit is switched off.
+   */
+  static async viewsFor(studentId, video) {
+    const { getSettings } = require('../../config/settingsCache');
+    const settings = await getSettings();
+    const limit = settings.maxVideoViews ?? 0;
+    const VideoView = require('../../models/VideoView');
+    const row = await VideoView.findOne({ student: studentId, video: video._id }).lean();
+    const used = row?.completedViews || 0;
+    return {
+      limit,
+      used,
+      remaining: limit > 0 ? Math.max(0, limit - used) : null,
+      exhausted: limit > 0 && used >= limit,
+      secondsThisView: row?.secondsThisView || 0,
+    };
+  }
+
+  /**
+   * Add real playback time to a student's view count.
+   *
+   * Only whole passes through the video count. The delta is the player's
+   * report of seconds actually played, already capped by the caller, so a drag
+   * of the scrubber to the end adds nothing — which is the difference between
+   * counting views and counting clicks.
+   */
+  static async #recordWatchTime(studentId, video, delta) {
+    if (!(delta > 0) || !(video.durationSeconds > 0)) return;
+    const VideoView = require('../../models/VideoView');
+
+    const row = await VideoView.findOneAndUpdate(
+      { student: studentId, video: video._id },
+      { $setOnInsert: { course: video.course }, $set: { lastWatchedAt: new Date() }, $inc: { watchedSeconds: delta, secondsThisView: delta } },
+      { upsert: true, new: true }
+    );
+
+    // Each whole duration watched is one more view. A student who watches
+    // twice as long in one sitting spends two.
+    if (row.secondsThisView >= video.durationSeconds) {
+      const earned = Math.floor(row.secondsThisView / video.durationSeconds);
+      await VideoView.updateOne(
+        { _id: row._id },
+        { $inc: { completedViews: earned, secondsThisView: -(earned * video.durationSeconds) } }
+      );
+    }
+  }
+
   static async saveProgress(userId, videoId, { lessonId, positionSeconds, watchedDelta }) {
     const video = await Video.findOne({ _id: videoId, deletedAt: null });
     if (!video) throw ApiError.notFound('Video not found');
 
+    const delta = Math.min(Math.max(0, watchedDelta || 0), 120);
+    await VideoService.#recordWatchTime(userId, video, delta);
+
     const update = {
       $set: { course: video.course, positionSeconds: Math.max(0, positionSeconds), lastAccessedAt: new Date() },
-      $inc: { watchedSeconds: Math.min(Math.max(0, watchedDelta || 0), 120) },
+      $inc: { watchedSeconds: delta },
     };
     const progress = await LessonProgress.findOneAndUpdate(
       { student: userId, lesson: lessonId },
@@ -359,6 +434,57 @@ class VideoService {
       await EnrollmentService.recomputeProgress(userId, video.course);
     }
     return progress;
+  }
+
+  /**
+   * Give a student their views back on one video.
+   *
+   * A legitimate need — a lost connection that burned a view, a student
+   * revising for a resit — and without it the rule turns every mishap into a
+   * dead end. Course staff can do it for their own course; the reset is
+   * audited with who asked for it.
+   */
+  static async resetViews(courseId, videoId, studentId, actor, ip) {
+    const VideoView = require('../../models/VideoView');
+    const video = await Video.findOne({ _id: videoId, course: courseId, deletedAt: null });
+    if (!video) throw ApiError.notFound('Video not found');
+
+    const row = await VideoView.findOneAndUpdate(
+      { student: studentId, video: videoId },
+      {
+        $setOnInsert: { course: courseId },
+        $set: { completedViews: 0, secondsThisView: 0, resetAt: new Date(), resetBy: actor.id },
+      },
+      { upsert: true, new: true }
+    );
+    await audit({
+      user: actor.id, action: 'VIDEO_VIEWS_RESET', course: courseId, targetUser: studentId,
+      ip, resource: `video:${videoId}`,
+    });
+    return row;
+  }
+
+  /** Who has watched this video, and how much of their allowance is left. */
+  static async courseVideoViews(courseId, videoId) {
+    const VideoView = require('../../models/VideoView');
+    const { getSettings } = require('../../config/settingsCache');
+    const settings = await getSettings();
+    const limit = settings.maxVideoViews ?? 0;
+    const rows = await VideoView.find({ video: videoId, course: courseId })
+      .populate('student', 'name username')
+      .sort({ completedViews: -1 })
+      .lean();
+    return {
+      limit,
+      items: rows.map((r) => ({
+        student: r.student,
+        completedViews: r.completedViews,
+        watchedSeconds: r.watchedSeconds,
+        exhausted: limit > 0 && r.completedViews >= limit,
+        lastWatchedAt: r.lastWatchedAt,
+        resetAt: r.resetAt,
+      })),
+    };
   }
 
   static async listCourseVideos(courseId) {

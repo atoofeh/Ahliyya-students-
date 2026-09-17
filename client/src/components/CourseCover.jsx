@@ -69,12 +69,12 @@ export default function CourseCover({ title = '', category = '', className = '',
       <div className="absolute -right-3 -top-5 h-16 w-16 rounded-full border border-white/15" />
 
       {/* Subject glyph */}
-      <div className="absolute bottom-3 left-4 flex items-center justify-center rounded-xl bg-white/12 p-2.5 shadow-inner-top ring-1 ring-white/20 backdrop-blur-sm">
+      <div className="absolute bottom-3 start-4 flex items-center justify-center rounded-xl bg-white/12 p-2.5 shadow-inner-top ring-1 ring-white/20 backdrop-blur-sm">
         <Icon size={iconSize * 0.55} className="text-white/90" />
       </div>
       {/* Oversized ghost initial */}
       <span
-        className="pointer-events-none absolute -bottom-5 right-2 select-none font-display text-[84px] font-extrabold leading-none text-white/[0.08]"
+        className="pointer-events-none absolute -bottom-5 end-2 select-none font-display text-[84px] font-extrabold leading-none text-white/[0.08]"
         aria-hidden="true"
       >
         {(title.trim()[0] || 'A').toUpperCase()}

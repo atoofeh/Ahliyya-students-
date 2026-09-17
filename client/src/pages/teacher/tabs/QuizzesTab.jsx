@@ -307,7 +307,7 @@ export default function QuizzesTab({ courseId }) {
                   <p className="text-sm font-medium text-surface-800 dark:text-surface-100">{a.student?.name} <span className="text-surface-400">@{a.student?.username}</span></p>
                   <p className="text-xs text-surface-400">
                     #{a.attemptNumber} · {new Date(a.submittedAt || a.createdAt).toLocaleString()}
-                    {a.riskScore > 0 && <span className="ml-2 text-rose-500">risk {a.riskScore}</span>}
+                    {a.riskScore > 0 && <span className="ms-2 text-rose-500">risk {a.riskScore}</span>}
                   </p>
                 </div>
                 <Badge color={a.pendingManualGrading ? 'amber' : a.passed ? 'green' : a.passed === false ? 'red' : 'gray'}>

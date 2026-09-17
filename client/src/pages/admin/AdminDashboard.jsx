@@ -21,7 +21,7 @@ function ChartTooltip({ active, payload, label }) {
         <p key={p.dataKey} className="flex items-center gap-2 py-0.5 text-surface-600 dark:text-surface-300">
           <span className="h-2 w-2 rounded-full" style={{ background: p.color || p.fill }} />
           <span className="capitalize">{p.name}</span>
-          <span className="ml-auto pl-4 font-bold text-surface-900 dark:text-white">{p.value}</span>
+          <span className="ms-auto ps-4 font-bold text-surface-900 dark:text-white">{p.value}</span>
         </p>
       ))}
     </div>

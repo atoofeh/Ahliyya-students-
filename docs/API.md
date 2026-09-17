@@ -75,12 +75,17 @@ Every enrollment carries a **package** — `mid`, `final` or `full` — and what
 | POST | `/uploads/:uploadId/chunks` | T/AD | multipart `chunk` + `chunkIndex`; idempotent |
 | GET | `/uploads/:uploadId/status` | T/AD | resume support (received chunk list) |
 | POST | `/uploads/:uploadId/complete` | T/AD | assemble → probe → encrypt (async) |
-| POST | `/:videoId/token` | enrolled/owner/AD | 5-min signed stream token |
+| POST | `/:videoId/token` | enrolled/owner/AD | 5-min signed stream token. For a **student** it also returns `viewsUsed`, `viewsRemaining`, `viewLimit`; once the allowance is spent it is `403 VIDEO_VIEW_LIMIT` instead |
 | GET | `/:videoId/stream?token=` | token | Range-capable decrypting stream; session must be active |
 | POST | `/:videoId/progress` | S | `{lessonId, positionSeconds, watchedDelta}` |
 | GET | `/watermark/me` | A | watermark lines for the player |
 | GET | `/courses/:courseId` | owner/AD | list course videos |
+| GET | `/courses/:courseId/:videoId/views` | owner/AD | who has watched, how much, and who is out of views |
+| POST | `/courses/:courseId/:videoId/views/:studentId/reset` | owner/AD | give one student their allowance back (audited `VIDEO_VIEWS_RESET`) |
 | DELETE | `/:videoId` | owner/AD | |
+
+### Watch allowance
+`PlatformSetting.maxVideoViews` (default **4**, `0` switches the rule off) is how many times a student may finish a given video. A view is earned from **watch time**, not from opening the page: `POST /:videoId/progress` adds `watchedDelta` to a `VideoView` row, and each time the accumulated seconds reach the video's own `durationSeconds` the count goes up by one and the remainder carries over. Seeking or reloading therefore costs nothing. Teachers, administrators and the owner are exempt — reviewing your own material must not spend a quota.
 
 ## Quizzes — `/quizzes`
 Question bank (owner/AD): `GET/POST /courses/:id/questions`, `PUT/DELETE /courses/:id/questions/:qid`.
@@ -92,7 +97,7 @@ Insights: `GET /courses/:id/:quizId/attempts|stats` (owner/AD) · `GET .../leade
 `POST/GET /courses/:id` · `PUT/DELETE /courses/:id/:aid` (owner/AD) · `POST /courses/:id/:aid/submit` (S) · `GET /courses/:id/:aid/submissions` (owner/AD) · `POST /submissions/:sid/grade` (T/AD).
 
 ## Files — `/files`
-`POST /courses/:id/documents|images` (owner/AD) · `POST /global` (AD) + `GET /global` (A) · `POST /submissions` (S) · `POST /avatar` (A) · `GET /courses/:id` (course access) · `GET /:fileId/content` (scope-checked serving; SVG always as attachment) · `DELETE /:fileId` (uploader/AD). Upload errors: `400 BAD_FILE_TYPE` (extension / declared MIME), `400 BAD_FILE_CONTENT` (magic bytes), `400 MALWARE_SUSPECTED`, `503 SCANNER_UNAVAILABLE` (ClamAV configured but unreachable).
+`POST /courses/:id/documents|images` (owner/AD) · `POST /global` (AD) + `GET /global` (A) · `POST /news-image` (AD, scope `news`) · `POST /submissions` (S) · `POST /avatar` (A) · `GET /courses/:id` (course access) · `GET /:fileId/content` (scope-checked serving; SVG always as attachment) · `DELETE /:fileId` (uploader/AD). Upload errors: `400 BAD_FILE_TYPE` (extension / declared MIME), `400 BAD_FILE_CONTENT` (magic bytes), `400 MALWARE_SUSPECTED`, `503 SCANNER_UNAVAILABLE` (ClamAV configured but unreachable).
 
 ## Anti-cheat — `/anticheat`
 `POST /events` (S, batched proctor events → `{riskScore, violationCount, autoSubmitted}`) · `GET /attempts/:aid` (T/AD timeline) · `GET /courses/:id` (owner/AD) · `GET /platform` (AD).
@@ -103,5 +108,6 @@ Insights: `GET /courses/:id/:quizId/attempts|stats` (owner/AD) · `GET .../leade
 - **Analytics** `/analytics`: `/student` (S) · `/teacher` (T) · `/courses/:id` (owner/AD) · `/admin`, `/admin/report` (AD).
 - **Search** `/search?q=` (A, role-scoped across courses/lessons/quizzes/videos/assignments/people).
 - **Q&A** `/qa` (moderated): `POST /courses/:id` — a student's question is created `pending` and notifies **every** teacher on the course; 20/15 min per account. A question posted by course staff is `approved` immediately. `GET /courses/:id?status=pending|approved|rejected` — staff see everything and a `pendingCount`; students see approved questions plus their own whatever its state. `POST /:threadId/approve` and `POST /:threadId/reject {reason?}` (course staff only; the author is notified either way). `POST /:threadId/replies` — staff replying to a pending question approves it in the same step; a student needs a **live enrollment** (being the author is not enough) and the thread must be `approved`, else `403 QA_NOT_APPROVED`. `POST /:threadId/resolve` (staff, or the enrolled author).
+- **News** `/news` — the institution's wall, deliberately *not* an announcement: posting notifies nobody. `GET /?page&limit` (A; pinned first, then newest) · `POST /`, `PATCH /:id`, `DELETE /:id` (`announcements.global` permission, so AD and O). A post carries `title`, `body`, up to 10 `images` (FileAsset ids from `POST /files/news-image`) and `pinned`; at least one of title, body or images is required. Deletes are soft (`deletedAt`). Audited as `NEWS_POSTED` / `NEWS_UPDATED` / `NEWS_DELETED`.
 - **Bookmarks** `/bookmarks`: `POST /`, `GET /`, `DELETE /:id` (S).
 - **Health**: `GET /api/health` (public).

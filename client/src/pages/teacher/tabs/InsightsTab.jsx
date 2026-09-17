@@ -129,7 +129,7 @@ export default function InsightsTab({ courseId }) {
                     <Badge color="red">{e.type.replace(/_/g, ' ')}</Badge>
                     <span className="text-surface-600 dark:text-surface-300">{e.student?.name}</span>
                     <span className="text-xs text-surface-400">{e.quiz?.title}</span>
-                    <span className="ml-auto text-xs text-surface-400">{new Date(e.occurredAt).toLocaleString()}</span>
+                    <span className="ms-auto text-xs text-surface-400">{new Date(e.occurredAt).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
