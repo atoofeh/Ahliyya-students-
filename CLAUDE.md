@@ -71,6 +71,8 @@ security stack (helmet/cors/sanitize/hpp) → rate limit → /api/v1 router (rou
 - **`context/`** — auth, theme (dark/light/system), toasts.
 - **`pages/`** — separate page trees per role: `student/`, `teacher/`, `admin/`, plus `auth/`. Routing via react-router-dom v7; role layouts in `layouts/`.
 - **`hooks/useAntiCheat.js`** — quiz proctoring event capture (tab switches, devtools, copy/paste…) posted to `/anticheat/events`; server computes the weighted risk score.
+- **Welcome tour** — `components/StudentTour.jsx`, mounted by `MainLayout`. It asks a student once, on first arrival, whether they are new; the answer is stored server-side (`POST /auth/tour` → `User.tourCompletedAt`), so it is asked once per account rather than once per device. The header's help button replays it. Steps carry small replicas of the real controls, and the last step is the social accounts — offered, not pressed.
+- **Social accounts** — `utils/social.js` is the only list (canonical URLs; the shared links' tracking parameters are stripped), rendered by `components/SocialLinks.jsx` as a footer row and as the tour's grid. Brand marks come from `simple-icons`, imported by name so only those six ship.
 - **`components/`** — UI kit plus the protected `VideoPlayer` (signed URLs + moving watermark, and the student's remaining watch allowance) and `ChunkedUploader` (resumable uploads). `PoweredByVortex` is the maker's mark: the emblem *is* the V that "ortex" continues from, so the two sit flush with no gap; it renders in the sidebar footer once signed in and floats bottom-left on the auth screens.
 
 ## Security invariants (don't break these)

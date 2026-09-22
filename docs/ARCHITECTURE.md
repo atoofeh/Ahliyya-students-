@@ -27,6 +27,7 @@ Request → security stack → rate limit → /api/v1 router
 | `notifications` | in-app + email fan-out, unread counts |
 | `announcements` | platform-wide and course-scoped announcements |
 | `news` | the institution's wall — images and text, pinned or not; a feed, not a notification channel |
+| `pastPapers` | past-question papers — an institution-wide shelf of PDFs that every signed-in user reads and administrators curate |
 | `analytics` | student/teacher/course/admin dashboards, exportable platform report |
 | `search` | role-scoped global search across 6 entity types |
 | `qa` | student questions, teacher moderation (approve/reject), threaded replies, resolution |
@@ -39,6 +40,7 @@ Request → security stack → rate limit → /api/v1 router
 - **Learning**: `Enrollment` (status, expiry, denormalized progress, the package — mid/final/full — and the payment recorded against it, which only `payments.manage` holders may read), `LessonProgress` (resume positions), `Certificate` (verifiable serials), `Bookmark`.
 - **Assessment**: `Question` (bank, answer keys `select:false`), `Quiz` (policy + scheduling + pool), `QuizAttempt` (question snapshots, grading state, risk score), `Assignment`, `Submission`.
 - **Platform**: `Notification` (TTL-indexed), `Announcement`, `NewsPost` (author, title, body, image ids, pinned, soft-deleted), `AuditLog`, `CheatEvent`, `PlatformSetting` (singleton, cached 15 s — including `maxVideoViews`).
+- **Past questions** reuse `FileAsset` (scope `past_paper`, with `title` and `subject`). `User.tourCompletedAt` records that the welcome tour was answered.
 - **Watch allowance**: `VideoView`, one row per student per video (unique `student+video`), holding accumulated `watchedSeconds`, whole `completedViews`, the `secondsThisView` remainder, and who reset it when. A view is earned from watch time reaching the video's own length, so seeking and reloading cost nothing.
 - **Community**: `QAThread` (moderated: pending → approved/rejected), `Bookmark`, `AccessCode`.
 - **Ops**: `Migration` (`_migrations` — applied data migrations).

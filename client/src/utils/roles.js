@@ -16,6 +16,7 @@ export const homeFor = (role) => (isAdminRole(role) ? '/admin' : role === 'teach
 export const STUDENT_NAV = [
   { to: '/student', label: 'Dashboard', key: 'nav.dashboard', icon: 'LayoutDashboard', end: true },
   { to: '/student/catalog', label: 'Course Catalog', key: 'nav.catalog', icon: 'Library' },
+  { to: '/past-papers', label: 'Past questions', key: 'nav.pastPapers', icon: 'BookOpenCheck' },
   { to: '/news', label: 'News', key: 'nav.news', icon: 'Newspaper' },
   { to: '/student/grades', label: 'My Grades', key: 'nav.grades', icon: 'GraduationCap' },
   { to: '/student/certificates', label: 'Certificates', key: 'nav.certificates', icon: 'Award' },
@@ -26,6 +27,7 @@ export const TEACHER_NAV = [
   { to: '/teacher', label: 'Dashboard', key: 'nav.dashboard', icon: 'LayoutDashboard', end: true },
   { to: '/teacher/courses', label: 'My Courses', key: 'nav.myCourses', icon: 'BookOpen' },
   { to: '/teacher/invitations', label: 'Invitations', key: 'nav.invitations', icon: 'Handshake' },
+  { to: '/past-papers', label: 'Past questions', key: 'nav.pastPapers', icon: 'BookOpenCheck' },
   { to: '/news', label: 'News', key: 'nav.news', icon: 'Newspaper' },
   { to: '/announcements', label: 'Announcements', key: 'nav.announcements', icon: 'Megaphone' },
 ];
@@ -34,6 +36,7 @@ export const ADMIN_NAV = [
   { to: '/admin/users', label: 'Users', key: 'nav.users', icon: 'Users' },
   { to: '/admin/courses', label: 'Courses', key: 'nav.courses', icon: 'BookOpen' },
   { to: '/news', label: 'News', key: 'nav.news', icon: 'Newspaper' },
+  { to: '/past-papers', label: 'Past questions', key: 'nav.pastPapers', icon: 'BookOpenCheck' },
   { to: '/admin/sessions', label: 'Sessions', key: 'nav.sessions', icon: 'MonitorSmartphone' },
   { to: '/admin/anticheat', label: 'Cheat Reports', key: 'nav.cheatReports', icon: 'ShieldAlert' },
   { to: '/admin/announcements', label: 'Announcements', key: 'nav.announcements', icon: 'Megaphone' },

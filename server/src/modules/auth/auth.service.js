@@ -348,6 +348,20 @@ class AuthService {
     return LoginHistory.find({ user: userId }).sort({ createdAt: -1 }).limit(limit).lean();
   }
 
+  /**
+   * Record that the welcome tour has been answered. The first answer sticks:
+   * replaying the tour later from the help button changes nothing here.
+   */
+  static async markTourSeen(userId) {
+    const user = await User.findOneAndUpdate(
+      { _id: userId, tourCompletedAt: null },
+      { $set: { tourCompletedAt: new Date() } },
+      { new: true }
+    ) || await User.findById(userId);
+    if (!user) throw ApiError.notFound('User not found');
+    return { tourCompletedAt: user.tourCompletedAt };
+  }
+
   static async getProfile(userId) {
     const user = await User.findById(userId);
     if (!user) throw ApiError.notFound('User not found');

@@ -17,6 +17,7 @@ router.use('/anticheat', require('../modules/anticheat/anticheat.routes'));
 router.use('/notifications', require('../modules/notifications/notifications.routes'));
 router.use('/announcements', require('../modules/announcements/announcements.routes'));
 router.use('/news', require('../modules/news/news.routes'));
+router.use('/past-papers', require('../modules/pastPapers/pastPapers.routes'));
 router.use('/analytics', require('../modules/analytics/analytics.routes'));
 router.use('/search', require('../modules/search/search.routes'));
 router.use('/qa', require('../modules/qa/qa.routes'));

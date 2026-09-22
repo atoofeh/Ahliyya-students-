@@ -7,7 +7,9 @@ const { paginatedQuery } = require('../../core/pagination');
 const FileAsset = require('../../models/FileAsset');
 
 class FileService {
-  static async upload(file, { uploadedBy, course = null, kind, scope = 'course', downloadable = true, allowSvg = false }, ip) {
+  static async upload(file, {
+    uploadedBy, course = null, kind, scope = 'course', downloadable = true, allowSvg = false, title = '', subject = '',
+  }, ip) {
     if (!file) throw ApiError.badRequest('No file provided');
     const stored = await persistUpload(file, kind, { allowSvg });
     const asset = await FileAsset.create({
@@ -21,6 +23,8 @@ class FileService {
       mimeType: stored.mimeType,
       sizeBytes: stored.size,
       downloadable,
+      title,
+      subject,
     });
     await audit({ user: uploadedBy, action: 'FILE_UPLOADED', course, ip, resource: `file:${asset._id}`, meta: { name: stored.originalName, size: stored.size } });
     return asset;

@@ -6,6 +6,7 @@ import { useToast } from '../../hooks/useToast';
 import { useLanguage } from '../../hooks/useLanguage';
 import LanguageToggle from '../../components/LanguageToggle';
 import PoweredByVortex from '../../components/PoweredByVortex';
+import SocialLinks from '../../components/SocialLinks';
 import api, { apiError } from '../../api/axios';
 import { Button, Input } from '../../components/ui';
 import Logo, { LogoMark } from '../../components/Logo';
@@ -237,6 +238,11 @@ export default function LoginPage() {
           <div className="mt-10 flex items-center justify-center gap-2 text-[11px] text-surface-400">
             <ShieldCheck size={13} className="text-gold-500" />
             {t('auth.footer')}
+          </div>
+
+          <div className="mt-6 flex flex-col items-center gap-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-surface-400">{t('social.followUs')}</p>
+            <SocialLinks className="justify-center" />
           </div>
         </div>
       </div>

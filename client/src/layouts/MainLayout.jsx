@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
   Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, LogOut,
-  Sun, Moon, Laptop, Menu, Library, Handshake, Newspaper,
+  Sun, Moon, Laptop, Menu, Library, Handshake, Newspaper, BookOpenCheck, HelpCircle,
 } from 'lucide-react';
 import { Avatar } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
@@ -11,6 +11,8 @@ import { useTheme } from '../hooks/useTheme';
 import { useLanguage } from '../hooks/useLanguage';
 import LanguageToggle from '../components/LanguageToggle';
 import PoweredByVortex from '../components/PoweredByVortex';
+import SocialLinks from '../components/SocialLinks';
+import StudentTour from '../components/StudentTour';
 import NotificationsBell from '../components/NotificationsBell';
 import GlobalSearch from '../components/GlobalSearch';
 import { LogoMark } from '../components/Logo';
@@ -20,6 +22,7 @@ import { navFor } from '../utils/roles';
 const ICONS = {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
   Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, Library, Handshake, Newspaper,
+  BookOpenCheck,
 };
 
 const THEME_ICON = { light: Sun, dark: Moon, system: Laptop };
@@ -30,6 +33,12 @@ export default function MainLayout() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // The welcome tour: asked once, automatically, of a student who has never
+  // answered it; replayable from the help button at any time after.
+  const isStudent = user?.role === 'student';
+  const [tourAsked, setTourAsked] = useState(false);
+  const [tourReplay, setTourReplay] = useState(false);
+  const tourMode = tourReplay ? 'replay' : (isStudent && !user?.tourCompletedAt && !tourAsked ? 'ask' : null);
   const ThemeIcon = THEME_ICON[theme] || Laptop;
   const nav = navFor(user?.role).map((item) => ({
     ...item,
@@ -142,6 +151,12 @@ export default function MainLayout() {
           <GlobalSearch />
           <div className="ms-auto flex items-center gap-1">
             <LanguageToggle className="me-1" />
+            {isStudent && (
+              <button onClick={() => setTourReplay(true)} title={t('tour.replay')} aria-label={t('tour.replay')}
+                className="rounded-xl p-2 text-surface-500 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800">
+                <HelpCircle size={18} />
+              </button>
+            )}
             <button onClick={cycle} title={`Theme: ${theme}`} aria-label={`Theme: ${theme}. Change theme`}
               className="rounded-xl p-2 text-surface-500 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-800">
               <ThemeIcon size={18} />
@@ -151,10 +166,25 @@ export default function MainLayout() {
         </header>
         <main className="mx-auto max-w-7xl p-4 md:p-6 lg:p-7 animate-fade-in">
           <Outlet />
+          {/* The institute's accounts, at the foot of every page. */}
+          <footer className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-surface-200/80 pt-5 dark:border-surface-800">
+            <div>
+              <p className="text-sm font-semibold text-surface-700 dark:text-surface-200">{t('social.followUs')}</p>
+              <p className="text-xs text-surface-400">{t('social.followHint')}</p>
+            </div>
+            <SocialLinks />
+          </footer>
           {/* Clears the Android gesture bar without fighting the responsive padding above. */}
           <div aria-hidden="true" style={{ height: 'var(--safe-bottom)' }} />
         </main>
       </div>
+      {tourMode && (
+        <StudentTour
+          key={tourMode}
+          mode={tourMode}
+          onClose={() => { setTourAsked(true); setTourReplay(false); }}
+        />
+      )}
     </div>
   );
 }
