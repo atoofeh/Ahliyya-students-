@@ -85,6 +85,7 @@ router.get('/courses/:courseId', requireCourseAccess, validate(paginationSchema,
 /**
  * Serve file content. Access:
  *  - global/avatar/thumbnail/news/past_paper scope → any authenticated user
+ *    (past papers: read-only for students — no download form, no caching)
  *  - course scope → enrolled student / owner / admin
  *  - submission scope → uploader, course staff, admin
  */
@@ -110,6 +111,16 @@ router.get('/:fileId/content', asyncHandler(async (req, res) => {
       throw ApiError.forbidden('Not your file');
     }
   }
+
+  // Past questions are read, not kept: a student gets them inline for the
+  // app's own reader, and asking for the download form is refused. The bytes
+  // still reach the device to be drawn — this closes the save button, not the
+  // browser's developer tools (docs/SECURITY.md).
+  const viewOnly = asset.scope === 'past_paper' && req.user.role === 'student';
+  if (viewOnly && req.query.download) {
+    throw ApiError.forbidden('Past questions open inside the app and cannot be downloaded. If the app is out of date, update it to read them.', 'VIEW_ONLY');
+  }
+  if (viewOnly) res.setHeader('Cache-Control', 'private, no-store');
 
   res.setHeader('Content-Type', asset.mimeType);
   res.setHeader('Content-Length', asset.sizeBytes);

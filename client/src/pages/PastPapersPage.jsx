@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { FileText, Download, BookOpenCheck, Plus, Pencil, Trash2, Upload, Wifi } from 'lucide-react';
 import api, { apiError } from '../api/axios';
-import { isNative } from '../api/native';
 import { downloadFile } from '../api/download';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../hooks/useAuth';
@@ -10,10 +9,20 @@ import { isAdminRole } from '../utils/roles';
 import { Card, Button, Modal, Input, EmptyState, PageIntro, ProgressBar } from '../components/ui';
 import { SkeletonCard } from '../components/Skeletons';
 import ErrorState from '../components/ErrorState';
+import PdfReader from '../components/PdfReader';
 
 const MB = 1048576;
 const BIG = 15 * MB;
 const fmtSize = (b) => (b >= MB ? `${(b / MB).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+
+/** A refusal read from a binary response: the body is JSON, just not parsed. */
+const readError = (err) => {
+  const body = err?.response?.data;
+  if (body instanceof ArrayBuffer) {
+    try { return JSON.parse(new TextDecoder().decode(body)).message || apiError(err); } catch { /* not JSON */ }
+  }
+  return apiError(err);
+};
 
 /**
  * One colour per subject, picked from the brand palette by the subject's name
@@ -37,25 +46,30 @@ const spineFor = (subject = '') => {
  *
  * Laid out as a shelf rather than a grid of cards: each paper is one line you
  * can read at a glance — its subject, its title, how big it is — with Open
- * right beside it. On the web a paper opens in place; in the app it opens in
- * the phone's own PDF viewer, because Android's web view has none.
+ * right beside it. A paper opens in the app's own reader, on the web and on
+ * the phone alike.
  *
- * Administrators curate the shelf from the same page.
+ * Students read papers; they do not keep them. The reader has no save or
+ * print control, the server refuses a student the download form of the file,
+ * and a student's pages carry the platform watermark. Staff keep a Download
+ * button. Administrators curate the shelf from the same page.
  */
 export default function PastPapersPage() {
   const toast = useToast();
   const { user } = useAuth();
   const { t } = useLanguage();
   const canManage = isAdminRole(user?.role);
+  const canDownload = user?.role !== 'student';
 
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState({}); // id → 0..1 while fetching
-  const [viewing, setViewing] = useState(null); // { paper, url }
+  const [viewing, setViewing] = useState(null); // { paper, data, watermark }
   const [editor, setEditor] = useState(null); // null | {} (new) | paper
   const [form, setForm] = useState({ title: '', subject: '', file: null });
   const [upload, setUpload] = useState(null); // 0..1 while uploading
   const fileInput = useRef(null);
+  const watermarkRef = useRef(undefined); // fetched once, on the first paper opened
 
   const load = useCallback(async () => {
     try {
@@ -68,28 +82,38 @@ export default function PastPapersPage() {
   }, []);
   useEffect(() => { const t0 = setTimeout(load, 0); return () => clearTimeout(t0); }, [load]);
 
-  // Release the object URL of a paper once it is closed.
-  useEffect(() => () => { if (viewing?.url) URL.revokeObjectURL(viewing.url); }, [viewing]);
-
   const track = (id) => (f) => setProgress((p) => ({ ...p, [id]: f }));
   const done = (id) => setProgress((p) => { const n = { ...p }; delete n[id]; return n; });
   const fileName = (paper) => `${paper.title || 'paper'}.pdf`;
 
+  // A student's pages carry the same mark as their videos, when the platform
+  // has it switched on. If it cannot be fetched the paper still opens; the
+  // failure is not remembered, so the next paper asks again.
+  const watermarkLines = async () => {
+    if (canDownload) return null;
+    if (watermarkRef.current !== undefined) return watermarkRef.current;
+    try {
+      const { data } = await api.get('/videos/watermark/me');
+      watermarkRef.current = data.enabled ? data.lines : null;
+      return watermarkRef.current;
+    } catch { return null; }
+  };
+
   const open = async (paper) => {
     track(paper._id)(0);
     try {
-      if (isNative) {
-        await downloadFile(paper._id, fileName(paper), { onProgress: track(paper._id) });
-      } else {
-        const { data: blob } = await api.get(`/files/${paper._id}/content`, {
-          responseType: 'blob',
+      const [{ data }, watermark] = await Promise.all([
+        api.get(`/files/${paper._id}/content`, {
+          responseType: 'arraybuffer',
           onDownloadProgress: (e) => { if (e.total) track(paper._id)(e.loaded / e.total); },
-        });
-        setViewing({ paper, url: URL.createObjectURL(blob) });
-      }
-    } catch (err) { toast.error(apiError(err)); }
+        }),
+        watermarkLines(),
+      ]);
+      setViewing({ paper, data, watermark });
+    } catch (err) { toast.error(readError(err)); }
     finally { done(paper._id); }
   };
+  const closeReader = useCallback(() => setViewing(null), []);
 
   const download = async (paper) => {
     track(paper._id)(0);
@@ -190,7 +214,7 @@ export default function PastPapersPage() {
 
                 <div className="flex w-full shrink-0 items-center gap-1.5 sm:w-auto">
                   <Button className="flex-1 sm:flex-none" disabled={busy} onClick={() => open(paper)}>{t('pp.open')}</Button>
-                  {!isNative && (
+                  {canDownload && (
                     <Button variant="outline" disabled={busy} onClick={() => download(paper)} aria-label={t('pp.download')} title={t('pp.download')}>
                       <Download size={15} />
                     </Button>
@@ -208,12 +232,11 @@ export default function PastPapersPage() {
         </Card>
       )}
 
-      {/* Reading a paper on the web: the PDF in place, full height. */}
-      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.paper?.title || t('pp.title')} wide>
-        {viewing && (
-          <iframe title={viewing.paper.title} src={viewing.url} className="h-[72vh] w-full rounded-lg border border-surface-200 dark:border-surface-700" />
-        )}
-      </Modal>
+      {/* Reading a paper: full screen, drawn by the app itself. */}
+      {viewing && (
+        <PdfReader key={viewing.paper._id} data={viewing.data} watermark={viewing.watermark}
+          title={viewing.paper.title || viewing.paper.originalName} readOnly={!canDownload} onClose={closeReader} />
+      )}
 
       {/* Adding or renaming a paper. */}
       <Modal open={!!editor} onClose={() => upload === null && setEditor(null)} title={t(editor?._id ? 'pp.edit' : 'pp.addTitle')}>
