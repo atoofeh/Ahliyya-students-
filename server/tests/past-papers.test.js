@@ -26,7 +26,7 @@ const upload = async (session, { name = 'أجوبة عربي استدراكي.pd
   return { status: res.status, data: await res.json().catch(() => ({})) };
 };
 const as = (s, method, path, body) => api(method, path, { token: s.token, deviceId: s.deviceId, body });
-const content = (s, id) => fetch(`${app.baseUrl}/api/v1/files/${id}/content`, {
+const content = (s, id, query = '') => fetch(`${app.baseUrl}/api/v1/files/${id}/content${query}`, {
   headers: { Authorization: `Bearer ${s.token}`, 'x-device-id': s.deviceId },
 });
 
@@ -59,6 +59,47 @@ test('an administrator adds a paper, and a student with no enrolment can list an
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('content-type'), 'application/pdf');
   assert.equal(Buffer.from(await res.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
+});
+
+test('a student reads a paper in place but cannot download it; staff still can', async () => {
+  const added = await upload(admin, { title: 'أجوبة رياضيات استدراكي', subject: 'الرياضيات' });
+  assert.equal(added.status, 201, JSON.stringify(added.data));
+
+  const read = await content(sam, added.data._id);
+  assert.equal(read.status, 200);
+  assert.match(read.headers.get('content-disposition'), /^inline/);
+  assert.equal(read.headers.get('cache-control'), 'private, no-store', 'a student copy must not be left in a cache');
+  await read.arrayBuffer();
+
+  // The download form — what the web's Download button and older app builds ask for.
+  const kept = await content(sam, added.data._id, '?download=1');
+  assert.equal(kept.status, 403);
+  assert.equal((await kept.json()).code, 'VIEW_ONLY');
+
+  for (const who of [ada, admin]) {
+    const res = await content(who, added.data._id, '?download=1');
+    assert.equal(res.status, 200, `${who.user.username} could not download a paper`);
+    assert.match(res.headers.get('content-disposition'), /^attachment/);
+    await res.arrayBuffer();
+  }
+});
+
+test('the read-only rule is for past papers, not every document a student opens', async () => {
+  const FileAsset = require('../src/models/FileAsset');
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'global-')), 'handbook.pdf');
+  fs.writeFileSync(file, PDF);
+  const handbook = await FileAsset.create({
+    uploadedBy: admin.user.id, scope: 'global', kind: 'documents',
+    originalName: 'handbook.pdf', storedName: 'handbook.pdf', mimeType: 'application/pdf',
+    sizeBytes: PDF.length, storagePath: file,
+  });
+  const res = await content(sam, handbook._id, '?download=1');
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-disposition'), /^attachment/);
+  await res.arrayBuffer();
 });
 
 test('a paper with no title is named after its file, not left blank', async () => {

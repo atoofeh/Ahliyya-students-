@@ -167,12 +167,18 @@ export default function MainLayout() {
         <main className="mx-auto max-w-7xl p-4 md:p-6 lg:p-7 animate-fade-in">
           <Outlet />
           {/* The institute's accounts, at the foot of every page. */}
-          <footer className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-surface-200/80 pt-5 dark:border-surface-800">
+          <footer className="mt-12 flex flex-wrap items-start justify-between gap-3 border-t border-surface-200/80 pt-5 dark:border-surface-800">
             <div>
               <p className="text-sm font-semibold text-surface-700 dark:text-surface-200">{t('social.followUs')}</p>
               <p className="text-xs text-surface-400">{t('social.followHint')}</p>
             </div>
-            <SocialLinks />
+            {/* The maker's mark sits under the accounts, on the end edge. On a
+                phone the accounts wrap under the heading at the start, so the
+                column spans the row and the mark still reaches the end. */}
+            <div className="flex w-full flex-col items-end gap-2.5 sm:w-auto">
+              <SocialLinks className="max-sm:self-start" />
+              <PoweredByVortex size="sm" floating={false} />
+            </div>
           </footer>
           {/* Clears the Android gesture bar without fighting the responsive padding above. */}
           <div aria-hidden="true" style={{ height: 'var(--safe-bottom)' }} />
