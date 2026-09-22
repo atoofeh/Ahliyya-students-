@@ -31,10 +31,18 @@ const blobToBase64 = (blob) =>
  * Download a file asset and hand it to the user.
  * @param {string} fileId  FileAsset id
  * @param {string} filename  suggested name, e.g. "week-3-notes.pdf"
+ * @param {{ onProgress?: (fraction: number) => void }} [opts]
  * @returns {Promise<void>} rejects with the axios error so callers can use apiError()
  */
-export async function downloadFile(fileId, filename) {
-  const { data: blob } = await api.get(`/files/${fileId}/content?download=1`, { responseType: 'blob' });
+export async function downloadFile(fileId, filename, { onProgress } = {}) {
+  const { data: blob } = await api.get(`/files/${fileId}/content?download=1`, {
+    responseType: 'blob',
+    // Reports 0..1 as the bytes arrive, for files large enough that a student
+    // on mobile data should see something move.
+    ...(onProgress && {
+      onDownloadProgress: (e) => { if (e.total) onProgress(e.loaded / e.total); },
+    }),
+  });
   const name = safeName(filename);
 
   if (!isNative) {

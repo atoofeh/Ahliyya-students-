@@ -82,6 +82,10 @@ const me = asyncHandler(async (req, res) => {
   res.json(await AuthService.getProfile(req.user.id));
 });
 
+const markTourSeen = asyncHandler(async (req, res) => {
+  res.json(await AuthService.markTourSeen(req.user.id));
+});
+
 const updateProfile = asyncHandler(async (req, res) => {
   res.json(await AuthService.updateProfile(req.user.id, req.body));
 });
@@ -128,7 +132,7 @@ const myLoginHistory = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  login, refresh, logout, myDevice, requestDeviceReset, me, updateProfile,
+  login, refresh, logout, myDevice, requestDeviceReset, me, updateProfile, markTourSeen,
   sendVerification, verifyEmail, setPassword, changePassword,
   forgotPassword, resetPassword, mySessions, myLoginHistory,
 };

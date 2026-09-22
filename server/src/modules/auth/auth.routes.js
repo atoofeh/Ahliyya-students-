@@ -22,6 +22,7 @@ router.post('/logout', requireAllowedOrigin, validate(v.logoutSchema), c.logout)
 router.get('/device', c.myDevice);
 router.get('/me', c.me);
 router.patch('/me', validate(v.updateProfileSchema), c.updateProfile);
+router.post('/tour', validate(v.tourSchema), c.markTourSeen);
 router.post('/resend-verification', verificationLimiter, validate(v.sendVerificationSchema), c.sendVerification);
 router.post('/verify-email', verificationLimiter, validate(v.verifyEmailSchema), c.verifyEmail);
 router.post('/set-password', validate(v.setPasswordSchema), c.setPassword);

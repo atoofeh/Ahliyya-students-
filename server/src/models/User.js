@@ -39,6 +39,10 @@ const userSchema = new mongoose.Schema(
     },
 
     lastLoginAt: { type: Date, default: null },
+    // When the student answered the welcome tour — took it, skipped it, or said
+    // they were not new. Asked once per account, not once per device: a phone
+    // reinstall must not make a returning student sit through it again.
+    tourCompletedAt: { type: Date, default: null },
     deletedAt: { type: Date, default: null }, // soft delete
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
@@ -73,6 +77,7 @@ userSchema.methods.toPublicJSON = function () {
     mustChangePassword: this.mustChangePassword,
     preferences: this.preferences,
     lastLoginAt: this.lastLoginAt,
+    tourCompletedAt: this.tourCompletedAt,
     createdAt: this.createdAt,
   };
 };

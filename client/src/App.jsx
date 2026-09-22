@@ -37,6 +37,7 @@ const AdminSecurity = lazy(() => import('./pages/admin/AdminSecurity'));
 const AdminAdmins = lazy(() => import('./pages/admin/AdminAdmins'));
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'));
 const NewsPage = lazy(() => import('./pages/NewsPage'));
+const PastPapersPage = lazy(() => import('./pages/PastPapersPage'));
 import { Spinner } from './components/ui';
 import { SkeletonPage } from './components/Skeletons';
 import { roleMatches, homeFor } from './utils/roles';
@@ -110,6 +111,7 @@ export default function App() {
                 {/* Shared */}
                 <Route path="/announcements" element={<AnnouncementsPage />} />
                 <Route path="/news" element={<NewsPage />} />
+                <Route path="/past-papers" element={<PastPapersPage />} />
               </Route>
 
               <Route path="/" element={<HomeRedirect />} />

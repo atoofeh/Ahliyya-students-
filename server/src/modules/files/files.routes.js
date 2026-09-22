@@ -84,7 +84,7 @@ router.get('/courses/:courseId', requireCourseAccess, validate(paginationSchema,
 
 /**
  * Serve file content. Access:
- *  - global/avatar/thumbnail scope → any authenticated user
+ *  - global/avatar/thumbnail/news/past_paper scope → any authenticated user
  *  - course scope → enrolled student / owner / admin
  *  - submission scope → uploader, course staff, admin
  */

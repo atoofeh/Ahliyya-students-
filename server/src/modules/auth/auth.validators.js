@@ -42,7 +42,12 @@ const updateProfileSchema = z.object({
     .optional(),
 });
 
+// How the welcome tour ended. Only the fact is stored; the outcome is
+// accepted so the client can say what happened without a second endpoint.
+const tourSchema = z.object({ outcome: z.enum(['completed', 'skipped', 'declined']) });
+
 module.exports = {
+  tourSchema,
   loginSchema,
   refreshSchema,
   logoutSchema,
