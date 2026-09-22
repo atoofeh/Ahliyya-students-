@@ -30,7 +30,7 @@ const THEME_ICON = { light: Sun, dark: Moon, system: Laptop };
 export default function MainLayout() {
   const { user, logout } = useAuth();
   const { theme, cycle } = useTheme();
-  const { t } = useLanguage();
+  const { t, dir } = useLanguage();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // The welcome tour: asked once, automatically, of a student who has never
@@ -166,15 +166,19 @@ export default function MainLayout() {
         </header>
         <main className="mx-auto max-w-7xl p-4 md:p-6 lg:p-7 animate-fade-in">
           <Outlet />
-          {/* The institute's accounts, at the foot of every page. */}
-          <footer className="mt-12 flex flex-wrap items-start justify-between gap-3 border-t border-surface-200/80 pt-5 dark:border-surface-800">
-            <div>
+          {/* The institute's accounts, at the foot of every page. Laid out
+              left-to-right in both languages on purpose: "Follow us" stays on the
+              left and the maker's mark on the right, as asked, rather than
+              trading sides in Arabic. The words themselves keep the page's
+              direction. */}
+          <footer dir="ltr" className="mt-12 flex flex-wrap items-start justify-between gap-3 border-t border-surface-200/80 pt-5 dark:border-surface-800">
+            <div dir={dir}>
               <p className="text-sm font-semibold text-surface-700 dark:text-surface-200">{t('social.followUs')}</p>
               <p className="text-xs text-surface-400">{t('social.followHint')}</p>
             </div>
-            {/* The maker's mark sits under the accounts, on the end edge. On a
-                phone the accounts wrap under the heading at the start, so the
-                column spans the row and the mark still reaches the end. */}
+            {/* The maker's mark sits under the accounts, on the right. On a
+                phone the accounts wrap under the heading on the left, so the
+                column spans the row and the mark still reaches the right. */}
             <div className="flex w-full flex-col items-end gap-2.5 sm:w-auto">
               <SocialLinks className="max-sm:self-start" />
               <PoweredByVortex size="sm" floating={false} />
