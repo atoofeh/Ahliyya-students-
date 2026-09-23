@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { FileText, Download, BookOpenCheck, Plus, Pencil, Trash2, Upload, Wifi } from 'lucide-react';
+import { FileText, Download, BookOpenCheck, Plus, Pencil, Trash2, Upload, Wifi, ListChecks, EyeOff } from 'lucide-react';
 import api, { apiError } from '../api/axios';
 import { downloadFile } from '../api/download';
 import { useToast } from '../hooks/useToast';
@@ -10,6 +10,8 @@ import { Card, Button, Modal, Input, EmptyState, PageIntro, ProgressBar } from '
 import { SkeletonCard } from '../components/Skeletons';
 import ErrorState from '../components/ErrorState';
 import PdfReader from '../components/PdfReader';
+import PracticeQuiz from '../components/PracticeQuiz';
+import PracticeEditor from '../components/PracticeEditor';
 
 const MB = 1048576;
 const BIG = 15 * MB;
@@ -66,6 +68,8 @@ export default function PastPapersPage() {
   const [progress, setProgress] = useState({}); // id → 0..1 while fetching
   const [viewing, setViewing] = useState(null); // { paper, data, watermark }
   const [editor, setEditor] = useState(null); // null | {} (new) | paper
+  const [practiceFor, setPracticeFor] = useState(null); // paper id, practising
+  const [questionsFor, setQuestionsFor] = useState(null); // paper, writing questions
   const [form, setForm] = useState({ title: '', subject: '', file: null });
   const [upload, setUpload] = useState(null); // 0..1 while uploading
   const fileInput = useRef(null);
@@ -182,8 +186,11 @@ export default function PastPapersPage() {
         <Card className="divide-y divide-surface-100 overflow-hidden dark:divide-surface-700/60">
           {items.map((paper) => {
             const busy = progress[paper._id] !== undefined;
+            const practising = practiceFor === paper._id;
+            const hasPractice = paper.practiceCount > 0 && (paper.practicePublished || canManage);
             return (
-              <div key={paper._id} className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4 sm:flex-nowrap">
+              <div key={paper._id}>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4 sm:flex-nowrap">
                 {/* The spine: the subject's colour, so papers are told apart before they are read. */}
                 <span className={`flex h-14 w-11 shrink-0 flex-col items-center justify-center rounded-md bg-gradient-to-b shadow-card ${spineFor(paper.subject || paper.title)}`}>
                   <FileText size={18} aria-hidden="true" />
@@ -221,11 +228,35 @@ export default function PastPapersPage() {
                   )}
                   {canManage && (
                     <>
+                      <Button variant="ghost" onClick={() => setQuestionsFor(paper)} aria-label={t('pp.practiceManage')} title={t('pp.practiceManage')}>
+                        <ListChecks size={14} />
+                      </Button>
                       <Button variant="ghost" onClick={() => openEditor(paper)} aria-label={t('pp.edit')} title={t('pp.edit')}><Pencil size={14} /></Button>
                       <Button variant="ghost" onClick={() => remove(paper)} aria-label={t('pp.delete')} title={t('pp.delete')}><Trash2 size={14} className="text-rose-400" /></Button>
                     </>
                   )}
                 </div>
+              </div>
+
+              {/* Practice sits under the paper it came from: read it, then try it. */}
+              {hasPractice && (
+                <div className="border-t border-surface-100 bg-surface-50/70 dark:border-surface-700/60 dark:bg-surface-800/30">
+                  {practising ? (
+                    <PracticeQuiz paperId={paper._id} onClose={() => setPracticeFor(null)} />
+                  ) : (
+                    <button type="button" onClick={() => setPracticeFor(paper._id)}
+                      className="flex w-full items-center gap-2 px-4 py-2.5 text-start text-[13px] font-semibold text-brand-700 transition-colors hover:bg-surface-100 dark:text-brand-300 dark:hover:bg-surface-800/60">
+                      <ListChecks size={15} aria-hidden="true" />
+                      {t('pp.practiceStart', { n: paper.practiceCount })}
+                      {!paper.practicePublished && (
+                        <span className="ms-auto inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                          <EyeOff size={11} aria-hidden="true" /> {t('pp.practiceHidden')}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
               </div>
             );
           })}
@@ -236,6 +267,11 @@ export default function PastPapersPage() {
       {viewing && (
         <PdfReader key={viewing.paper._id} data={viewing.data} watermark={viewing.watermark}
           title={viewing.paper.title || viewing.paper.originalName} readOnly={!canDownload} onClose={closeReader} />
+      )}
+
+      {/* Writing the practice questions that sit under a paper. */}
+      {questionsFor && (
+        <PracticeEditor paper={questionsFor} onClose={() => setQuestionsFor(null)} onChanged={load} />
       )}
 
       {/* Adding or renaming a paper. */}
