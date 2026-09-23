@@ -10,6 +10,7 @@ const { documentUpload } = require('../../middleware/uploads');
 const { uploadLimiter } = require('../../middleware/rateLimiters');
 const FileService = require('../files/files.service');
 const FileAsset = require('../../models/FileAsset');
+const PracticeQuestion = require('../../models/PracticeQuestion');
 
 /**
  * Past questions: papers from earlier exams — at present the answer papers for
@@ -21,7 +22,7 @@ const FileAsset = require('../../models/FileAsset');
  * only lists, adds, renames and removes.
  */
 
-const LIST_FIELDS = 'title subject originalName mimeType sizeBytes createdAt';
+const LIST_FIELDS = 'title subject originalName mimeType sizeBytes createdAt practicePublished';
 
 const metaSchema = z.object({
   title: z.string().trim().max(200).optional(),
@@ -36,7 +37,18 @@ router.get('/', asyncHandler(async (req, res) => {
     .select(LIST_FIELDS)
     .sort({ subject: 1, title: 1, createdAt: -1 })
     .lean();
-  res.json({ items });
+
+  // How much practice sits under each paper, counted in one pass rather than
+  // one query per shelf row.
+  const counts = new Map(
+    (await PracticeQuestion.aggregate([
+      { $match: { paper: { $in: items.map((p) => p._id) }, deletedAt: null } },
+      { $group: { _id: '$paper', n: { $sum: 1 } } },
+    ])).map((row) => [String(row._id), row.n])
+  );
+  res.json({
+    items: items.map((p) => ({ ...p, practiceCount: counts.get(String(p._id)) || 0 })),
+  });
 }));
 
 router.post('/', uploadLimiter, requirePermission(P.FILES_GLOBAL), documentUpload, validate(metaSchema),
@@ -70,7 +82,12 @@ router.delete('/:id', requirePermission(P.FILES_GLOBAL), validate(idParams, 'par
     const exists = await FileAsset.exists({ _id: req.params.id, scope: 'past_paper', deletedAt: null });
     if (!exists) throw ApiError.notFound('Paper not found');
     await FileService.remove(req.params.id, req.user, req.ip);
+    // The paper's practice goes with it; nothing else references these.
+    await PracticeQuestion.updateMany({ paper: req.params.id, deletedAt: null }, { $set: { deletedAt: new Date() } });
     res.json({ message: 'Paper removed' });
   }));
+
+// Practice questions live under the paper they belong to.
+router.use('/:id/practice', require('./practice.routes'));
 
 module.exports = router;

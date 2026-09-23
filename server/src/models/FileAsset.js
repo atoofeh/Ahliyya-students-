@@ -23,6 +23,10 @@ const fileAssetSchema = new mongoose.Schema(
     // استدراكي" is the name and the filename is an accident.
     title: { type: String, trim: true, maxlength: 200, default: '' },
     subject: { type: String, trim: true, maxlength: 100, default: '' },
+    // Past papers only: whether this paper's practice questions are open to
+    // students. Off until an administrator has read them through, because a
+    // practice question with the wrong answer teaches the wrong answer.
+    practicePublished: { type: Boolean, default: false },
     originalName: { type: String, required: true },
     storedName: { type: String, required: true },
     storagePath: { type: String, required: true, select: false },

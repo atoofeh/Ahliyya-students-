@@ -148,6 +148,144 @@ test('the library cannot be used to delete an ordinary file by id', async () => 
   assert.equal((await FileAsset.findById(other._id)).deletedAt, null, 'a non-paper file was deleted through the library');
 });
 
+// ── practice questions ───────────────────────────────────────────────
+
+const MCQ = {
+  text: 'She waited ___ the station ___ two hours.',
+  options: [
+    { text: 'in — since' },
+    { text: 'in — for', isCorrect: true },
+    { text: 'at — for' },
+    { text: 'at — since' },
+  ],
+  explanation: '"for" measures a length of time.',
+};
+
+test('practice is hidden from students until an administrator publishes it', async () => {
+  const paper = (await upload(admin, { title: 'انجليزي للتدريب', subject: 'اللغة الإنجليزية' })).data;
+
+  const added = await as(admin, 'POST', `/past-papers/${paper._id}/practice`, MCQ);
+  assert.equal(added.status, 201, JSON.stringify(added.data));
+  assert.equal(added.data.added, 1);
+
+  // Written but not published: a student sees nothing at all.
+  const early = await as(sam, 'GET', `/past-papers/${paper._id}/practice`);
+  assert.equal(early.status, 200);
+  assert.equal(early.data.published, false);
+  assert.equal(early.data.items.length, 0, 'unpublished practice reached a student');
+
+  assert.equal((await as(admin, 'POST', `/past-papers/${paper._id}/practice/publish`, { published: true })).status, 200);
+
+  const open = await as(sam, 'GET', `/past-papers/${paper._id}/practice`);
+  assert.equal(open.data.published, true);
+  assert.equal(open.data.items.length, 1);
+
+  // The shelf says how much practice a paper carries.
+  const shelf = (await as(sam, 'GET', '/past-papers')).data.items.find((x) => x._id === paper._id);
+  assert.equal(shelf.practiceCount, 1);
+  assert.equal(shelf.practicePublished, true);
+});
+
+test('the answer key never reaches a student, in any shape', async () => {
+  const paper = (await upload(admin, { title: 'مفتاح الإجابة', subject: 'اللغة الإنجليزية' })).data;
+  await as(admin, 'POST', `/past-papers/${paper._id}/practice`, MCQ);
+  await as(admin, 'POST', `/past-papers/${paper._id}/practice/publish`, { published: true });
+
+  const seen = await as(sam, 'GET', `/past-papers/${paper._id}/practice`);
+  const body = JSON.stringify(seen.data);
+  assert.ok(!body.includes('isCorrect'), 'the key was serialized to a student');
+  assert.ok(!body.includes('explanation'), 'the explanation arrives with the verdict, not before it');
+  const [question] = seen.data.items;
+  assert.deepEqual(question.options.map((o) => o.id), ['a', 'b', 'c', 'd']);
+
+  // Staff are editing the answers, so they do get the key.
+  const editing = await as(admin, 'GET', `/past-papers/${paper._id}/practice`);
+  assert.equal(editing.data.items[0].options.filter((o) => o.isCorrect).length, 1);
+});
+
+test('a student is told whether the answer was right, with the reason', async () => {
+  const paper = (await upload(admin, { title: 'تصحيح فوري', subject: 'اللغة الإنجليزية' })).data;
+  await as(admin, 'POST', `/past-papers/${paper._id}/practice`, MCQ);
+  await as(admin, 'POST', `/past-papers/${paper._id}/practice/publish`, { published: true });
+  const [q] = (await as(sam, 'GET', `/past-papers/${paper._id}/practice`)).data.items;
+
+  const wrong = await as(sam, 'POST', `/past-papers/${paper._id}/practice/${q._id}/check`, { selectedOptionIds: ['a'] });
+  assert.equal(wrong.status, 200);
+  assert.equal(wrong.data.correct, false);
+  assert.deepEqual(wrong.data.correctOptionIds, ['b']);
+  assert.match(wrong.data.explanation, /length of time/);
+
+  const right = await as(sam, 'POST', `/past-papers/${paper._id}/practice/${q._id}/check`, { selectedOptionIds: ['b'] });
+  assert.equal(right.data.correct, true);
+
+  // Answering is not an exam: the same question can be tried again, forever.
+  assert.equal((await as(sam, 'POST', `/past-papers/${paper._id}/practice/${q._id}/check`, { selectedOptionIds: ['b'] })).data.correct, true);
+});
+
+test('a question with no correct answer marked is refused', async () => {
+  const paper = (await upload(admin, { title: 'بلا إجابة', subject: 'الحاسوب' })).data;
+  const bad = await as(admin, 'POST', `/past-papers/${paper._id}/practice`, {
+    text: 'Which one?', options: [{ text: 'a' }, { text: 'b' }],
+  });
+  assert.equal(bad.status, 400);
+  assert.equal(bad.data.code, 'VALIDATION_ERROR');
+});
+
+test('students and teachers cannot write practice questions, nor publish them', async () => {
+  const paper = (await upload(admin, { title: 'للقراءة فقط', subject: 'الحاسوب' })).data;
+  for (const who of [sam, ada]) {
+    assert.equal((await as(who, 'POST', `/past-papers/${paper._id}/practice`, MCQ)).status, 403, who.user.username);
+    assert.equal((await as(who, 'POST', `/past-papers/${paper._id}/practice/publish`, { published: true })).status, 403);
+  }
+});
+
+test('a batch of questions can be added at once, and edited or removed afterwards', async () => {
+  const paper = (await upload(admin, { title: 'دفعة واحدة', subject: 'اللغة العربية' })).data;
+  const batch = await as(admin, 'POST', `/past-papers/${paper._id}/practice`, {
+    items: [MCQ, { ...MCQ, text: 'Second question' }, { ...MCQ, text: 'Third question' }],
+  });
+  assert.equal(batch.data.added, 3);
+
+  const listed = (await as(admin, 'GET', `/past-papers/${paper._id}/practice`)).data.items;
+  assert.equal(listed.length, 3);
+  assert.equal(listed[1].text, 'Second question', 'the pasted order was not kept');
+
+  const edited = await as(admin, 'PATCH', `/past-papers/${paper._id}/practice/${listed[1]._id}`, {
+    ...MCQ, text: 'Second question, corrected',
+  });
+  assert.equal(edited.status, 200);
+
+  assert.equal((await as(admin, 'DELETE', `/past-papers/${paper._id}/practice/${listed[2]._id}`)).status, 200);
+  const after = (await as(admin, 'GET', `/past-papers/${paper._id}/practice`)).data.items;
+  assert.equal(after.length, 2);
+  assert.equal(after[1].text, 'Second question, corrected');
+});
+
+test('publishing an empty set is refused, and removing a paper takes its practice with it', async () => {
+  const paper = (await upload(admin, { title: 'فارغ', subject: 'الحاسوب' })).data;
+  const empty = await as(admin, 'POST', `/past-papers/${paper._id}/practice/publish`, { published: true });
+  assert.equal(empty.status, 400);
+
+  await as(admin, 'POST', `/past-papers/${paper._id}/practice`, MCQ);
+  await as(admin, 'POST', `/past-papers/${paper._id}/practice/publish`, { published: true });
+  await as(admin, 'DELETE', `/past-papers/${paper._id}`);
+
+  const PracticeQuestion = require('../src/models/PracticeQuestion');
+  const left = await PracticeQuestion.countDocuments({ paper: paper._id, deletedAt: null });
+  assert.equal(left, 0, 'a removed paper left its practice questions behind');
+});
+
+test('practice cannot be hung on a file that is not a past paper', async () => {
+  const FileAsset = require('../src/models/FileAsset');
+  const other = await FileAsset.create({
+    uploadedBy: admin.user.id, scope: 'global', kind: 'documents',
+    originalName: 'handbook.pdf', storedName: 'h2.pdf', mimeType: 'application/pdf',
+    sizeBytes: 10, storagePath: '/dev/null',
+  });
+  assert.equal((await as(admin, 'POST', `/past-papers/${other._id}/practice`, MCQ)).status, 404);
+  assert.equal((await as(sam, 'GET', `/past-papers/${other._id}/practice`)).status, 404);
+});
+
 // ── the welcome tour ─────────────────────────────────────────────────
 
 test('a new account has not answered the tour, and answering it is remembered', async () => {
