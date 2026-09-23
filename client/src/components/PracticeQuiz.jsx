@@ -120,13 +120,13 @@ export default function PracticeQuiz({ paperId, onClose }) {
       {verdict ? (
         <ul className="mt-3 space-y-2">
           {question.options.map((o) => (
-            <li key={o.id} dir="auto"
+            <li key={o.id}
               className={`flex items-center gap-3 rounded-xl border-2 p-3.5 text-sm ${tone(o.id)}`}>
               <span className="flex h-5 w-5 shrink-0 items-center justify-center">
                 {correctIds.includes(o.id) && <Check size={16} className="text-emerald-600 dark:text-emerald-400" />}
                 {!correctIds.includes(o.id) && selected.includes(o.id) && <X size={16} className="text-rose-500" />}
               </span>
-              <span>{o.text}</span>
+              <span dir="auto">{o.text}</span>
             </li>
           ))}
         </ul>

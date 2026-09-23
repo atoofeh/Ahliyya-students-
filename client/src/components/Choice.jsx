@@ -63,7 +63,8 @@ export default function ChoiceGroup({ multiple, options, value = [], onChange, n
               {on && <span className={cx('bg-white', multiple ? 'h-2 w-2.5 rounded-[1px]' : 'h-2 w-2 rounded-full')} />}
             </span>
             {o.image && <AuthedImage fileId={o.image} className="h-20 rounded" />}
-            {o.text && <span>{o.text}</span>}
+            {/* An answer is text someone wrote: it takes its direction from itself. */}
+            {o.text && <span dir="auto">{o.text}</span>}
           </button>
         );
       })}
