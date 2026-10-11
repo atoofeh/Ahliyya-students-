@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import api from '../api/axios';
 import { getAccessToken } from '../api/token';
 import { currentDeviceId } from '../api/fingerprint';
-import { platformName } from '../api/native';
+import LmsNative, { isNative, platformName } from '../api/native';
 
 /**
  * Client-side quiz proctor. Detects and reports to the server:
@@ -51,6 +51,20 @@ export default function useAntiCheat({ attemptId, enabled, requireFullscreen, bl
       target.addEventListener(event, handler, opts);
       cleanups.push(() => target.removeEventListener(event, handler, opts));
     };
+
+    // iOS reports a screenshot only after the system has already captured it.
+    // Record that signal during quizzes; the native shell covers live recordings.
+    if (isNative && platformName() === 'ios') {
+      let active = true;
+      let listener;
+      LmsNative.addListener('screenshotDetected', () => {
+        report('screen_capture_suspected', 'iOS reported a screenshot during the quiz', true);
+      }).then((handle) => {
+        if (active) listener = handle;
+        else handle.remove();
+      }).catch(() => {});
+      cleanups.push(() => { active = false; listener?.remove(); });
+    }
 
     // Tab / window switching
     on(document, 'visibilitychange', () => {

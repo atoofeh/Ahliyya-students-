@@ -4,7 +4,7 @@
  *
  * Where the *refresh* token lives depends on the platform:
  *   web     — an httpOnly cookie the page cannot read
- *   android — the AndroidKeyStore, via the LmsNative plugin (see native.js)
+ *   native  — the platform secure store, via the LmsNative plugin (see native.js)
  */
 import { secure } from './native';
 

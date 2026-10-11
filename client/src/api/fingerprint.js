@@ -1,7 +1,7 @@
 /**
  * Stable device identity for the single-device policy.
  * - deviceId: web — a random UUID persisted in localStorage (per browser profile);
- *             android — SHA-256 of ANDROID_ID, hashed inside the native plugin so
+ *             native  — a platform identifier hashed inside the native plugin so
  *             the raw platform id never crosses the bridge. It survives a reinstall,
  *             so reinstalling the app does not require an admin device reset.
  * - fingerprint: hash of environment characteristics, sent with every request so

@@ -96,6 +96,15 @@ We implement every feasible deterrent:
 
 **The Android app is the exception.** Its window carries `FLAG_SECURE`, so the operating system itself refuses screenshots, screen recording and casting for the whole app — the control a browser cannot offer. It still does not stop a camera pointed at the screen, and a rooted device can bypass it. Students who need to capture course material legitimately should be told to use the web client.
 
+## iOS application
+
+- **Refresh token in Keychain.** The app uses a device-only Keychain item; the access token remains in memory.
+- **Device binding.** The app hashes its vendor-scoped identifier on-device and stores the resulting ID in Keychain, so the raw identifier is not sent to the API and the binding survives reinstall.
+- **Capture response.** Recording and mirroring state triggers a cover and pauses the video player. Screenshot notification is after capture and is an audit signal only.
+- **Native files stay in the app cache.** Course downloads are stored in the app sandbox and opened through the iOS document preview.
+
+`docs/IOS.md` covers the build. iOS capture protection cannot block a screenshot button; the app can only cover detected recordings and report screenshots after capture.
+
 ## Android application
 
 `docs/ANDROID.md` covers the build; this is the security posture.

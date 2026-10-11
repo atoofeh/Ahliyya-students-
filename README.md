@@ -28,6 +28,10 @@ Run the API test suite: `cd server && npm test` (six `node:test` files against a
 
 Optional: install **ffmpeg** on the server host to enable automatic video duration probing and thumbnail generation. Without it, videos are stored and streamed as uploaded.
 
+## iOS build
+
+The iOS Capacitor project and native Swift bridge are checked in. Build and sign it with Xcode on a Mac; see [docs/IOS.md](docs/IOS.md) for the steps and iOS-specific notification and screen-capture limits.
+
 ## Roles
 
 | Capability | Student | Teacher | Admin | Owner |
@@ -85,6 +89,7 @@ client/
   public/fonts/        self-hosted brand faces (no third-party request at first paint)
   resources/           launcher icon + splash sources
   android/             Capacitor project: LmsNativePlugin (Keystore, device id, file open)
+  ios/                 Capacitor project: Keychain, device id, document preview, capture cover
 scripts/
   scan-apk-secrets.mjs fails if a built APK contains any server secret
 docs/
@@ -92,6 +97,7 @@ docs/
   SECURITY.md          threat model + honest browser-limitation disclosure
   API.md               endpoint reference
   ANDROID.md           build, signing, release, and what the native layer does
+  IOS.md               Xcode build, signing, and iOS platform limits
 ```
 
 ## Production checklist

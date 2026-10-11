@@ -752,7 +752,7 @@ export default {
   'set.recordingProtection': 'Recording protection',
   'set.recordingHint': 'Player-level deterrents: pause on tab-hide, PiP & download disabled',
   'set.screenshotProtection': 'Screenshot protection',
-  'set.screenshotHint': 'Blocks PrintScreen shortcut & clipboard during quizzes (best-effort — see security docs)',
+  'set.screenshotHint': 'Android blocks screenshots; iOS reports them after capture and covers detected recording or mirroring; web is best-effort.',
   'set.watermark': 'Watermark videos and past questions',
   'set.watermarkHint': "Overlays the student's name and ID on every video and every past-questions page",
   'set.watermarkIp': 'Include IP address in watermark',

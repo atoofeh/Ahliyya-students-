@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLanguage } from '../hooks/useLanguage';
 import { Loader2, ShieldCheck, Lock, Eye, AlertTriangle } from 'lucide-react';
 import api, { API_BASE, apiError } from '../api/axios';
+import LmsNative, { isNative, platformName } from '../api/native';
 
 /**
  * Protected video player.
@@ -53,6 +54,19 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   const [views, setViews] = useState(null);
   const [blocked, setBlocked] = useState(false);
   const { t } = useLanguage();
+
+  useEffect(() => {
+    if (!isNative || platformName() !== 'ios') return undefined;
+    let active = true;
+    let listener;
+    LmsNative.addListener('screenRecordingChanged', ({ captured }) => {
+      if (captured) videoRef.current?.pause();
+    }).then((handle) => {
+      if (active) listener = handle;
+      else handle.remove();
+    }).catch(() => {});
+    return () => { active = false; listener?.remove(); };
+  }, []);
 
   const fetchToken = useCallback(async () => {
     const { data } = await api.post(`/videos/${videoId}/token`);

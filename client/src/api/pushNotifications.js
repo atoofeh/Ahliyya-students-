@@ -15,7 +15,7 @@
  * credentials for: registration simply never completes and nothing changes.
  */
 import api from './axios';
-import { isNative } from './native';
+import { isNative, platformName } from './native';
 import { notifyOnDevice } from './deviceNotifications';
 
 let plugin = null;
@@ -45,7 +45,9 @@ export const isPushRegistered = () => !!registeredToken;
  * permission yields a token that can never deliver anything.
  */
 export const registerForPush = async (navigate) => {
-  if (!isNative || registeredToken) return false;
+  // iOS exposes an APNs token here, while this backend expects an FCM token.
+  // Avoid registering an unusable token. iOS still uses local notifications.
+  if (!isNative || platformName() !== 'android' || registeredToken) return false;
   navigateTo = navigate || navigateTo;
 
   try {

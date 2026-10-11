@@ -5,10 +5,10 @@
  * unchanged: `isNative` is false in a browser and every call below short-circuits
  * to the web behaviour.
  *
- * `LmsNative` is our own Android plugin (client/android/.../LmsNativePlugin.java):
- *   secureSet/secureGet/secureRemove — AndroidKeyStore AES-256-GCM storage
- *   deviceId                        — SHA-256 of ANDROID_ID, hashed on the device
- *   openFile                        — opens a cached file through a FileProvider
+ * `LmsNative` is implemented in the Android and iOS app projects:
+ *   secureSet/secureGet/secureRemove — Keychain on iOS; AndroidKeyStore on Android
+ *   deviceId                        — stable, hashed platform identity
+ *   openFile                        — opens a cached file in the native document viewer
  */
 import { Capacitor, registerPlugin } from '@capacitor/core';
 
@@ -20,7 +20,7 @@ export const isNative = Capacitor.isNativePlatform();
 export const platformName = () => (isNative ? Capacitor.getPlatform() : 'web');
 
 /**
- * Refresh tokens on native live in the Android Keystore, never in web storage.
+ * Refresh tokens on native live in the platform secure store, never in web storage.
  * On web these are no-ops — the refresh token is an httpOnly cookie the page cannot read.
  */
 export const secure = {
@@ -43,7 +43,7 @@ export const secure = {
   },
 };
 
-/** Reinstall-stable device id. The raw ANDROID_ID never crosses the bridge. */
+/** Reinstall-stable, hashed native device id. The raw platform id never crosses the bridge. */
 export const nativeDeviceId = async () => {
   const { id } = await LmsNative.deviceId();
   return id;
@@ -53,9 +53,7 @@ export const nativeDeviceId = async () => {
 export const openFile = (path, mime) => LmsNative.openFile({ path, mime });
 
 /**
- * Open this app's notification settings. Android refuses to show the runtime
- * permission dialog again once it has been declined, so this is the only way
- * back for someone who tapped "Don't allow".
+ * Open this app's notification settings after notification permission is denied.
  */
 export const openNotificationSettings = async () => {
   if (!isNative) return false;
