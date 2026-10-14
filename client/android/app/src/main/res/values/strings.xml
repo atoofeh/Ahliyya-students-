@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Students Alahliyya</string>
-    <string name="title_activity_main">Students Alahliyya</string>
+    <string name="app_name">Feker</string>
+    <string name="title_activity_main">Feker</string>
     <string name="package_name">com.alahliyya.lms</string>
     <string name="custom_url_scheme">com.alahliyya.lms</string>
 </resources>
