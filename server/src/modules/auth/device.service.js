@@ -16,6 +16,10 @@ const PLATFORMS = new Set(['web', 'android', 'ios']);
  * active device per user even under concurrent first logins.
  */
 class DeviceService {
+  static isNativeAppPlatform(platform) {
+    return platform === 'android' || platform === 'ios';
+  }
+
   static hashDeviceId(deviceId) {
     return sha256(String(deviceId));
   }
@@ -37,14 +41,20 @@ class DeviceService {
   static async bindOrVerify({ user, deviceId, fingerprint, ip, ua = {}, platform = 'web', appVersion = '' }) {
     const keyHash = DeviceService.hashDeviceId(deviceId);
     const fingerprintHash = fingerprint ? sha256(String(fingerprint)) : null;
-    const multiDevice = isMultiDeviceUser(user);
+    const multiDevice = isMultiDeviceUser(user) || DeviceService.isNativeAppPlatform(platform);
 
-    // One-device accounts have at most one active device, so "the active device"
-    // is the thing to compare against. Multi-device accounts may have several,
-    // so look for this exact device instead and add it if it is new.
+    // Older Android/iOS bindings were created before native apps received the
+    // multi-device exception. Keep them from occupying the browser-device slot.
+    await Device.updateMany(
+      { user: user._id, status: 'active', platform: { $in: ['android', 'ios'] }, multiDevice: false },
+      { $set: { multiDevice: true } }
+    );
+
+    // Browser/other clients share one authorized device. Native apps and
+    // explicitly exempt accounts may bind several; verify the exact device.
     let active = multiDevice
       ? await Device.findOne({ user: user._id, status: 'active', deviceKeyHash: keyHash }).select('+deviceKeyHash')
-      : await Device.findOne({ user: user._id, status: 'active' }).select('+deviceKeyHash');
+      : await Device.findOne({ user: user._id, status: 'active', multiDevice: false }).select('+deviceKeyHash');
 
     if (!active) {
       const hadPrevious = await Device.exists({ user: user._id, status: 'revoked' });
@@ -74,7 +84,9 @@ class DeviceService {
       } catch (err) {
         if (err.code !== 11000) throw err;
         // Lost the race: another login bound a device a moment ago.
-        active = await Device.findOne({ user: user._id, status: 'active' }).select('+deviceKeyHash');
+        active = multiDevice
+          ? await Device.findOne({ user: user._id, status: 'active', deviceKeyHash: keyHash }).select('+deviceKeyHash')
+          : await Device.findOne({ user: user._id, status: 'active', multiDevice: false }).select('+deviceKeyHash');
         if (!active) throw err;
       }
     }
@@ -87,8 +99,9 @@ class DeviceService {
       securityLogger.warn('DEVICE_FINGERPRINT_DRIFT', { user: String(user._id), device: active.publicId });
       await audit({ user: user._id, action: 'DEVICE_FINGERPRINT_DRIFT', targetUser: user._id, ip, deviceId: active.publicId });
     }
-    // A device bound before the grant still carries multiDevice: false, which
-    // would keep it inside the unique index. Flip it on the next sign-in.
+    // A device bound before the account grant or native-app exception still
+    // carries multiDevice: false, which would keep it inside the unique index.
+    // Flip it on the next sign-in.
     if (multiDevice && !active.multiDevice) active.multiDevice = true;
     active.lastSeenAt = new Date();
     active.lastIp = ip || active.lastIp;

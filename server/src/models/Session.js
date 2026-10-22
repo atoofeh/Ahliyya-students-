@@ -1,10 +1,9 @@
 const mongoose = require('mongoose');
 
 /**
- * One document per login session. The platform enforces a SINGLE active
- * session per user: creating a new session deactivates all others, which
- * immediately invalidates the old device's tokens (auth middleware checks
- * session.isActive on every request).
+ * One document per login session. Browser and other clients keep one active
+ * session; native iOS/Android app sessions may coexist. Every session remains
+ * pinned to its device, and auth checks isActive on requests.
  */
 const sessionSchema = new mongoose.Schema(
   {
@@ -23,6 +22,7 @@ const sessionSchema = new mongoose.Schema(
     browser: { type: String, default: '' },
     os: { type: String, default: '' },
     deviceType: { type: String, default: 'desktop' },
+    platform: { type: String, enum: ['web', 'android', 'ios', 'other'], default: 'web' },
     ip: { type: String, default: '' },
     location: { type: String, default: '' },
 

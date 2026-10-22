@@ -76,7 +76,7 @@ export default {
   'auth.sendRequest': 'Send request',
   'auth.resetCodeSent': 'If that email exists, a reset code was sent.',
   'auth.passwordResetDone': 'Password reset — sign in with your new password.',
-  'auth.footer': 'One authorized device per account · Protected content · Encrypted media',
+  'auth.footer': 'Browser: one device · Mobile apps: multiple devices · Protected content · Encrypted media',
 
   'auth.blurb': 'The learning platform of Al Ahliyya students — lectures, quizzes, assignments and certificates, in one beautiful place.',
   'auth.f1Title': 'HD lectures, protected',
@@ -85,8 +85,8 @@ export default {
   'auth.f2Text': 'Instant grading, explanations, and progress you can see.',
   'auth.f3Title': 'Verified certificates',
   'auth.f3Text': 'Earn certificates with publicly verifiable serials.',
-  'auth.f4Title': 'One authorized device',
-  'auth.f4Text': 'Your account is linked to one authorized device — nobody else can sign in as you.',
+  'auth.f4Title': 'Use across mobile devices',
+  'auth.f4Text': 'Use the iOS or Android app on multiple devices. Browser access stays linked to one device.',
   'auth.rights': '© {year} Students_Alahliyya · All rights reserved',
 
   'onboard.title': 'Account setup',

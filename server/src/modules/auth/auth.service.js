@@ -110,14 +110,14 @@ class AuthService {
       boundDevice = result.device;
     }
 
-    // SINGLE ACTIVE SESSION: terminate every other session for this user.
-    // Multi-device accounts (the owner, plus anyone granted it) are exempt:
-    // signing in on a phone must not end the session on the laptop. Their
-    // sessions stay pinned to their own devices, so nothing is loosened
-    // beyond concurrency.
-    if (!isMultiDeviceUser(user)) {
+    // Native iOS/Android app sessions can coexist across devices. Browser and
+    // other sessions remain single-session and replace only their own group.
+    // Explicitly multi-device accounts keep their existing cross-platform
+    // behavior. Every session remains pinned to the device that created it.
+    const nativeAppLogin = DeviceService.isNativeAppPlatform(platform);
+    if (!isMultiDeviceUser(user) && !nativeAppLogin) {
       const terminated = await Session.updateMany(
-        { user: user._id, isActive: true },
+        { user: user._id, isActive: true, platform: { $nin: ['android', 'ios'] } },
         { $set: { isActive: false, endedAt: new Date(), endReason: 'new_device_login' } }
       );
       if (terminated.modifiedCount > 0) {
@@ -135,6 +135,7 @@ class AuthService {
       userAgent,
       ip,
       rememberMe: !!rememberMe,
+      platform,
       ...device,
     });
 

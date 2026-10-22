@@ -1,13 +1,12 @@
 const mongoose = require('mongoose');
 
 /**
- * Authorized device for an account. The partial unique index on { user }
- * where status is 'active' and multiDevice is false makes the DATABASE
- * guarantee at most one active device per ordinary user — concurrent first
- * logins cannot both bind. Devices of multi-device roles are flagged and fall
- * outside the constraint.
- * The device credential (the client's random device id) is stored only as a
- * SHA-256 hash; publicId is a short display handle derived from it.
+ * Authorized devices for an account. The partial unique index on { user }
+ * where status is 'active' and multiDevice is false guarantees at most one
+ * active browser/other device per ordinary user. Native iOS/Android devices
+ * and multi-device accounts fall outside that constraint.
+ * The device credential is stored only as a SHA-256 hash; publicId is a short
+ * display handle derived from it.
  */
 const deviceSchema = new mongoose.Schema(
   {
@@ -27,7 +26,7 @@ const deviceSchema = new mongoose.Schema(
     lastSeenAt: { type: Date, default: Date.now },
     lastIp: { type: String, default: '' },
 
-    // True on devices belonging to a multi-device role (see core/permissions).
+    // True on native app devices or accounts exempt from the one-device rule.
     // The partial index below filters on the literal false, so this needs a
     // default rather than being absent: MongoDB partial filters accept
     // { $exists: true } but not { $exists: false }.

@@ -53,7 +53,7 @@ Teachers cannot touch other teachers' courses; admins cannot touch the owner or 
 
 ## Key features
 
-- **One account, one authorized device** — the first login binds the device; a second device is refused until an administrator revokes the first. Sessions are pinned to their device, refresh tokens rotate, and the web client never stores a token in JavaScript-readable storage. Owner-configurable inactivity timeout and lockout.
+- **Device access by client** — browser and other clients stay linked to one authorized device; native iOS and Android app installs can use multiple devices. Every session stays pinned to its device, refresh tokens rotate, and the web client never stores a token in JavaScript-readable storage. Owner-configurable inactivity timeout and lockout.
 - **Protected video pipeline** — chunked resumable uploads → AES-256-CTR encryption at rest (per-video keys wrapped by a master key) → signed, expiring stream URLs with HTTP Range support → moving identity watermark in the player. No file is ever publicly reachable.
 - **Quiz engine** — six question types (MCQ, true/false, short answer, essay, fill-blanks, image), pools, shuffling, negative marking, timed attempts with server-side deadlines, retake limits, scheduling and locking, auto + manual grading, leaderboards, per-question explanations.
 - **Anti-cheat proctoring** — tab/window switches, devtools heuristics, copy/paste, right-click, blocked shortcuts, multi-tab detection, fullscreen exits, idle time, refresh, offline events → server-side weighted risk score, auto-submit past threshold, teacher/admin reports. *(See `docs/SECURITY.md` for honest limitations.)*
