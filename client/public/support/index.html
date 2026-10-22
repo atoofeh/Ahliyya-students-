@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#122a4e" />
+    <meta name="description" content="Help for signing in and using the Feker learning app." />
+    <title>Feker | Help &amp; Support</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+        color: #18263c;
+        background: #f3f6fb;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 28px 16px; }
+      a { color: #31508c; }
+      main {
+        width: min(100%, 900px);
+        margin: 0 auto;
+        overflow: hidden;
+        border: 1px solid #dfe5ee;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 18px 55px #122a4e12;
+      }
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 38px clamp(24px, 6vw, 58px) 34px;
+        border-top: 5px solid #d7ad35;
+        color: #fff;
+        background: linear-gradient(125deg, #122a4e, #263f78);
+      }
+      .hero::after {
+        position: absolute;
+        right: -86px;
+        bottom: -170px;
+        width: 330px;
+        height: 330px;
+        border: 1px solid #ffffff18;
+        border-radius: 50%;
+        box-shadow: 0 0 0 34px #ffffff08, 0 0 0 68px #ffffff06;
+        content: "";
+      }
+      .brand {
+        margin: 0;
+        color: #f3d66f;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .17em;
+        text-transform: uppercase;
+      }
+      h1 { position: relative; z-index: 1; margin: 14px 0 8px; font-size: clamp(32px, 6vw, 46px); line-height: 1.12; }
+      .intro { position: relative; z-index: 1; max-width: 610px; margin: 0; color: #e0e7f5; font-size: 16px; line-height: 1.7; }
+      .language-links { position: relative; z-index: 1; display: flex; gap: 10px; margin-top: 22px; }
+      .language-links a { padding: 8px 13px; border: 1px solid #ffffff42; border-radius: 999px; color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+      .language-links a:hover, .language-links a:focus-visible { background: #ffffff18; outline: 2px solid #f3d66f; outline-offset: 2px; }
+      .content { padding: 30px clamp(22px, 6vw, 58px) 42px; }
+      .section-title { margin: 0 0 16px; color: #17335d; font-size: 21px; }
+      .faq { display: grid; gap: 11px; }
+      details { border: 1px solid #e1e7ef; border-radius: 12px; background: #fff; }
+      summary { position: relative; padding: 16px 48px 16px 17px; color: #1d2e49; font-size: 15px; font-weight: 750; line-height: 1.45; cursor: pointer; list-style: none; }
+      summary::-webkit-details-marker { display: none; }
+      summary::after { position: absolute; top: 50%; right: 18px; color: #31508c; content: "+"; font-size: 23px; font-weight: 400; transform: translateY(-52%); }
+      details[open] summary::after { content: "−"; }
+      details[open] summary { border-bottom: 1px solid #edf0f5; }
+      details p { margin: 0; padding: 14px 17px 17px; color: #4d5a70; font-size: 14px; line-height: 1.75; }
+      .contact-card { margin-top: 25px; padding: 20px; border-inline-start: 4px solid #d7ad35; border-radius: 10px; background: #fbf8ed; }
+      .contact-card h2 { margin: 0 0 8px; color: #17335d; font-size: 18px; }
+      .contact-card p { margin: 0; color: #4d5a70; font-size: 14px; line-height: 1.75; }
+      .contact-card p + p { margin-top: 8px; }
+      .footer { display: flex; flex-wrap: wrap; gap: 14px 22px; padding-top: 24px; border-top: 1px solid #e5e9f0; font-size: 13px; font-weight: 650; }
+      .footer a { text-underline-offset: 3px; }
+      #arabic { margin-top: 38px; padding-top: 34px; border-top: 1px solid #e1e7ef; }
+      #arabic h1, #arabic h2, #arabic p, #arabic summary { line-height: 1.9; }
+      #arabic summary { padding: 13px 17px 13px 48px; }
+      #arabic summary::after { right: auto; left: 18px; }
+      #arabic details p { line-height: 2; }
+      @media (max-width: 560px) {
+        body { padding: 10px 7px; }
+        main { border-radius: 12px; }
+        .hero { padding-top: 30px; }
+        .content { padding-top: 24px; }
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        details { transition: border-color .15s ease; }
+        details:hover { border-color: #becbe0; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <p class="brand">Feker · Help Center</p>
+        <h1>How can we help?</h1>
+        <p class="intro">Find quick help for signing in, opening courses, watching lessons, and completing quizzes.</p>
+        <nav class="language-links" aria-label="Choose language">
+          <a href="#english">English</a>
+          <a href="#arabic" lang="ar" dir="rtl">العربية</a>
+        </nav>
+      </header>
+
+      <div class="content">
+        <section id="english" lang="en" aria-labelledby="english-title">
+          <h2 class="section-title" id="english-title">Common questions</h2>
+          <div class="faq">
+            <details>
+              <summary>I can’t sign in. What should I try?</summary>
+              <p>Check that you are using the username and password for your account. If you forgot your password, choose <strong>Forgot password?</strong> on the sign-in screen and follow the instructions sent to your account email. Check your internet connection and try again.</p>
+            </details>
+            <details>
+              <summary>I signed in, but I can’t see a course.</summary>
+              <p>Make sure you signed in with the account that was given access to the course. If it is still missing, ask the instructor or account administrator who provided your login to check your course access.</p>
+            </details>
+            <details>
+              <summary>The app says this device is not authorized.</summary>
+              <p>Your account may be linked to a different device. Ask the account administrator who provided your login to review or reset the authorized device for your account.</p>
+            </details>
+            <details>
+              <summary>A video or document will not open.</summary>
+              <p>Check that your internet connection is stable, close and reopen the lesson, and make sure you are using the latest app version. If the problem continues, note the course and lesson name and include them when you ask for help.</p>
+            </details>
+            <details>
+              <summary>I’m having trouble during a quiz or assignment.</summary>
+              <p>Keep the app open while working and check your connection. If an assessment has closed or your submission is missing, contact the instructor through your usual course channel and include the course and assessment name.</p>
+            </details>
+          </div>
+
+          <aside class="contact-card" aria-labelledby="more-help-title">
+            <h2 id="more-help-title">Still need help?</h2>
+            <p>For account access or course-specific questions, contact the instructor or account administrator who provided your login.</p>
+            <p>Include your device model, app version if available, what you were trying to do, and the exact error message. <strong>Never send your password or verification code.</strong></p>
+          </aside>
+        </section>
+
+        <section id="arabic" lang="ar" dir="rtl" aria-labelledby="arabic-title">
+          <h1 class="section-title" id="arabic-title">الأسئلة الشائعة</h1>
+          <div class="faq">
+            <details>
+              <summary>لا أستطيع تسجيل الدخول. ماذا أفعل؟</summary>
+              <p>تأكد من استخدام اسم المستخدم وكلمة المرور الخاصة بحسابك. إذا نسيت كلمة المرور، اختر <strong>«نسيت كلمة المرور؟»</strong> في شاشة الدخول واتبع التعليمات المرسلة إلى بريد حسابك. تحقق من اتصال الإنترنت ثم حاول مرة أخرى.</p>
+            </details>
+            <details>
+              <summary>سجلت الدخول، لكنني لا أرى المقرر.</summary>
+              <p>تأكد من تسجيل الدخول بالحساب الذي مُنح صلاحية الوصول إلى المقرر. إذا لم يظهر المقرر، تواصل مع المدرّس أو مسؤول الحساب الذي زوّدك ببيانات الدخول للتحقق من صلاحية الوصول.</p>
+            </details>
+            <details>
+              <summary>تظهر رسالة بأن هذا الجهاز غير مصرح به.</summary>
+              <p>قد يكون حسابك مرتبطًا بجهاز آخر. اطلب من مسؤول الحساب الذي زوّدك ببيانات الدخول مراجعة الجهاز المصرح به لحسابك أو إعادة ضبطه.</p>
+            </details>
+            <details>
+              <summary>لا يفتح الفيديو أو المستند.</summary>
+              <p>تحقق من استقرار اتصال الإنترنت، ثم أغلق الدرس وافتحه مجددًا، وتأكد من استخدام أحدث إصدار من التطبيق. إذا استمرت المشكلة، اذكر اسم المقرر والدرس عند طلب المساعدة.</p>
+            </details>
+            <details>
+              <summary>أواجه مشكلة أثناء اختبار أو واجب.</summary>
+              <p>أبقِ التطبيق مفتوحًا أثناء العمل وتحقق من اتصال الإنترنت. إذا انتهى وقت التقييم أو لم يظهر التسليم، تواصل مع المدرّس عبر قناة المقرر المعتادة واذكر اسم المقرر والتقييم.</p>
+            </details>
+          </div>
+
+          <aside class="contact-card">
+            <h2>هل ما زلت بحاجة إلى مساعدة؟</h2>
+            <p>للمساعدة في الدخول إلى الحساب أو في موضوع متعلق بمقرر، تواصل مع المدرّس أو مسؤول الحساب الذي زوّدك ببيانات الدخول.</p>
+            <p>اذكر نوع جهازك وإصدار التطبيق إن توفر، وما الذي كنت تحاول فعله، ونص رسالة الخطأ. <strong>لا ترسل كلمة المرور أو رمز التحقق أبدًا.</strong></p>
+          </aside>
+        </section>
+
+        <nav class="footer" aria-label="More information">
+          <a href="/login">Open sign in</a>
+        </nav>
+      </div>
+    </main>
+  </body>
+</html>
