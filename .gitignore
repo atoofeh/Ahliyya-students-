@@ -29,6 +29,10 @@ client/android/capacitor-cordova-android-plugins/build/
 *.jks
 client/android/keystore.properties
 
+# local caches left by browser-driven checks and vite's own run cache
+.chrome-capture-test-profile/
+.vite/
+
 # editor / OS
 .vscode/
 .idea/
