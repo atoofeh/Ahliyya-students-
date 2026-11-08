@@ -41,6 +41,75 @@ const hasFfmpeg = async () => {
   return ffmpegAvailable;
 };
 
+/**
+ * Does this MP4's index (`moov`) come before the media data (`mdat`)?
+ *
+ * A player can decode nothing until it holds the index. Phones and screen
+ * recorders normally write it last, which forces the player to fetch the end
+ * of the file before the first frame — on a 700 MB lecture over mobile data
+ * that reads as "the video doesn't play".
+ *
+ * Unreadable or unfamiliar headers answer `true`, so a file we do not
+ * understand is never rewritten.
+ */
+const moovAtFront = async (filePath) => {
+  let fd;
+  try {
+    fd = await fs.promises.open(filePath, 'r');
+    const { size: fileSize } = await fd.stat();
+    const header = Buffer.alloc(16);
+    let offset = 0;
+    for (let box = 0; box < 8 && offset + 8 <= fileSize; box += 1) {
+      const { bytesRead } = await fd.read(header, 0, 16, offset);
+      if (bytesRead < 8) break;
+      const type = header.toString('latin1', 4, 8);
+      if (type === 'moov') return true;
+      if (type === 'mdat') return false;
+      let boxSize = header.readUInt32BE(0);
+      let headerLength = 8;
+      if (boxSize === 1) {
+        if (bytesRead < 16) break;
+        boxSize = Number(header.readBigUInt64BE(8));
+        headerLength = 16;
+      }
+      if (boxSize < headerLength) break;
+      offset += boxSize;
+    }
+  } catch {
+    /* fall through to the safe answer */
+  } finally {
+    await fd?.close();
+  }
+  return true;
+};
+
+/**
+ * Move the index to the front of an MP4/MOV so playback starts at once.
+ *
+ * `-c copy` repackages the container and leaves both streams byte for byte
+ * as they were: seconds of work for a long lecture, and no quality lost.
+ * Any failure leaves the upload exactly as it arrived — a video that starts
+ * slowly beats one that does not exist.
+ */
+const remuxFaststart = async (filePath) => {
+  if (!(await hasFfmpeg())) return;
+  if (await moovAtFront(filePath)) return;
+
+  const target = `${filePath}.faststart${path.extname(filePath) || '.mp4'}`;
+  try {
+    await execFileAsync('ffmpeg', [
+      '-loglevel', 'error', '-i', filePath, '-c', 'copy', '-movflags', '+faststart', '-y', target,
+    ], { maxBuffer: 4 * 1024 * 1024 });
+    const { size } = await fs.promises.stat(target);
+    if (!size) throw new Error('ffmpeg produced an empty file');
+    await fs.promises.rename(target, filePath);
+    logger.info(`Moved the index to the front of ${path.basename(filePath)}`);
+  } catch (err) {
+    await fs.promises.unlink(target).catch(() => {});
+    logger.warn(`faststart remux failed for ${path.basename(filePath)}: ${err.message} — storing as uploaded`);
+  }
+};
+
 class VideoService {
   // ── Chunked upload lifecycle ───────────────────────────────────────
 
@@ -149,8 +218,6 @@ class VideoService {
     }
     await new Promise((resolve) => out.end(resolve));
 
-    const stat = await fs.promises.stat(assembledPath);
-
     // Container sniff: ftyp box at offset 4 (mp4/mov/m4v) or EBML header (webm/mkv).
     const head = Buffer.alloc(12);
     const fd = await fs.promises.open(assembledPath, 'r');
@@ -163,7 +230,11 @@ class VideoService {
       throw new Error('Not a recognised video container (expected MP4/MOV/M4V or WebM/MKV)');
     }
 
-    // 2. Probe duration + generate thumbnail while the file is still plaintext.
+    // 2. Put the index first, so a phone can start playing before the whole
+    //    file has arrived. MP4/MOV only — WebM/MKV carry their index up front.
+    if (isIsoBmff) await remuxFaststart(assembledPath);
+
+    // 3. Probe duration + generate thumbnail while the file is still plaintext.
     if (await hasFfmpeg()) {
       try {
         const { stdout } = await execFileAsync('ffprobe', [
@@ -195,7 +266,10 @@ class VideoService {
       }
     }
 
-    // 3. Encrypt at rest (AES-256-CTR, per-video key wrapped by master key).
+    // 4. Encrypt at rest (AES-256-CTR, per-video key wrapped by master key).
+    // Re-stat: the remux above rewrites the container, and `sizeBytes` is what
+    // every Range request is measured against.
+    const stored = await fs.promises.stat(assembledPath);
     const { key, iv } = generateVideoKey();
     const videoDir = path.join(STORAGE.videos, String(video._id));
     fs.mkdirSync(videoDir, { recursive: true });
@@ -212,14 +286,14 @@ class VideoService {
     video.storagePath = encryptedPath;
     const { wrapped, keyVersion } = wrapKey(key);
     video.encryption = { wrappedKey: wrapped, iv: iv.toString('hex'), algorithm: 'aes-256-ctr', keyVersion };
-    video.sizeBytes = stat.size;
+    video.sizeBytes = stored.size;
     video.status = 'ready';
     await video.save();
 
-    // 4. Cleanup plaintext + chunks.
+    // 5. Cleanup plaintext + chunks.
     await fs.promises.unlink(assembledPath).catch(() => {});
     await fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});
-    logger.info(`Video ${video._id} processed and encrypted (${Math.round(stat.size / 1048576)} MB)`);
+    logger.info(`Video ${video._id} processed and encrypted (${Math.round(stored.size / 1048576)} MB)`);
   }
 
   // ── Playback ────────────────────────────────────────────────────────
