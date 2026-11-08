@@ -105,7 +105,7 @@ export default function SupportPage() {
           <footer className="border-t border-surface-200 pt-5 text-sm font-semibold dark:border-surface-700">
             <a className="text-brand-700 underline underline-offset-4 dark:text-brand-300" href="/login">Open sign in</a>
             <span className="mx-3 text-surface-400">·</span>
-            <a className="text-brand-700 underline underline-offset-4 dark:text-brand-300" href="/privacy/">Privacy policy</a>
+            <a className="text-brand-700 underline underline-offset-4 dark:text-brand-300" href="/privacy/index.html">Privacy policy</a>
           </footer>
         </div>
       </div>

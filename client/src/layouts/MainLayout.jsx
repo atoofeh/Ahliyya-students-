@@ -108,7 +108,7 @@ export default function MainLayout() {
           className={({ isActive }) => `group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium transition-all ${isActive ? 'bg-white/12 text-white ring-1 ring-white/10' : 'text-brand-100/75 hover:bg-white/[0.07] hover:text-white'}`}>
           <HelpCircle size={17} className="text-brand-200/70" /> {t('nav.support')}
         </NavLink>
-        <a href="/privacy/" onClick={() => setSidebarOpen(false)}
+        <a href="/privacy/index.html" onClick={() => setSidebarOpen(false)}
           className="group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium text-brand-100/75 transition-all hover:bg-white/[0.07] hover:text-white">
           <ShieldCheck size={17} className="text-brand-200/70" /> {dir === 'rtl' ? 'سياسة الخصوصية' : 'Privacy policy'}
         </a>
