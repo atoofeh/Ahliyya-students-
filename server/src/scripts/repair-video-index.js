@@ -5,6 +5,7 @@
  *   node src/scripts/repair-video-index.js                  # scan, change nothing
  *   node src/scripts/repair-video-index.js --repair         # repair every affected video
  *   node src/scripts/repair-video-index.js --repair --only 84fc6b 04b34d
+ *   node src/scripts/repair-video-index.js --durations      # fill in missing durations only
  *
  * A player decodes nothing until it holds the MP4 index (`moov`). Phones and
  * screen recorders write it after the media, so the player must fetch the end
@@ -34,6 +35,7 @@ const Video = require('../models/Video');
 
 const execFileAsync = promisify(execFile);
 const REPAIR = process.argv.includes('--repair');
+const DURATIONS = process.argv.includes('--durations');
 const ONLY = process.argv.includes('--only')
   ? process.argv.slice(process.argv.indexOf('--only') + 1).filter((a) => !a.startsWith('--'))
   : null;
@@ -147,6 +149,40 @@ const repairOne = async (video, short, tmpDir) => {
   }
 };
 
+/**
+ * Fill in a duration for a video that never had one, without touching the
+ * stored bytes. The watch allowance counts a view once a student has played a
+ * whole duration's worth, so a video with `durationSeconds: 0` is exempt from
+ * the limit entirely — the rule is only as real as this number.
+ *
+ * The index sits at the front, so the start of the file carries everything
+ * ffprobe needs; only a stubborn file is decrypted in full.
+ */
+const backfillDuration = async (video, short, tmpDir) => {
+  const probe = path.join(tmpDir, `${short}.probe.mp4`);
+  try {
+    const key = unwrapKey(video.encryption.wrappedKey, video.encryption.keyVersion || 1);
+    const iv = Buffer.from(video.encryption.iv, 'hex');
+    for (const bytes of [16 * 1024 * 1024, video.sizeBytes]) {
+      await decryptTo(video.storagePath, key, iv, probe, Math.min(bytes, video.sizeBytes));
+      try {
+        const { stdout } = await execFileAsync('ffprobe', [
+          '-v', 'error', '-print_format', 'json', '-show_format', probe,
+        ], { maxBuffer: 8 * 1024 * 1024 });
+        const seconds = Math.round(parseFloat(JSON.parse(stdout).format?.duration || 0));
+        if (seconds > 0) {
+          await Video.updateOne({ _id: video._id }, { $set: { durationSeconds: seconds } });
+          return seconds;
+        }
+      } catch { /* try the whole file */ }
+      if (bytes >= video.sizeBytes) break;
+    }
+    return 0;
+  } finally {
+    await fs.promises.unlink(probe).catch(() => {});
+  }
+};
+
 (async () => {
   await mongoose.connect(process.env.MONGODB_URI);
   const videos = await Video.find({ deletedAt: null, status: 'ready' })
@@ -177,6 +213,21 @@ const repairOne = async (video, short, tmpDir) => {
   }
 
   console.log(`\n${affected.length} of ${videos.length} need repair.`);
+
+  if (DURATIONS) {
+    const missing = videos.filter((v) => !(v.durationSeconds > 0) && (!ONLY || ONLY.includes(String(v._id).slice(-6))));
+    console.log(`\n${missing.length} without a duration — the watch allowance cannot count these.`);
+    for (const video of missing) {
+      const short = String(video._id).slice(-6);
+      try {
+        const seconds = await backfillDuration(video, short, tmpDir);
+        console.log(`  ${short} ${seconds > 0 ? `duration=${seconds}s` : 'could not read a duration — left at 0'}  ${(video.title || '').slice(0, 32)}`);
+      } catch (err) {
+        console.log(`  ${short} FAILED: ${err.message.slice(0, 60)}`);
+      }
+    }
+  }
+
   if (REPAIR) {
     for (const { video, short } of affected) {
       console.log(`\n--- ${short} "${(video.title || '').slice(0, 40)}" (${Math.round(video.sizeBytes / 1048576)}MB)`);
