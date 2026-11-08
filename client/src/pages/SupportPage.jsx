@@ -1,7 +1,7 @@
 const englishFaqs = [
   [
     "I can’t sign in. What should I try?",
-    <>Check that you are using the username and password for your account. If you forgot your password, choose <strong>Forgot password?</strong> on the sign-in screen and follow the instructions sent to your account email. Check your internet connection and try again.</>,
+    <>Check that you are using the username and password for your account. Feker does not send password-reset emails. If you cannot sign in, contact the account administrator who provided your login or email <a className="underline underline-offset-4" href="mailto:atoofeh8@gmail.com">atoofeh8@gmail.com</a>.</>,
   ],
   [
     "I signed in, but I can’t see a course.",
@@ -24,7 +24,7 @@ const englishFaqs = [
 const arabicFaqs = [
   [
     "لا أستطيع تسجيل الدخول. ماذا أفعل؟",
-    <>تأكد من استخدام اسم المستخدم وكلمة المرور الخاصة بحسابك. إذا نسيت كلمة المرور، اختر <strong>«نسيت كلمة المرور؟»</strong> في شاشة الدخول واتبع التعليمات المرسلة إلى بريد حسابك. تحقق من اتصال الإنترنت ثم حاول مرة أخرى.</>,
+    <>تأكد من استخدام اسم المستخدم وكلمة المرور الخاصة بحسابك. لا يرسل فكر رسائل آلية لإعادة تعيين كلمة المرور. إذا تعذر عليك تسجيل الدخول، تواصل مع مسؤول الحساب الذي زوّدك ببيانات الدخول أو راسل <a dir="ltr" className="inline-block underline underline-offset-4" href="mailto:atoofeh8@gmail.com">atoofeh8@gmail.com</a>.</>,
   ],
   [
     "سجلت الدخول، لكنني لا أرى المقرر.",
@@ -84,6 +84,8 @@ export default function SupportPage() {
             <aside className="mt-6 rounded-xl border-s-4 border-gold-500 bg-gold-50 p-5 text-sm leading-7 text-surface-700 dark:bg-surface-800 dark:text-surface-200">
               <h3 className="font-bold text-brand-900 dark:text-white">Still need help?</h3>
               <p className="mt-2">For account access or course-specific questions, contact the instructor or account administrator who provided your login.</p>
+              <p className="mt-2">For general support, email <a className="font-semibold text-brand-700 underline underline-offset-4 dark:text-brand-300" href="mailto:atoofeh8@gmail.com">atoofeh8@gmail.com</a>.</p>
+              <p className="mt-2">To request deletion of your Feker account, sign in and choose <a className="font-semibold text-brand-700 underline underline-offset-4 dark:text-brand-300" href="/account/deletion">Account deletion</a>. An administrator processes it within 7 days and contacts you directly to confirm completion. Personal information and posts are removed; grades are retained only when legally required.</p>
               <p className="mt-2">Include your device model, app version if available, what you were trying to do, and the exact error message. <strong>Never send your password or verification code.</strong></p>
             </aside>
           </section>
@@ -94,12 +96,16 @@ export default function SupportPage() {
             <aside className="mt-6 rounded-xl border-s-4 border-gold-500 bg-gold-50 p-5 text-sm leading-8 text-surface-700 dark:bg-surface-800 dark:text-surface-200">
               <h3 className="font-bold text-brand-900 dark:text-white">هل ما زلت بحاجة إلى مساعدة؟</h3>
               <p className="mt-2">للمساعدة في الدخول إلى الحساب أو في موضوع متعلق بمقرر، تواصل مع المدرّس أو مسؤول الحساب الذي زوّدك ببيانات الدخول.</p>
+              <p className="mt-2">للدعم العام، راسل <a dir="ltr" className="inline-block font-semibold text-brand-700 underline underline-offset-4 dark:text-brand-300" href="mailto:atoofeh8@gmail.com">atoofeh8@gmail.com</a>.</p>
+              <p className="mt-2">لطلب حذف حسابك في فكر، سجّل الدخول واختر <a className="font-semibold text-brand-700 underline underline-offset-4 dark:text-brand-300" href="/account/deletion">حذف الحساب</a>. ينفذ أحد المسؤولين الطلب خلال 7 أيام ويتواصل معك مباشرة لتأكيد اكتماله. تُحذف المعلومات الشخصية والمنشورات، ولا يُحتفظ بالعلامات إلا إذا كان ذلك مطلوباً قانونياً.</p>
               <p className="mt-2">اذكر نوع جهازك وإصدار التطبيق إن توفر، وما الذي كنت تحاول فعله، ونص رسالة الخطأ. <strong>لا ترسل كلمة المرور أو رمز التحقق أبدًا.</strong></p>
             </aside>
           </section>
 
           <footer className="border-t border-surface-200 pt-5 text-sm font-semibold dark:border-surface-700">
             <a className="text-brand-700 underline underline-offset-4 dark:text-brand-300" href="/login">Open sign in</a>
+            <span className="mx-3 text-surface-400">·</span>
+            <a className="text-brand-700 underline underline-offset-4 dark:text-brand-300" href="/privacy/">Privacy policy</a>
           </footer>
         </div>
       </div>

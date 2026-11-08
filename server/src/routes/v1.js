@@ -5,6 +5,7 @@ const router = require('express').Router();
  * routes/v2.js without touching module internals.
  */
 router.use('/auth', require('../modules/auth/auth.routes'));
+router.use('/account', require('../modules/accounts/accounts.routes'));
 router.use('/admin', require('../modules/admin/admin.routes'));
 router.use('/courses', require('../modules/courses/courses.routes'));
 router.use('/co-teaching', require('../modules/courses/coteach.routes'));

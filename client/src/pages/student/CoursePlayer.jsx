@@ -3,13 +3,14 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   PlayCircle, FileText, HelpCircle, ClipboardList, AlignLeft, CheckCircle2, CircleDot,
   Circle, AlarmClock, Bookmark, ChevronDown, ChevronLeft, ChevronRight, Megaphone,
-  MessageSquareText, Send, Star, Lock, ListTree, X, Clock,
+  MessageSquareText, Send, Star, Lock, ListTree, X, Clock, Flag, Ban,
 } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useAuth } from '../../hooks/useAuth';
 import VideoPlayer from '../../components/VideoPlayer';
-import { Card, Button, Badge, ProgressBar, EmptyState, Textarea, Input, Modal, Skeleton } from '../../components/ui';
+import { Card, Button, Badge, ProgressBar, EmptyState, Textarea, Input, Select, Modal, Skeleton } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 import ErrorState from '../../components/ErrorState';
 import DocumentViewer from '../../components/DocumentViewer';
@@ -34,6 +35,7 @@ export default function CoursePlayer() {
   const [params, setParams] = useSearchParams();
   const toast = useToast();
   const { t } = useLanguage();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [detail, setDetail] = useState(null);
@@ -43,6 +45,7 @@ export default function CoursePlayer() {
   const [assignments, setAssignments] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [threads, setThreads] = useState([]);
+  const [blockedUsers, setBlockedUsers] = useState([]);
   const [section, setSection] = useState(null); // which course section is expanded below the lesson
   const [sheetOpen, setSheetOpen] = useState(false);
   const [qaForm, setQaForm] = useState({ title: '', body: '' });
@@ -54,10 +57,21 @@ export default function CoursePlayer() {
   const [submissionText, setSubmissionText] = useState('');
   const [submissionFile, setSubmissionFile] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportReason, setReportReason] = useState('harassment');
+  const [reportDetails, setReportDetails] = useState('');
+  const [blocking, setBlocking] = useState(null);
+  const [blockedUsersOpen, setBlockedUsersOpen] = useState(false);
+  const [qaBusy, setQaBusy] = useState(false);
 
   const loadQA = useCallback(
     () => api.get(`/qa/courses/${courseId}`).then(({ data }) => setThreads(data.items)).catch(() => {}),
     [courseId]
+  );
+
+  const loadBlockedUsers = useCallback(
+    () => api.get('/qa/blocked-users').then(({ data }) => setBlockedUsers(data)).catch(() => {}),
+    []
   );
 
   const load = useCallback(async () => {
@@ -95,11 +109,12 @@ export default function CoursePlayer() {
       api.get(`/assignments/courses/${courseId}`).then(({ data }) => setAssignments(data)).catch(() => {});
       api.get(`/announcements/courses/${courseId}`).then(({ data }) => setAnnouncements(data.items)).catch(() => {});
       loadQA();
+      loadBlockedUsers();
     }, 0);
     return () => clearTimeout(t);
     // params is read once for the deep link; re-running on every search change would fight openLesson.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, load, openLesson, loadQA]);
+  }, [courseId, load, openLesson, loadQA, loadBlockedUsers]);
 
   const markComplete = async () => {
     try {
@@ -133,8 +148,47 @@ export default function CoursePlayer() {
     try {
       await api.post(`/qa/${threadId}/replies`, { body });
       setReply((r) => ({ ...r, [threadId]: '' }));
+      toast.success(t('player.replySent'));
       loadQA();
     } catch (err) { toast.error(apiError(err)); }
+  };
+
+  const submitReport = async () => {
+    if (!reportTarget) return;
+    setQaBusy(true);
+    try {
+      await api.post(`/qa/${reportTarget.threadId}/reports`, {
+        ...(reportTarget.replyId ? { replyId: reportTarget.replyId } : {}),
+        reason: reportReason,
+        ...(reportDetails.trim() ? { details: reportDetails.trim() } : {}),
+      });
+      toast.success(t('player.reportSent'));
+      setReportTarget(null);
+      setReportDetails('');
+      setReportReason('harassment');
+    } catch (err) { toast.error(apiError(err)); }
+    finally { setQaBusy(false); }
+  };
+
+  const blockStudent = async () => {
+    if (!blocking) return;
+    setQaBusy(true);
+    try {
+      await api.post(`/qa/blocked-users/${blocking.id}`);
+      toast.success(t('player.studentBlocked'));
+      setBlocking(null);
+      await Promise.all([loadQA(), loadBlockedUsers()]);
+    } catch (err) { toast.error(apiError(err)); }
+    finally { setQaBusy(false); }
+  };
+
+  const unblockStudent = async (studentId) => {
+    setQaBusy(true);
+    try {
+      await api.delete(`/qa/blocked-users/${studentId}`);
+      await Promise.all([loadQA(), loadBlockedUsers()]);
+    } catch (err) { toast.error(apiError(err)); }
+    finally { setQaBusy(false); }
   };
 
   const submitAssignment = async () => {
@@ -339,8 +393,35 @@ export default function CoursePlayer() {
     </div>
   );
 
+  const qAndAActions = (author, threadId, replyId = null) => {
+    const authorId = author?._id || author;
+    const currentUserId = user?._id || user?.id;
+    if (!authorId || String(authorId) === String(currentUserId)) return null;
+    return (
+      <div className="mt-1 flex flex-wrap gap-2">
+        <Button size="sm" variant="ghost" className="px-2 py-1 text-xs" onClick={() => {
+          setReportTarget({ threadId, replyId, authorName: author?.name || '' });
+          setReportReason('harassment');
+          setReportDetails('');
+        }}>
+          <Flag size={13} /> {t('player.reportContent')}
+        </Button>
+        {author?.role === 'student' && (
+          <Button size="sm" variant="ghost" className="px-2 py-1 text-xs" onClick={() => setBlocking({ id: String(authorId), name: author.name })}>
+            <Ban size={13} /> {t('player.blockStudent')}
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   const renderQA = () => (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button size="sm" variant="outline" onClick={() => setBlockedUsersOpen(true)}>
+          <Ban size={14} /> {t('player.blockedStudents')} {blockedUsers.length > 0 && `(${blockedUsers.length})`}
+        </Button>
+      </div>
       <div className="space-y-3 rounded-xl border border-surface-200 p-3.5 dark:border-surface-700/60">
         <p className="text-sm font-semibold text-surface-800 dark:text-surface-100">{t('player.askQuestion')}</p>
         <p className="text-xs text-surface-400">{t('player.askHint')}</p>
@@ -360,6 +441,7 @@ export default function CoursePlayer() {
           </div>
           <p dir="auto" className="mt-1 text-sm text-surface-600 dark:text-surface-300">{thread.body}</p>
           <p className="mt-1 text-xs text-surface-400">{thread.author?.name} · {new Date(thread.createdAt).toLocaleString()}</p>
+          {thread.status === 'approved' && qAndAActions(thread.author, thread._id)}
           {thread.status === 'pending' && (
             <p className="mt-2 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
               {t('player.pendingHint')}
@@ -372,12 +454,21 @@ export default function CoursePlayer() {
           )}
           {thread.replies.map((r) => (
             <div key={r._id} className="mt-2 rounded-lg bg-surface-50 p-3 dark:bg-surface-700/40">
-              <p dir="auto" className="text-sm text-surface-700 dark:text-surface-200">{r.body}</p>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p dir="auto" className="text-sm text-surface-700 dark:text-surface-200">{r.body}</p>
+                {(r.status || 'approved') !== 'approved' && (
+                  <Badge color={r.status === 'rejected' ? 'red' : 'amber'}>
+                    {t(r.status === 'rejected' ? 'player.replyNotPublished' : 'player.replyAwaiting')}
+                  </Badge>
+                )}
+              </div>
               <p className="mt-1 text-xs text-surface-400">
                 {r.author?.name} {r.author?.role !== 'student' && <Badge color="primary" className="ms-1">{r.author?.role}</Badge>}
               </p>
+              {(r.status || 'approved') === 'approved' && qAndAActions(r.author, thread._id, r._id)}
             </div>
           ))}
+          <p className="mt-2 text-xs text-surface-400">{t('player.repliesModerated')}</p>
           {thread.status === 'approved' && (
             <div className="mt-2 flex gap-2">
               {/* Input brings its own <label> wrapper — that is the flex item. */}
@@ -389,6 +480,44 @@ export default function CoursePlayer() {
           )}
         </div>
       ))}
+      <Modal open={!!reportTarget} onClose={() => setReportTarget(null)} title={t('player.reportContent')}>
+        <div className="space-y-4">
+          <p className="text-sm text-surface-500">{t('player.reportExplain', { name: reportTarget?.authorName || '' })}</p>
+          <Select
+            label={t('player.reportWhy')}
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            options={[
+              { value: 'harassment', label: t('qa.reportHarassment') },
+              { value: 'inappropriate', label: t('qa.reportInappropriate') },
+              { value: 'spam', label: t('qa.reportSpam') },
+              { value: 'other', label: t('qa.reportOther') },
+            ]}
+          />
+          <Textarea label={t('player.reportDetails')} dir="auto" value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} rows={3} maxLength={1000} />
+          <Button className="w-full" loading={qaBusy} onClick={submitReport}>{t('player.sendReport')}</Button>
+        </div>
+      </Modal>
+      <Modal open={!!blocking} onClose={() => setBlocking(null)} title={t('player.blockStudent')}>
+        <div className="space-y-4">
+          <p className="text-sm text-surface-500">{t('player.blockConfirm', { name: blocking?.name || '' })}</p>
+          <Button className="w-full" variant="danger" loading={qaBusy} onClick={blockStudent}>{t('player.blockStudent')}</Button>
+        </div>
+      </Modal>
+      <Modal open={blockedUsersOpen} onClose={() => setBlockedUsersOpen(false)} title={t('player.blockedStudents')}>
+        {blockedUsers.length === 0 ? (
+          <EmptyState title={t('player.noBlockedStudents')} />
+        ) : (
+          <div className="space-y-3">
+            {blockedUsers.map((blocked) => (
+              <div key={blocked.id} className="flex items-center justify-between gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700">
+                <span className="text-sm font-medium text-surface-800 dark:text-surface-100">{blocked.name}</span>
+                <Button size="sm" variant="outline" disabled={qaBusy} onClick={() => unblockStudent(blocked.id)}>{t('player.unblock')}</Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 

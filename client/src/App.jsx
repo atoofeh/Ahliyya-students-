@@ -38,6 +38,8 @@ const AdminAdmins = lazy(() => import('./pages/admin/AdminAdmins'));
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'));
 const NewsPage = lazy(() => import('./pages/NewsPage'));
 const PastPapersPage = lazy(() => import('./pages/PastPapersPage'));
+const AccountDeletionPage = lazy(() => import('./pages/AccountDeletionPage'));
+const SupportPage = lazy(() => import('./pages/SupportPage'));
 import { Spinner } from './components/ui';
 import { SkeletonPage } from './components/Skeletons';
 import { roleMatches, homeFor } from './utils/roles';
@@ -71,12 +73,14 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/onboarding" element={<OnboardingPage />} />
+              <Route path="/support" element={<SupportPage />} />
 
               {/* Quiz runner is fullscreen — outside the main chrome */}
               <Route path="/student/courses/:courseId/quiz/:quizId" element={
                 <Protected roles={['student']}><QuizRunner /></Protected>} />
 
               <Route element={<Protected><MainLayout /></Protected>}>
+                <Route path="/account/deletion" element={<Protected roles={['student']}><AccountDeletionPage /></Protected>} />
                 {/* Student */}
                 <Route path="/student" element={<Protected roles={['student']}><StudentDashboard /></Protected>} />
                 <Route path="/student/catalog" element={<Protected roles={['student']}><CourseCatalog /></Protected>} />

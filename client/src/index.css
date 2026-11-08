@@ -129,6 +129,9 @@
 */
 .bidi-isolate { unicode-bidi: isolate; }
 
+/* Keep lesson videos inline; the app's own expand control resizes the player. */
+.lesson-video::-webkit-media-controls-fullscreen-button { display: none; }
+
 /*
   Arabic in a Latin-first type stack falls back unpredictably per platform.
   Naming the common system Arabic faces first keeps headings and body text

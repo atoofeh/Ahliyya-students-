@@ -3,11 +3,16 @@ const { z } = require('zod');
 const authenticate = require('../../middleware/authenticate');
 const { requirePermission } = require('../../middleware/authorize');
 const asyncHandler = require('../../core/asyncHandler');
+const ApiError = require('../../core/ApiError');
 const { validate, paginationSchema, objectId } = require('../../middleware/validate');
+const { paginatedQuery } = require('../../core/pagination');
 const { passwordRule } = require('../auth/auth.validators');
 const { PERMISSIONS: P } = require('../../core/permissions');
 const AdminService = require('./admin.service');
 const SecurityService = require('./security.service');
+const AccountDeletionRequest = require('../../models/AccountDeletionRequest');
+const User = require('../../models/User');
+const audit = require('../../core/audit');
 
 const createUserSchema = z.object({
   name: z.string().min(2).max(100).trim(),
@@ -17,6 +22,7 @@ const createUserSchema = z.object({
   password: passwordRule,
   role: z.enum(['admin', 'teacher', 'student']),
   mustChangePassword: z.boolean().optional(),
+  reviewerAccess: z.boolean().optional(),
 });
 
 const updateUserSchema = z.object({
@@ -40,6 +46,14 @@ const auditQuery = paginationSchema.extend({
   userId: objectId.optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
+});
+const deletionRequestsQuery = paginationSchema.extend({
+  status: z.enum(['open', 'completed', 'dismissed']).optional(),
+});
+const deletionRequestResolutionSchema = z.object({
+  action: z.enum(['complete', 'dismiss']),
+  retainGrades: z.boolean().optional(),
+  note: z.string().max(500).trim().optional(),
 });
 
 router.use(authenticate);
@@ -68,7 +82,51 @@ router.post('/users/:userId/force-logout', requirePermission(P.USERS_FORCE_LOGOU
 }));
 router.delete('/users/:userId', requirePermission(P.USERS_DELETE), asyncHandler(async (req, res) => {
   await AdminService.deleteUser(req.user, req.params.userId, req.ip);
+  const pending = await AccountDeletionRequest.updateMany(
+    { user: req.params.userId, status: 'open' },
+    { $set: { status: 'completed', user: null, reason: '', resolvedBy: req.user.id, resolvedAt: new Date() } }
+  );
+  if (pending.modifiedCount) {
+    await audit({ user: req.user.id, action: 'ACCOUNT_DELETION_COMPLETED', ip: req.ip });
+  }
   res.json({ message: 'User deleted' });
+}));
+
+router.get('/account-deletion-requests', requirePermission(P.USERS_VIEW), validate(deletionRequestsQuery, 'query'), asyncHandler(async (req, res) => {
+  const filter = { status: req.query.status || 'open' };
+  res.json(await paginatedQuery(AccountDeletionRequest, filter, {
+    page: req.query.page,
+    limit: req.query.limit,
+    sort: { createdAt: 1 },
+    populate: { path: 'user', select: 'name username email role deletedAt' },
+  }));
+}));
+
+router.post('/account-deletion-requests/:requestId/resolve', requirePermission(P.USERS_DELETE), validate(z.object({ requestId: objectId }), 'params'), validate(deletionRequestResolutionSchema), asyncHandler(async (req, res) => {
+  const request = await AccountDeletionRequest.findOne({ _id: req.params.requestId, status: 'open' });
+  if (!request) throw ApiError.notFound('Open deletion request not found');
+
+  if (req.body.action === 'complete') {
+    const target = await User.findById(request.user).select('deletedAt');
+    if (target && !target.deletedAt) {
+      await AdminService.deleteUser(req.user, request.user, req.ip, { retainGrades: req.body.retainGrades === true });
+    }
+    request.status = 'completed';
+    await audit({ user: req.user.id, action: 'ACCOUNT_DELETION_COMPLETED', ip: req.ip, resource: `account-deletion:${request._id}` });
+  } else {
+    request.status = 'dismissed';
+    await audit({ user: req.user.id, action: 'ACCOUNT_DELETION_REQUEST_DISMISSED', targetUser: request.user, ip: req.ip, resource: `account-deletion:${request._id}` });
+  }
+
+  request.resolvedBy = req.user.id;
+  request.resolvedAt = new Date();
+  request.resolutionNote = req.body.note || '';
+  request.reason = '';
+  await request.save();
+  if (request.status === 'completed') {
+    await AccountDeletionRequest.updateMany({ user: request.user }, { $set: { user: null, reason: '' } });
+  }
+  res.json({ status: request.status });
 }));
 
 // Authorized devices

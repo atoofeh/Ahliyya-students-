@@ -209,9 +209,9 @@ export default function LoginPage() {
                       className="h-[18px] w-[18px] rounded accent-brand-600" />
                     {t('auth.keepSignedIn')}
                   </label>
-                  <button type="button" className="min-h-[44px] py-2 font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300" onClick={() => setMode(MODES.FORGOT)}>
+                  <a href="/support/" className="flex min-h-[44px] items-center py-2 font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-300">
                     {t('auth.forgot')}
-                  </button>
+                  </a>
                 </div>
                 {/* The consequence is easy to miss and matters most on a phone:
                     signed out means no notifications. */}

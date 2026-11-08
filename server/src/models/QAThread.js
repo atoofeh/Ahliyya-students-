@@ -4,6 +4,10 @@ const replySchema = new mongoose.Schema(
   {
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     body: { type: String, required: true, maxlength: 10000 },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved', index: true },
+    moderatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    moderatedAt: { type: Date, default: null },
+    rejectionReason: { type: String, default: null, maxlength: 300 },
     createdAt: { type: Date, default: Date.now },
   },
   { _id: true }
@@ -12,10 +16,9 @@ const replySchema = new mongoose.Schema(
 /**
  * Student question on a course/lesson with threaded replies.
  *
- * Questions are moderated: a new one starts 'pending' and is invisible to
- * everyone except its author and the course staff. A teacher approves it (it
- * joins the course Q&A) or rejects it (it never appears, and the record is kept
- * only so the decision is auditable).
+ * Student questions and replies are moderated: a new one starts 'pending' and
+ * is invisible to everyone except its author and the course staff. A teacher
+ * approves it or rejects it; old replies without a status remain approved.
  */
 const qaThreadSchema = new mongoose.Schema(
   {

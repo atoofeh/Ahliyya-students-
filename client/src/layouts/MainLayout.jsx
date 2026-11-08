@@ -4,6 +4,7 @@ import {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
   Users, MonitorSmartphone, Settings, ScrollText, ShieldAlert, ShieldCheck, UserCog, LogOut,
   Sun, Moon, Laptop, Menu, Library, Handshake, Newspaper, BookOpenCheck, HelpCircle,
+  UserRoundX,
 } from 'lucide-react';
 import { Avatar } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
@@ -99,6 +100,18 @@ export default function MainLayout() {
             )}
           </NavLink>
         ))}
+        {isStudent && <NavLink to="/account/deletion" onClick={() => setSidebarOpen(false)}
+          className={({ isActive }) => `group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium transition-all ${isActive ? 'bg-white/12 text-white ring-1 ring-white/10' : 'text-brand-100/75 hover:bg-white/[0.07] hover:text-white'}`}>
+          <UserRoundX size={17} className="text-brand-200/70" /> {t('nav.accountDeletion')}
+        </NavLink>}
+        <NavLink to="/support" onClick={() => setSidebarOpen(false)}
+          className={({ isActive }) => `group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium transition-all ${isActive ? 'bg-white/12 text-white ring-1 ring-white/10' : 'text-brand-100/75 hover:bg-white/[0.07] hover:text-white'}`}>
+          <HelpCircle size={17} className="text-brand-200/70" /> {t('nav.support')}
+        </NavLink>
+        <a href="/privacy/" onClick={() => setSidebarOpen(false)}
+          className="group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium text-brand-100/75 transition-all hover:bg-white/[0.07] hover:text-white">
+          <ShieldCheck size={17} className="text-brand-200/70" /> {dir === 'rtl' ? 'سياسة الخصوصية' : 'Privacy policy'}
+        </a>
       </nav>
 
       {/* Profile */}

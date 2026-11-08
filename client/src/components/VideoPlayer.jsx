@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLanguage } from '../hooks/useLanguage';
-import { Loader2, ShieldCheck, Lock, Eye, AlertTriangle } from 'lucide-react';
+import { Loader2, ShieldCheck, Lock, Eye, AlertTriangle, Maximize, Minimize } from 'lucide-react';
 import api, { API_BASE, apiError } from '../api/axios';
 import LmsNative, { isNative, platformName } from '../api/native';
 
@@ -8,7 +8,7 @@ import LmsNative, { isNative, platformName } from '../api/native';
  * Protected video player.
  *  - Fetches a short-lived signed stream token (renewed before expiry) — the
  *    raw file is never exposed; the server decrypts on the fly per Range.
- *  - Intermittent dynamic watermark (name / id / timestamp), fullscreen included.
+ *  - Intermittent dynamic watermark (name / id / timestamp), including expanded view.
  *  - Download & PiP disabled, context menu blocked, playback pauses when the
  *    tab is hidden (limits screen-capture-while-hidden and casting tricks).
  *  - Resume: seeks to last saved position; progress heartbeat every 10s.
@@ -30,14 +30,11 @@ const WM_GAP_MIN_MS = 38000;
 const WM_GAP_JITTER_MS = 14000;
 const WM_FIRST_MS = 5000;
 
-const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
-
 // The most one `timeupdate` may credit. Ticks arrive ~4x a second, so this
 // covers playback up to 8x and treats anything larger as a seek.
 const MAX_STEP_SECONDS = 2;
 export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress }) {
   const videoRef = useRef(null);
-  const containerRef = useRef(null);
   const watchedRef = useRef(0);
   const lastBeat = useRef(0);
   // Where playback was at the previous tick, so watched time can be measured
@@ -48,7 +45,7 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   const [watermark, setWatermark] = useState(null);
   const [wmPos, setWmPos] = useState({ top: '8%', left: '6%' });
   const [wmShown, setWmShown] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   // The watch allowance, as the server last reported it. null for staff, and
   // for a student while the platform limit is switched off.
   const [views, setViews] = useState(null);
@@ -142,32 +139,19 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     return () => clearTimeout(timer);
   }, [watermark]);
 
-  /**
-   * A fullscreened <video> paints alone: a sibling overlay is not part of the
-   * fullscreen element, so the watermark used to disappear at exactly the moment
-   * a screen is most worth filming. Redirect fullscreen onto the wrapper — which
-   * does contain the overlay — whenever the native control fullscreens the video.
-   */
   useEffect(() => {
-    const onChange = () => {
-      const fs = fullscreenElement();
-      if (fs && fs === videoRef.current && containerRef.current) {
-        // Requesting on an ancestor swaps the fullscreen element without leaving
-        // fullscreen; the click that started it still counts as the activation.
-        const box = containerRef.current;
-        const request = box.requestFullscreen || box.webkitRequestFullscreen;
-        try { Promise.resolve(request?.call(box)).catch(() => {}); } catch { /* stays native */ }
-        return;
-      }
-      setIsFullscreen(!!fs && fs === containerRef.current);
+    if (!isExpanded) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setIsExpanded(false);
     };
-    document.addEventListener('fullscreenchange', onChange);
-    document.addEventListener('webkitfullscreenchange', onChange);
+    document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.removeEventListener('fullscreenchange', onChange);
-      document.removeEventListener('webkitfullscreenchange', onChange);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
     };
-  }, []);
+  }, [isExpanded]);
 
   // Pause when tab hidden
   useEffect(() => {
@@ -262,19 +246,26 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   return (
     <>
     <div
-      ref={containerRef}
       className={`relative select-none overflow-hidden bg-black ${
-        isFullscreen ? 'flex h-screen w-screen items-center justify-center' : 'rounded-xl'}`}
+        isExpanded
+          ? 'fixed inset-0 z-[70] flex h-[100dvh] w-screen items-center justify-center rounded-none'
+          : 'aspect-video w-full rounded-xl'}`}
+      style={isExpanded ? {
+        paddingTop: 'var(--safe-top)',
+        paddingBottom: 'var(--safe-bottom)',
+        paddingInlineStart: 'var(--safe-left)',
+        paddingInlineEnd: 'var(--safe-right)',
+      } : undefined}
       onContextMenu={(e) => e.preventDefault()}
     >
       <video
         ref={videoRef}
         src={src}
         controls
-        controlsList="nodownload noremoteplayback noplaybackrate"
+        controlsList="nofullscreen nodownload noremoteplayback noplaybackrate"
         disablePictureInPicture
         playsInline
-        className={isFullscreen ? 'max-h-full max-w-full' : 'aspect-video w-full'}
+        className={`lesson-video ${isExpanded ? 'h-full w-full object-contain' : 'aspect-video w-full'}`}
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={(e) => {
           if (startAt > 2) e.target.currentTime = startAt;
@@ -284,6 +275,20 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
         onPause={() => heartbeat(videoRef.current?.currentTime || 0)}
         onEnded={() => finish(videoRef.current?.duration || 0)}
       />
+      <button
+        type="button"
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+        aria-label={t(isExpanded ? 'video.collapse' : 'video.expand')}
+        title={t(isExpanded ? 'video.collapse' : 'video.expand')}
+        aria-pressed={isExpanded}
+        className="absolute end-3 top-3 z-20 rounded-lg bg-black/60 p-2 text-white/90 shadow transition-colors hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        style={isExpanded ? {
+          top: 'calc(var(--safe-top) + 0.75rem)',
+          insetInlineEnd: 'calc(var(--safe-right) + 0.75rem)',
+        } : undefined}
+      >
+        {isExpanded ? <Minimize size={18} aria-hidden="true" /> : <Maximize size={18} aria-hidden="true" />}
+      </button>
       {watermark && (
         <div
           aria-hidden="true"

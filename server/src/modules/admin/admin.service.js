@@ -1,4 +1,5 @@
 const ApiError = require('../../core/ApiError');
+const crypto = require('crypto');
 const audit = require('../../core/audit');
 const { paginatedQuery } = require('../../core/pagination');
 const { invalidateSettingsCache, SETTING_DEFAULTS, getSettings } = require('../../config/settingsCache');
@@ -50,20 +51,24 @@ class AdminService {
 
   // ── User management ─────────────────────────────────────────────────
 
-  static async createUser(actor, { name, username, email, password, role, mustChangePassword }, ip) {
+  static async createUser(actor, { name, username, email, password, role, mustChangePassword, reviewerAccess }, ip) {
     if (role === ROLES.SUPER_ADMIN) {
       throw ApiError.badRequest('The owner account can only be created by the bootstrap seed', 'ROLE_NOT_ASSIGNABLE');
+    }
+    if (reviewerAccess && (actor.role !== ROLES.SUPER_ADMIN || role !== ROLES.STUDENT)) {
+      throw ApiError.forbidden('Only the owner can create a student reviewer account', 'FORBIDDEN');
     }
     if (!canAssignRole(actor.role, role)) {
       throw ApiError.forbidden(`You cannot create accounts with role "${role}"`, 'FORBIDDEN');
     }
     const user = await User.create({
       name, username, email: email?.toLowerCase(), password, role,
-      mustChangePassword: mustChangePassword ?? true,
+      mustChangePassword: reviewerAccess ? false : (mustChangePassword ?? true),
+      allowMultipleDevices: reviewerAccess === true,
       emailVerified: false,
       createdBy: actor.id,
     });
-    await audit({ user: actor.id, action: role === ROLES.ADMIN ? 'ADMIN_CREATED' : 'USER_CREATED', targetUser: user._id, ip, meta: { role } });
+    await audit({ user: actor.id, action: role === ROLES.ADMIN ? 'ADMIN_CREATED' : 'USER_CREATED', targetUser: user._id, ip, meta: { role, reviewerAccess: reviewerAccess === true } });
     return user.toPublicJSON();
   }
 
@@ -145,19 +150,118 @@ class AdminService {
     return user.toPublicJSON();
   }
 
-  static async deleteUser(actor, userId, ip) {
+  static async deleteUser(actor, userId, ip, { retainGrades = false } = {}) {
     const user = await AdminService.#loadTarget(userId);
     await AdminService.assertCanManage(actor, user, 'delete', ip);
-    user.deletedAt = new Date();
+    const deletedAt = new Date();
+    const avatarId = user.avatar;
+    // Lock the account before removing associated data. If file cleanup fails,
+    // it stays banned but can still be retried from the open admin request.
     user.status = 'banned';
     user.tokenVersion += 1;
-    // Free the unique keys for future reuse while preserving the record.
-    user.username = `deleted_${Date.now()}_${user.username}`.slice(0, 50);
-    user.email = undefined;
     await user.save();
     await AdminService.#killSessions(userId, 'admin_force_logout');
-    await Enrollment.updateMany({ student: userId, status: 'active' }, { $set: { status: 'removed' } });
-    await audit({ user: actor.id, action: 'USER_DELETED', targetUser: userId, ip });
+
+    const Submission = require('../../models/Submission');
+    const submissions = await Submission.find({ student: userId }).select('attachment').lean();
+    const assetIds = [avatarId, ...submissions.map((submission) => submission.attachment)].filter(Boolean);
+    const FileService = require('../files/files.service');
+    for (const assetId of new Set(assetIds.map(String))) {
+      try { await FileService.remove(assetId, actor, ip); }
+      catch (err) { if (err.statusCode !== 404) throw err; }
+    }
+
+    const QuizAttempt = require('../../models/QuizAttempt');
+    const Certificate = require('../../models/Certificate');
+    const LessonProgress = require('../../models/LessonProgress');
+    const Bookmark = require('../../models/Bookmark');
+    const VideoView = require('../../models/VideoView');
+    const CheatEvent = require('../../models/CheatEvent');
+    const DeviceResetRequest = require('../../models/DeviceResetRequest');
+    const AccessCode = require('../../models/AccessCode');
+    if (retainGrades) {
+      await Submission.updateMany({ student: userId }, { $set: { text: '', attachment: null, feedback: '' } });
+      await QuizAttempt.updateMany({ student: userId }, {
+        $set: {
+          answers: [], answersSavedAt: null, pendingManualGrading: false,
+          violationCount: 0, riskScore: 0, invalidatedReason: null,
+        },
+      });
+      await Enrollment.updateMany({ student: userId }, {
+        $set: {
+          status: 'removed', amountPaid: 0, paymentNote: '', paymentRecordedBy: null,
+          paymentRecordedAt: null, progressPercent: 0, completedLessons: 0, completedAt: null,
+          lastAccessedAt: null, isFavorite: false,
+        },
+      });
+    } else {
+      await Promise.all([
+        Submission.deleteMany({ student: userId }),
+        QuizAttempt.deleteMany({ student: userId }),
+        Enrollment.deleteMany({ student: userId }),
+      ]);
+    }
+    await Promise.all([
+      // Certificates are not grade records; they can be reissued if needed.
+      Certificate.deleteMany({ student: userId }),
+      LessonProgress.deleteMany({ student: userId }),
+      Bookmark.deleteMany({ student: userId }),
+      VideoView.deleteMany({ student: userId }),
+      CheatEvent.deleteMany({ student: userId }),
+      DeviceResetRequest.deleteMany({ user: userId }),
+      // Preserve aggregate redemption counts while removing the student's
+      // identity from access-code history.
+      AccessCode.updateMany(
+        { 'usedBy.user': userId },
+        { $pull: { usedBy: { user: userId } } }
+      ),
+    ]);
+
+    // Remove student-authored Q&A and reports when deleting an account.
+    const QAThread = require('../../models/QAThread');
+    const QAReport = require('../../models/QAReport');
+    const UserBlock = require('../../models/UserBlock');
+    await QAThread.deleteMany({ author: userId });
+    await QAThread.updateMany(
+      { author: { $ne: userId }, 'replies.author': userId },
+      { $pull: { replies: { author: userId } } }
+    );
+    await Promise.all([
+      QAReport.deleteMany({ $or: [{ reporter: userId }, { reportedUser: userId }] }),
+      UserBlock.deleteMany({ $or: [{ blocker: userId }, { blocked: userId }] }),
+      require('../../models/Device').deleteMany({ user: userId }),
+      require('../../models/PushToken').deleteMany({ user: userId }),
+      require('../../models/Notification').deleteMany({ user: userId }),
+      LoginHistory.deleteMany({ user: userId }),
+      AuditLog.updateMany(
+        { $or: [{ user: userId }, { targetUser: userId }] },
+        { $unset: { user: '', targetUser: '', course: '', ip: '', deviceId: '', meta: '', resource: '' } }
+      ),
+      Session.deleteMany({ user: userId }),
+    ]);
+
+    // Remove direct account identifiers while retaining only the anonymous
+    // account key needed to associate grades when retention is legally required.
+    user.deletedAt = deletedAt;
+    user.name = 'Deleted account';
+    user.username = `deleted_${Date.now()}_${user.username}`.slice(0, 50);
+    user.email = undefined;
+    user.avatar = null;
+    user.password = crypto.randomBytes(32).toString('hex');
+    user.emailVerifyCodeHash = null;
+    user.emailVerifyExpires = null;
+    user.passwordResetCodeHash = null;
+    user.passwordResetExpires = null;
+    user.emailVerified = false;
+    user.passwordChangedAt = null;
+    user.lastLoginAt = null;
+    user.tourCompletedAt = null;
+    user.mustChangePassword = false;
+    user.preferences = { theme: 'system', emailNotifications: true, language: 'en' };
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
+    await user.save();
+    await audit({ user: actor.id, action: 'USER_DELETED', ip });
   }
 
   static async resetUserPassword(actor, userId, newPassword, ip) {

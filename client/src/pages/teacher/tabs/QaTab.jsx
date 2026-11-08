@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { MessageSquareText, Send, Check, X } from 'lucide-react';
+import { MessageSquareText, Send, Check, X, Flag, ShieldCheck } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { useLanguage } from '../../../hooks/useLanguage';
@@ -19,6 +19,7 @@ const FILTERS = [
   { key: 'approved', label: 'qa.published' },
   { key: 'rejected', label: 'qa.rejected' },
   { key: '', label: 'qa.all' },
+  { key: 'reports', label: 'qa.reports' },
 ];
 
 const STATUS_BADGE = {
@@ -40,7 +41,11 @@ export default function QaTab({ courseId }) {
 
   const load = useCallback(async () => {
     try {
-      const { data } = await api.get(`/qa/courses/${courseId}`, { params: filter ? { status: filter } : {} });
+      const reports = filter === 'reports';
+      const { data } = await api.get(
+        `/qa/courses/${courseId}${reports ? '/reports' : ''}`,
+        { params: reports ? {} : (filter ? { status: filter } : {}) }
+      );
       setError(null);
       setPage(data);
     } catch (err) {
@@ -76,15 +81,26 @@ export default function QaTab({ courseId }) {
     }, t(wasPending ? 'qa.toastAnswered' : 'qa.toastReplied'));
   };
 
+  const moderateReply = (threadId, replyId, status) => run(
+    () => api.post(`/qa/${threadId}/replies/${replyId}/moderate`, { status }),
+    t(status === 'approved' ? 'qa.toastReplyPublished' : 'qa.toastReplyRejected')
+  );
+
+  const resolveReport = (report, action) => run(
+    () => api.post(`/qa/reports/${report._id}/resolve`, { action }),
+    t(action === 'remove' ? 'qa.reportResolved' : 'qa.reportDismissed')
+  );
+
   if (error) return <ErrorState code={error.code} message={error.message} onRetry={load} />;
   if (!page) return <div className="space-y-3"><SkeletonCard /><SkeletonCard /></div>;
 
-  const threads = page.items;
+  const threads = filter === 'reports' ? [] : page.items;
+  const reports = filter === 'reports' ? page.items : [];
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        {FILTERS.map((f) => (
+          {FILTERS.map((f) => (
           <button
             key={f.key || 'all'}
             onClick={() => setFilter(f.key)}
@@ -104,7 +120,52 @@ export default function QaTab({ courseId }) {
         ))}
       </div>
 
-      {threads.length === 0 ? (
+      {filter === 'reports' ? (
+        reports.length === 0 ? (
+          <Card>
+            <EmptyState icon={<Flag size={24} />} title={t('qa.noReports')} subtitle={t('qa.reportsHint')} />
+          </Card>
+        ) : reports.map((report) => {
+          const thread = report.thread;
+          const reply = report.replyId && thread?.replies?.find((item) => String(item._id) === String(report.replyId));
+          const reasonKey = `qa.report${report.reason[0].toUpperCase()}${report.reason.slice(1)}`;
+          return (
+            <Card key={report._id} className="space-y-3 p-4 ring-1 ring-rose-200 dark:ring-rose-500/30">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Flag size={15} className="text-rose-500" />
+                  <p className="font-medium text-surface-900 dark:text-white">{thread?.title || t('qa.contentUnavailable')}</p>
+                </div>
+                <Badge color="red">{t(reasonKey)}</Badge>
+              </div>
+              <p className="text-xs text-surface-500">
+                {t('qa.reportedBy', { name: report.reporter?.name || t('qa.unknownStudent') })}
+                {' · '}{t('qa.reportAbout', { name: report.reportedUser?.name || t('qa.unknownStudent') })}
+              </p>
+              <div className="rounded-xl bg-surface-50 p-3 dark:bg-surface-800/70">
+                {reply ? (
+                  <>
+                    <p dir="auto" className="text-sm text-surface-700 dark:text-surface-200">{reply.body}</p>
+                    <p className="mt-1 text-xs text-surface-400">{reply.author?.name}</p>
+                  </>
+                ) : (
+                  <p dir="auto" className="text-sm text-surface-700 dark:text-surface-200">{thread?.body || t('qa.contentUnavailable')}</p>
+                )}
+              </div>
+              {report.details && <p dir="auto" className="text-sm text-surface-600 dark:text-surface-300">{t('qa.reportDetails', { details: report.details })}</p>}
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="danger" disabled={busy} onClick={() => resolveReport(report, 'remove')}>
+                  <X size={14} /> {t('qa.removeReported')}
+                </Button>
+                <Button size="sm" variant="outline" disabled={busy} onClick={() => resolveReport(report, 'dismiss')}>
+                  <ShieldCheck size={14} /> {t('qa.dismissReport')}
+                </Button>
+              </div>
+            </Card>
+          );
+        })
+      ) : (
+        threads.length === 0 ? (
         <Card>
           <EmptyState
             icon={<MessageSquareText size={24} />}
@@ -132,12 +193,28 @@ export default function QaTab({ courseId }) {
               </p>
             )}
 
-            {thread.replies.map((r) => (
-              <div key={r._id} className="mt-2 rounded-lg bg-surface-50 p-2.5 text-sm dark:bg-surface-700/40">
-                <p dir="auto" className="text-surface-700 dark:text-surface-200">{r.body}</p>
-                <p className="mt-0.5 text-xs text-surface-400">{r.author?.name}</p>
-              </div>
-            ))}
+            {thread.replies.map((r) => {
+              const replyStatus = r.status || 'approved';
+              return (
+                <div key={r._id} className="mt-2 rounded-lg bg-surface-50 p-2.5 text-sm dark:bg-surface-700/40">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p dir="auto" className="text-surface-700 dark:text-surface-200">{r.body}</p>
+                    {replyStatus !== 'approved' && <Badge color={replyStatus === 'rejected' ? 'red' : 'amber'}>{t(replyStatus === 'rejected' ? 'qa.replyRejected' : 'qa.replyPending')}</Badge>}
+                  </div>
+                  <p className="mt-0.5 text-xs text-surface-400">{r.author?.name}</p>
+                  {replyStatus === 'pending' && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button size="sm" disabled={busy} onClick={() => moderateReply(thread._id, r._id, 'approved')}>
+                        <Check size={13} /> {t('qa.approveReply')}
+                      </Button>
+                      <Button size="sm" variant="outline" disabled={busy} onClick={() => moderateReply(thread._id, r._id, 'rejected')}>
+                        <X size={13} /> {t('qa.rejectReply')}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             {pending && (
               <div className="mt-3 flex flex-wrap gap-2">
@@ -169,7 +246,8 @@ export default function QaTab({ courseId }) {
             )}
           </Card>
         );
-      })}
+        })
+      )}
 
       <Modal open={!!rejecting} onClose={() => setRejecting(null)} title={t('qa.rejectTitle')}>
         <div className="space-y-4">

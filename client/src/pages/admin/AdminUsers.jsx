@@ -16,16 +16,19 @@ export default function AdminUsers() {
   const { t } = useLanguage();
   const isOwner = me?.role === 'super_admin';
   const [result, setResult] = useState(null);
+  const [deletionRequests, setDeletionRequests] = useState([]);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({ search: '', role: '', status: '' });
   const [createModal, setCreateModal] = useState(false);
   const [detailModal, setDetailModal] = useState(null);
   const [resetModal, setResetModal] = useState(null);
   const [revokeModal, setRevokeModal] = useState(null); // { user }
+  const [completingDeletionRequest, setCompletingDeletionRequest] = useState(null);
+  const [retainGradesForDeletion, setRetainGradesForDeletion] = useState(false);
   const [revokeReason, setRevokeReason] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ name: '', username: '', email: '', password: '', role: 'student', mustChangePassword: true });
+  const [form, setForm] = useState({ name: '', username: '', email: '', password: '', role: 'student', mustChangePassword: true, reviewerAccess: false });
 
   /** Mirrors the server's assertCanManage: which accounts may I act on? */
   const canManage = (u) => {
@@ -40,7 +43,13 @@ export default function AdminUsers() {
       params: { page, limit: 20, search: filters.search || undefined, role: filters.role || undefined, status: filters.status || undefined },
     }).then(({ data }) => setResult(data)).catch(() => {});
   }, [page, filters]);
+  const loadDeletionRequests = useCallback(() => {
+    api.get('/admin/account-deletion-requests', { params: { status: 'open', limit: 100 } })
+      .then(({ data }) => setDeletionRequests(data.items))
+      .catch(() => setDeletionRequests([]));
+  }, []);
   useEffect(() => { const t = setTimeout(load, filters.search ? 300 : 0); return () => clearTimeout(t); }, [load, filters.search]);
+  useEffect(() => { const t = setTimeout(loadDeletionRequests, 0); return () => clearTimeout(t); }, [loadDeletionRequests]);
 
   const createUser = async () => {
     setBusy(true);
@@ -48,7 +57,7 @@ export default function AdminUsers() {
       await api.post('/admin/users', { ...form, email: form.email || undefined });
       toast.success(t('usr.accountCreated', { role: t(`role.${form.role}`) }));
       setCreateModal(false);
-      setForm({ name: '', username: '', email: '', password: '', role: 'student', mustChangePassword: true });
+      setForm({ name: '', username: '', email: '', password: '', role: 'student', mustChangePassword: true, reviewerAccess: false });
       load();
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
   };
@@ -75,6 +84,18 @@ export default function AdminUsers() {
       toast.success(t('usr.toastDeleted'));
       load();
     } catch (err) { toast.error(apiError(err)); }
+  };
+
+  const resolveDeletionRequest = async (request, action, retainGrades = false) => {
+    setBusy(true);
+    try {
+      await api.post(`/admin/account-deletion-requests/${request._id}/resolve`, { action, retainGrades });
+      toast.success(t(action === 'complete' ? 'usr.deletionCompleted' : 'usr.deletionDismissed'));
+      setCompletingDeletionRequest(null);
+      loadDeletionRequests();
+      load();
+    } catch (err) { toast.error(apiError(err)); }
+    finally { setBusy(false); }
   };
 
   const resetPassword = async () => {
@@ -114,6 +135,31 @@ export default function AdminUsers() {
         </div>
         <Button onClick={() => setCreateModal(true)}><Plus size={15} /> {t('usr.createUser')}</Button>
       </div>
+
+      {deletionRequests.length > 0 && (
+        <Card className="space-y-3 border-rose-200 p-4 dark:border-rose-500/30">
+          <div className="flex items-center gap-2">
+            <Trash2 size={17} className="text-rose-500" />
+            <h2 className="font-semibold text-surface-900 dark:text-white">{t('usr.deletionRequests')}</h2>
+            <Badge color="red">{deletionRequests.length}</Badge>
+          </div>
+          <p className="text-xs text-surface-500">{t('usr.deletionRequestsHint')}</p>
+          <p className="text-xs text-surface-500">{t('usr.deletionContactHint')}</p>
+          {deletionRequests.map((request) => (
+            <div key={request._id} className="flex flex-col gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-surface-800 dark:text-surface-100">{request.user?.name || t('usr.deletedAccount')} · @{request.user?.username || '—'}</p>
+                <p dir="ltr" className="text-xs text-surface-400">{request.user?.email || '—'} · {new Date(request.createdAt).toLocaleString()} · {t('usr.deletionDueBy', { date: new Date(new Date(request.createdAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString() })}</p>
+                {request.reason && <p dir="auto" className="mt-1 text-sm text-surface-600 dark:text-surface-300">{request.reason}</p>}
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" variant="danger" disabled={busy} onClick={() => { setRetainGradesForDeletion(false); setCompletingDeletionRequest(request); }}>{t('usr.completeDeletion')}</Button>
+                <Button size="sm" variant="outline" disabled={busy} onClick={() => resolveDeletionRequest(request, 'dismiss')}>{t('usr.dismissRequest')}</Button>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
 
       <Tabs
         tabs={[
@@ -194,8 +240,36 @@ export default function AdminUsers() {
           <Input label={t('usr.tempPassword')} dir="ltr" type="text" value={form.password}
             onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
             hint={t('usr.tempPasswordHint')} />
+          {isOwner && form.role === 'student' && (
+            <label className="flex items-start gap-2 rounded-xl border border-surface-200 p-3 text-sm dark:border-surface-700">
+              <input type="checkbox" className="mt-1 accent-brand-600" checked={form.reviewerAccess}
+                onChange={(e) => setForm((f) => ({ ...f, reviewerAccess: e.target.checked }))} />
+              <span>
+                <span className="font-medium text-surface-800 dark:text-surface-100">{t('usr.reviewerAccess')}</span>
+                <span className="mt-1 block text-xs text-surface-500">{t('usr.reviewerAccessHint')}</span>
+              </span>
+            </label>
+          )}
           <Button className="w-full" loading={busy} onClick={createUser}
             disabled={!form.name || !form.username || form.password.length < 8}>{t('usr.createAccount')}</Button>
+        </div>
+      </Modal>
+
+      <Modal open={!!completingDeletionRequest} onClose={() => setCompletingDeletionRequest(null)} title={t('usr.completeDeletionTitle')}>
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-surface-600 dark:text-surface-300">
+            {t('usr.confirmDeletionRequest', { name: completingDeletionRequest?.user?.name || completingDeletionRequest?.user?.username || '' })}
+          </p>
+          <label className="flex items-start gap-2 rounded-xl border border-surface-200 p-3 text-sm dark:border-surface-700">
+            <input type="checkbox" className="mt-1 accent-brand-600" checked={retainGradesForDeletion} onChange={(e) => setRetainGradesForDeletion(e.target.checked)} />
+            <span>
+              <span className="font-medium text-surface-800 dark:text-surface-100">{t('usr.retainGradesLabel')}</span>
+              <span className="mt-1 block text-xs text-surface-500">{t('usr.retainGradesHint')}</span>
+            </span>
+          </label>
+          <div className="flex justify-end">
+            <Button variant="danger" loading={busy} onClick={() => resolveDeletionRequest(completingDeletionRequest, 'complete', retainGradesForDeletion)}>{t('usr.completeDeletion')}</Button>
+          </div>
         </div>
       </Modal>
 
