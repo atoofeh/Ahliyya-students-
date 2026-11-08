@@ -45,6 +45,7 @@ const lessonSchema = z.object({
 const reorderSchema = z.object({
   sections: z.array(objectId).optional(),
   lessons: z.array(z.object({ sectionId: objectId, lessonIds: z.array(objectId) })).optional(),
+  videos: z.array(objectId).optional(),
 });
 
 module.exports = { courseSchema, sectionSchema, lessonSchema, reorderSchema };

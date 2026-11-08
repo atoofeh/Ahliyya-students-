@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Video, Trash2, Eye, FileUp, File as FileIcon, Play, Users } from 'lucide-react';
+import { Video, Trash2, Eye, FileUp, File as FileIcon, Play, Users, ChevronUp, ChevronDown } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { useLanguage } from '../../../hooks/useLanguage';
@@ -22,6 +22,7 @@ export default function VideosTab({ courseId }) {
   const [files, setFiles] = useState(null);
   const fileInput = useRef(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [reordering, setReordering] = useState(false);
 
   const load = useCallback(() => {
     api.get(`/videos/courses/${courseId}`).then(({ data }) => setVideos(data)).catch(() => setVideos([]));
@@ -60,18 +61,34 @@ export default function VideosTab({ courseId }) {
     try { await api.delete(`/files/${id}`); load(); } catch (err) { toast.error(apiError(err)); }
   };
 
+  const moveVideo = async (index, dir) => {
+    if (!videos) return;
+    const target = index + dir;
+    if (target < 0 || target >= videos.length) return;
+    const ids = videos.map((item) => item._id);
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    setReordering(true);
+    try {
+      await api.post(`/courses/${courseId}/reorder`, { videos: ids });
+      toast.success(t('vid.orderSaved'));
+      load();
+    } catch (err) { toast.error(apiError(err)); }
+    finally { setReordering(false); }
+  };
+
   const statusColor = { ready: 'green', processing: 'amber', uploading: 'blue', failed: 'red' };
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <div className="space-y-4">
         <h3 className="font-semibold text-surface-800 dark:text-surface-100">{t('vid.videos')}</h3>
+        <p className="text-xs text-surface-400">{t('vid.orderHint')}</p>
         <ChunkedUploader courseId={courseId} onUploaded={load} />
         {!videos ? <Spinner /> : videos.length === 0 ? (
           <Card><EmptyState icon={<Video size={24} />} title={t('vid.noVideos')} /></Card>
         ) : (
           <Card className="divide-y divide-surface-100 dark:divide-surface-700">
-            {videos.map((v) => (
+            {videos.map((v, index) => (
               <div key={v._id} className="flex items-center gap-3 px-4 py-3">
                 <Video size={18} className="shrink-0 text-surface-400" />
                 <div className="min-w-0 flex-1">
@@ -82,6 +99,12 @@ export default function VideosTab({ courseId }) {
                   </p>
                 </div>
                 <Badge color={statusColor[v.status]}>{v.status}</Badge>
+                <div className="flex shrink-0 items-center">
+                  <Button size="sm" variant="ghost" aria-label={t('vid.moveVideoUp', { title: v.title })}
+                    disabled={index === 0 || reordering} onClick={() => moveVideo(index, -1)}><ChevronUp size={14} /></Button>
+                  <Button size="sm" variant="ghost" aria-label={t('vid.moveVideoDown', { title: v.title })}
+                    disabled={index === videos.length - 1 || reordering} onClick={() => moveVideo(index, 1)}><ChevronDown size={14} /></Button>
+                </div>
                 {v.status === 'ready' && (
                   <>
                     <Button size="sm" variant="ghost" aria-label={t('vid.previewOf', { title: v.title })} onClick={() => setPreview(v)}>

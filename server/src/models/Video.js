@@ -12,6 +12,8 @@ const videoSchema = new mongoose.Schema(
     course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     title: { type: String, required: true, trim: true, maxlength: 200 },
+    // Staff-controlled ordering in the course's video library.
+    order: { type: Number, default: 0 },
     originalName: { type: String, default: '' },
     mimeType: { type: String, default: 'video/mp4' },
 
@@ -53,7 +55,7 @@ const videoSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-videoSchema.index({ course: 1, deletedAt: 1 });
+videoSchema.index({ course: 1, deletedAt: 1, order: 1, createdAt: -1 });
 videoSchema.index({ status: 1 });
 videoSchema.index({ title: 'text' });
 

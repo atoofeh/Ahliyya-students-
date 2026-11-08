@@ -614,6 +614,10 @@ export default {
 
   // ── Videos tab ─────────────────────────────────────────────────────
   'vid.videos': 'Videos',
+  'vid.orderHint': 'Change the library order here; student playback order follows lessons in the Curriculum tab.',
+  'vid.orderSaved': 'Video order saved',
+  'vid.moveVideoUp': 'Move {title} up',
+  'vid.moveVideoDown': 'Move {title} down',
   'vid.noVideos': 'No videos yet',
   'vid.documents': 'Documents & resources',
   'vid.uploadFile': 'Upload file',
@@ -698,6 +702,12 @@ export default {
   'cur.title': 'Title',
   'cur.descriptionOptional': 'Description (optional)',
   'cur.saveSection': 'Save section',
+  'cur.orderHint': 'Use the arrows to reorder sections and lessons. Lessons can move between sections.',
+  'cur.moveSectionUp': 'Move {title} earlier',
+  'cur.moveSectionDown': 'Move {title} later',
+  'cur.moveLessonUp': 'Move {title} earlier',
+  'cur.moveLessonDown': 'Move {title} later',
+  'cur.orderSaved': 'Curriculum order saved',
   'cur.editLesson': 'Edit lesson',
   'cur.newLessonIn': 'New lesson in “{section}”',
   'cur.type': 'Type',

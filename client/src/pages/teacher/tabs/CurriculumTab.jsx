@@ -63,13 +63,35 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
 
   const deleteLesson = (id) => run(() => api.delete(`/courses/${courseId}/lessons/${id}`), t('cur.lessonDeleted'));
 
-  const moveLesson = (section, lessonIdx, dir) => run(async () => {
-    const ids = section.lessons.map((l) => l._id);
-    const target = lessonIdx + dir;
+  const moveSection = (sectionIdx, dir) => run(async () => {
+    const ids = curriculum.map((section) => section._id);
+    const target = sectionIdx + dir;
     if (target < 0 || target >= ids.length) return;
-    [ids[lessonIdx], ids[target]] = [ids[target], ids[lessonIdx]];
-    await api.post(`/courses/${courseId}/reorder`, { lessons: [{ sectionId: section._id, lessonIds: ids }] });
-  });
+    [ids[sectionIdx], ids[target]] = [ids[target], ids[sectionIdx]];
+    await api.post(`/courses/${courseId}/reorder`, { sections: ids });
+  }, t('cur.orderSaved'));
+
+  const moveLesson = (sectionIdx, lessonIdx, dir) => run(async () => {
+    const groups = curriculum.map((section) => ({
+      sectionId: section._id,
+      lessonIds: section.lessons.map((lesson) => lesson._id),
+    }));
+    const source = groups[sectionIdx].lessonIds;
+    const targetLessonIdx = lessonIdx + dir;
+
+    if (targetLessonIdx >= 0 && targetLessonIdx < source.length) {
+      [source[lessonIdx], source[targetLessonIdx]] = [source[targetLessonIdx], source[lessonIdx]];
+    } else {
+      const targetSectionIdx = sectionIdx + dir;
+      if (targetSectionIdx < 0 || targetSectionIdx >= groups.length) return;
+      const [lessonId] = source.splice(lessonIdx, 1);
+      const destination = groups[targetSectionIdx].lessonIds;
+      if (dir < 0) destination.push(lessonId);
+      else destination.unshift(lessonId);
+    }
+
+    await api.post(`/courses/${courseId}/reorder`, { lessons: groups });
+  }, t('cur.orderSaved'));
 
   const openLessonModal = (section, lesson) => {
     setForm(lesson ? {
@@ -82,7 +104,8 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-surface-400">{t('cur.orderHint')}</p>
         <Button onClick={() => { setForm({ title: '', description: '' }); setSectionModal({}); }}>
           <Plus size={15} /> {t('cur.addSection')}
         </Button>
@@ -90,7 +113,7 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
 
       {curriculum.length === 0 && <Card><EmptyState title={t('cur.noSections')} subtitle={t('cur.noSectionsHint')} /></Card>}
 
-      {curriculum.map((section) => (
+      {curriculum.map((section, sectionIdx) => (
         <Card key={section._id}>
           <div className="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 px-4 py-3">
             <div>
@@ -98,6 +121,10 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
               {section.description && <p dir="auto" className="text-xs text-surface-400">{section.description}</p>}
             </div>
             <div className="flex gap-1">
+              <Button size="sm" variant="ghost" aria-label={t('cur.moveSectionUp', { title: section.title })} disabled={sectionIdx === 0 || busy}
+                onClick={() => moveSection(sectionIdx, -1)}><ChevronUp size={14} /></Button>
+              <Button size="sm" variant="ghost" aria-label={t('cur.moveSectionDown', { title: section.title })} disabled={sectionIdx === curriculum.length - 1 || busy}
+                onClick={() => moveSection(sectionIdx, 1)}><ChevronDown size={14} /></Button>
               <Button size="sm" variant="ghost" onClick={() => { setForm(section); setSectionModal(section); }}><Pencil size={14} /></Button>
               <Button size="sm" variant="ghost" onClick={() => deleteSection(section._id)}><Trash2 size={14} className="text-rose-400" /></Button>
               <Button size="sm" variant="outline" onClick={() => openLessonModal(section)}><Plus size={14} /> {t('cur.lesson')}</Button>
@@ -112,10 +139,11 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
                 {!l.isPublished && <Badge>{t('cur.draft')}</Badge>}
                 {l.isFree && <Badge color='green'><Unlock size={11} className='me-0.5 inline' />{t('cur.free')}</Badge>}
                 {l.durationMinutes > 0 && <span className="text-xs text-surface-400">{t('catalog.minutes', { n: l.durationMinutes })}</span>}
-                <button className="p-1 text-surface-300 hover:text-surface-600 disabled:opacity-30" disabled={i === 0 || busy}
-                  onClick={() => moveLesson(section, i, -1)}><ChevronUp size={14} /></button>
-                <button className="p-1 text-surface-300 hover:text-surface-600 disabled:opacity-30" disabled={i === section.lessons.length - 1 || busy}
-                  onClick={() => moveLesson(section, i, 1)}><ChevronDown size={14} /></button>
+                <Button size="sm" variant="ghost" aria-label={t('cur.moveLessonUp', { title: l.title })} disabled={(sectionIdx === 0 && i === 0) || busy}
+                  onClick={() => moveLesson(sectionIdx, i, -1)}><ChevronUp size={14} /></Button>
+                <Button size="sm" variant="ghost" aria-label={t('cur.moveLessonDown', { title: l.title })}
+                  disabled={(sectionIdx === curriculum.length - 1 && i === section.lessons.length - 1) || busy}
+                  onClick={() => moveLesson(sectionIdx, i, 1)}><ChevronDown size={14} /></Button>
                 <Button size="sm" variant="ghost" onClick={() => openLessonModal(section, l)}><Pencil size={13} /></Button>
                 <Button size="sm" variant="ghost" onClick={() => deleteLesson(l._id)}><Trash2 size={13} className="text-rose-400" /></Button>
               </div>

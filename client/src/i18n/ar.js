@@ -616,6 +616,10 @@ export default {
 
   // ── Videos tab ─────────────────────────────────────────────────────
   'vid.videos': 'الفيديوهات',
+  'vid.orderHint': 'غيّر ترتيب مكتبة الفيديوهات هنا؛ ويتبع ترتيب عرضها للطلبة ترتيب الدروس في تبويب المنهاج.',
+  'vid.orderSaved': 'حُفظ ترتيب الفيديوهات',
+  'vid.moveVideoUp': 'نقل {title} إلى أعلى',
+  'vid.moveVideoDown': 'نقل {title} إلى أسفل',
   'vid.noVideos': 'لا توجد فيديوهات بعد',
   'vid.documents': 'المستندات والمصادر',
   'vid.uploadFile': 'رفع ملف',
@@ -700,6 +704,12 @@ export default {
   'cur.title': 'العنوان',
   'cur.descriptionOptional': 'الوصف (اختياري)',
   'cur.saveSection': 'حفظ الوحدة',
+  'cur.orderHint': 'استخدم الأسهم لترتيب الوحدات والدروس. يمكن نقل الدروس بين الوحدات.',
+  'cur.moveSectionUp': 'نقل {title} إلى موضع أسبق',
+  'cur.moveSectionDown': 'نقل {title} إلى موضع لاحق',
+  'cur.moveLessonUp': 'نقل {title} إلى موضع أسبق',
+  'cur.moveLessonDown': 'نقل {title} إلى موضع لاحق',
+  'cur.orderSaved': 'حُفظ ترتيب المنهاج',
   'cur.editLesson': 'تعديل الدرس',
   'cur.newLessonIn': 'درس جديد في «{section}»',
   'cur.type': 'النوع',

@@ -60,11 +60,13 @@ class VideoService {
     const totalChunks = Math.max(1, Math.ceil(sizeBytes / chunkSize));
     const uploadId = uuidv4();
     fs.mkdirSync(CHUNK_DIR(uploadId), { recursive: true });
+    const lastVideo = await Video.findOne({ course: courseId, deletedAt: null }).sort({ order: -1 }).select('order').lean();
 
     const video = await Video.create({
       course: courseId,
       uploadedBy: userId,
       title: title || originalName,
+      order: (lastVideo?.order ?? -1) + 1,
       originalName,
       mimeType: mimeType || 'video/mp4',
       uploadId,
@@ -489,8 +491,8 @@ class VideoService {
 
   static async listCourseVideos(courseId) {
     return Video.find({ course: courseId, deletedAt: null })
-      .select('title status durationSeconds sizeBytes viewCount thumbnail createdAt originalName totalChunks receivedChunks uploadId')
-      .sort({ createdAt: -1 })
+      .select('title order status durationSeconds sizeBytes viewCount thumbnail createdAt originalName totalChunks receivedChunks uploadId')
+      .sort({ order: 1, createdAt: -1 })
       .lean();
   }
 

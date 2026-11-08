@@ -37,7 +37,7 @@ Security Center: `GET /security/overview` (counts + suspicious events + recent s
 | POST/PUT/DELETE | `/:courseId/sections[/:sectionId]` | course staff/AD |
 | POST/PUT/DELETE | `/:courseId/lessons[/:lessonId]` | course staff/AD |
 | GET | `/:courseId/lessons/:lessonId` | enrolled S / course staff / AD — **plus any authenticated user when the lesson is `isFree` on a listed, published course**; a preview viewer gets no progress record |
-| POST | `/:courseId/reorder` | course staff/AD |
+| POST | `/:courseId/reorder` | course staff/AD — accepts ordered `sections[]`, lesson groups `{sectionId, lessonIds[]}`, and/or ordered `videos[]`; lesson order controls the student course sequence, while video order controls the staff library list |
 
 Course `visibility` is `listed` (shown in the catalog; free lessons open to anyone signed in) or `hidden` (invisible unless enrolled). The old `public` value and open self-enrolment are gone — enrolment is by access code or staff assignment. Migration `005` maps `public → listed`, `private → hidden`.
 

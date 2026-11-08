@@ -293,15 +293,71 @@ class CourseService {
     return lesson;
   }
 
-  static async reorder(courseId, { sections = [], lessons = [] }) {
-    const ops = [];
-    sections.forEach((s, idx) =>
-      ops.push(Section.updateOne({ _id: s, course: courseId }, { $set: { order: idx } })));
-    for (const group of lessons) {
-      group.lessonIds.forEach((id, idx) =>
-        ops.push(Lesson.updateOne({ _id: id, course: courseId }, { $set: { order: idx, section: group.sectionId } })));
+  static async reorder(courseId, { sections, lessons, videos } = {}) {
+    const sectionOps = [];
+    const lessonOps = [];
+    const videoOps = [];
+
+    if (sections !== undefined) {
+      const uniqueIds = new Set(sections.map(String));
+      const [existing, currentCount] = await Promise.all([
+        Section.find({ _id: { $in: sections }, course: courseId, deletedAt: null }).select('_id').lean(),
+        Section.countDocuments({ course: courseId, deletedAt: null }),
+      ]);
+      if (uniqueIds.size !== sections.length || existing.length !== sections.length || currentCount !== sections.length) {
+        throw ApiError.badRequest('Sections must be unique and belong to this course');
+      }
+      if (sections.length) {
+        sectionOps.push(...sections.map((id, order) => ({
+          updateOne: { filter: { _id: id, course: courseId, deletedAt: null }, update: { $set: { order } } },
+        })));
+      }
     }
-    await Promise.all(ops);
+
+    if (lessons?.length) {
+      const sectionIds = lessons.map((group) => String(group.sectionId));
+      const lessonIds = lessons.flatMap((group) => group.lessonIds.map(String));
+      const existingSections = await Section.find({
+        _id: { $in: lessons.map((group) => group.sectionId) }, course: courseId, deletedAt: null,
+      }).select('_id').lean();
+      const existingLessons = await Lesson.find({
+        _id: { $in: lessons.flatMap((group) => group.lessonIds) }, course: courseId, deletedAt: null,
+      }).select('_id').lean();
+      if (new Set(sectionIds).size !== sectionIds.length || existingSections.length !== sectionIds.length) {
+        throw ApiError.badRequest('Lesson destinations must be unique and belong to this course');
+      }
+      if (new Set(lessonIds).size !== lessonIds.length || existingLessons.length !== lessonIds.length) {
+        throw ApiError.badRequest('Lessons must be unique and belong to this course');
+      }
+      lessonOps.push(...lessons.flatMap((group) => group.lessonIds.map((id, order) => ({
+        updateOne: {
+          filter: { _id: id, course: courseId, deletedAt: null },
+          update: { $set: { order, section: group.sectionId } },
+        },
+      }))));
+    }
+
+    if (videos !== undefined) {
+      const uniqueIds = new Set(videos.map(String));
+      const [existing, currentCount] = await Promise.all([
+        Video.find({ _id: { $in: videos }, course: courseId, deletedAt: null }).select('_id').lean(),
+        Video.countDocuments({ course: courseId, deletedAt: null }),
+      ]);
+      if (uniqueIds.size !== videos.length || existing.length !== videos.length || currentCount !== videos.length) {
+        throw ApiError.badRequest('Videos must be unique and belong to this course');
+      }
+      if (videos.length) {
+        videoOps.push(...videos.map((id, order) => ({
+          updateOne: { filter: { _id: id, course: courseId, deletedAt: null }, update: { $set: { order } } },
+        })));
+      }
+    }
+
+    await Promise.all([
+      sectionOps.length && Section.bulkWrite(sectionOps),
+      lessonOps.length && Lesson.bulkWrite(lessonOps),
+      videoOps.length && Video.bulkWrite(videoOps),
+    ].filter(Boolean));
   }
 
   /** Recompute denormalized counters used on catalog cards. */
