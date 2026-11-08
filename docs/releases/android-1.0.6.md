@@ -8,16 +8,16 @@ fastlane setup in this repo, so nobody can push to Play from the command line.
 | | |
 |---|---|
 | Package | `com.alahliyya.lms` (label **Feker**) |
-| versionCode / versionName | **8** / **1.0.6** |
-| Upload this | `Feker-1.0.6.aab` (repo root, 6,940,120 bytes) |
-| Sideload test build | `Feker-1.0.6.apk` (repo root, 7,287,467 bytes — same code, signed, release config) |
+| versionCode / versionName | **9** / **1.0.6** |
+| Upload this | `Feker-1.0.6.aab` (repo root, 6,940,124 bytes) |
+| Sideload test build | `Feker-1.0.6.apk` (repo root, 7,287,471 bytes — same code, signed, release config) |
 | Signed by | `CN=Students Alahliyya`, SHA-256 `09340f795faa304bb7503055ba9ec8356814986df3ef9ca07f21ccab72ecdf71` |
-| Built from | `main` @ `4a575ac` |
+| Built from | `main` @ `1008320` |
 
 Both artifacts are gitignored. Do not commit them.
 
-**Rebuilt on 8 November** over the original 1.0.6 artifacts, which were
-versionCode 7 and are gone. This build carries a fix to the video player: its
+**Rebuilt on 8 November** over the original 1.0.6 artifacts. Version codes 7
+and 8 have both been used on Play already, so this build is code 9. This build carries a fix to the video player: its
 expand control never actually covered the screen — the wrapper kept a
 `relative` class that beat the `fixed` one Tailwind emits earlier, so the
 player was sized to the screen but left in the page flow. The same change keeps
@@ -50,7 +50,7 @@ SDK="C:/Users/User/AppData/Local/Android/Sdk/build-tools/36.0.0"
 cd ../.. && node scripts/scan-apk-secrets.mjs client/android/app/build/outputs/apk/release/app-release.apk
 ```
 
-Expected: `CN=Students Alahliyya` with the SHA-256 above, `versionCode='8'
+Expected: `CN=Students Alahliyya` with the SHA-256 above, `versionCode='9'
 versionName='1.0.6'`, and `PASS: no server secret found in the APK.`
 
 If the signature block is missing entirely, `client/android/keystore.properties`
@@ -87,7 +87,7 @@ Give these steps to whoever holds Play Console access for `com.alahliyya.lms`:
    after a long gap).
 2. **Create new release**.
 3. Upload `Feker-1.0.6.aab`.
-4. If Play rejects it with *"Version code 8 has already been used"*: raise
+4. If Play rejects it with *"Version code 9 has already been used"*: raise
    `versionCode` in `client/android/app/build.gradle` to one above whatever the
    Console shows as the highest, rebuild (section 1), and upload again. Never
    lower it.
