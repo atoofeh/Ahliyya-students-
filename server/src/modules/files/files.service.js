@@ -75,6 +75,23 @@ class FileService {
     ]);
     return [...byKind, ...videos];
   }
+
+  /** Current filesystem usage for the server volume that backs the app. */
+  static async systemStorageStats() {
+    const stats = await fs.promises.statfs('/');
+    const blockSize = Number(stats.bsize);
+    const totalBytes = Number(stats.blocks) * blockSize;
+    const usedBytes = (Number(stats.blocks) - Number(stats.bfree)) * blockSize;
+    const availableBytes = Number(stats.bavail) * blockSize;
+
+    return {
+      totalBytes,
+      usedBytes,
+      availableBytes,
+      usedPercent: totalBytes ? Math.round((usedBytes / totalBytes) * 1000) / 10 : 0,
+      sampledAt: new Date().toISOString(),
+    };
+  }
 }
 
 module.exports = FileService;

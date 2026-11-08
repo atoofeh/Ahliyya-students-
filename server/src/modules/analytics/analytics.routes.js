@@ -7,6 +7,7 @@ const asyncHandler = require('../../core/asyncHandler');
 const audit = require('../../core/audit');
 const { requireCourseOwnership } = require('../../middleware/courseAccess');
 const AnalyticsService = require('./analytics.service');
+const FileService = require('../files/files.service');
 
 router.use(authenticate);
 
@@ -24,6 +25,10 @@ router.get('/courses/:courseId', requireCourseOwnership, asyncHandler(async (req
 
 router.get('/admin', requirePermission(P.ANALYTICS_GLOBAL), asyncHandler(async (req, res) => {
   res.json(await AnalyticsService.adminDashboard());
+}));
+
+router.get('/admin/storage', requirePermission(P.ANALYTICS_GLOBAL), asyncHandler(async (req, res) => {
+  res.json(await FileService.systemStorageStats());
 }));
 
 router.get('/admin/report', requirePermission(P.ANALYTICS_GLOBAL), asyncHandler(async (req, res) => {

@@ -257,7 +257,7 @@ export function EmptyState({ icon, title, subtitle, action }) {
   );
 }
 
-export function StatCard({ icon, label, value, sub, color = 'primary' }) {
+export function StatCard({ icon, label, value, sub, progress, color = 'primary' }) {
   const colors = {
     primary: 'bg-brand-50 text-brand-600 dark:bg-brand-900/50 dark:text-brand-300',
     green: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300',
@@ -277,6 +277,7 @@ export function StatCard({ icon, label, value, sub, color = 'primary' }) {
           {sub && <p className="truncate text-xs text-surface-400">{sub}</p>}
         </div>
       </div>
+      {progress != null && <ProgressBar value={progress} className="relative mt-3" />}
     </Card>
   );
 }

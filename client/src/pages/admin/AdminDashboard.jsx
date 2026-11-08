@@ -43,6 +43,7 @@ function ChartLegend({ items }) {
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
+  const [diskUsage, setDiskUsage] = useState(null);
   const { isDark } = useTheme();
   const { t } = useLanguage();
   const C = CHART[isDark ? 'dark' : 'light'];
@@ -51,8 +52,25 @@ export default function AdminDashboard() {
     api.get('/analytics/admin').then(({ data }) => setData(data)).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    let timer;
+    const refreshDiskUsage = async () => {
+      try {
+        const { data: usage } = await api.get('/analytics/admin/storage');
+        if (active) setDiskUsage(usage);
+      } catch { /* Keep the last successful sample visible. */ }
+      if (active) timer = window.setTimeout(refreshDiskUsage, 30_000);
+    };
+    refreshDiskUsage();
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   if (!data) return <SkeletonCard />;
-  const { users, courses, activity, storage, popularCourses, loginTrend, deviceStats } = data;
+  const { users, courses, activity, popularCourses, loginTrend, deviceStats } = data;
 
   // Build login trend series: day → { success, failed }
   const trendByDay = {};
@@ -63,7 +81,8 @@ export default function AdminDashboard() {
   }
   const trend = Object.values(trendByDay);
 
-  const storageTotal = (storage || []).reduce((s, x) => s + (x.bytes || 0), 0);
+  const storageUsedGb = diskUsage ? (diskUsage.usedBytes / 1_000_000_000).toFixed(2) : null;
+  const storageTotalGb = diskUsage ? (diskUsage.totalBytes / 1_000_000_000).toFixed(2) : null;
 
   return (
     <div className="space-y-6">
@@ -78,7 +97,11 @@ export default function AdminDashboard() {
         <StatCard icon={<FileWarning size={20} />} label={t('adm.cheat7d')} value={activity.cheat7d} color="rose" />
         {/* The unit belongs beside its number whichever way the page reads. */}
         <StatCard icon={<HardDrive size={20} />} label={t('adm.storage')}
-          value={<span dir="ltr">{`${(storageTotal / 1073741824).toFixed(2)} GB`}</span>} color="amber" />
+          value={diskUsage ? <span dir="ltr">{`${storageUsedGb} GB`}</span> : '—'}
+          sub={diskUsage
+            ? t('adm.storageCapacity', { total: storageTotalGb, percent: diskUsage.usedPercent.toFixed(1) })
+            : t('adm.storageLoading')}
+          progress={diskUsage?.usedPercent} color="amber" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
