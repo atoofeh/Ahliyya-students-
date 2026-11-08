@@ -37,6 +37,7 @@ Thumbs.db
 
 # built app packages
 *.apk
+*.aab
 
 # Firebase.
 # client/android/app/google-services.json IS committed: it ships inside every
