@@ -8,13 +8,26 @@ fastlane setup in this repo, so nobody can push to Play from the command line.
 | | |
 |---|---|
 | Package | `com.alahliyya.lms` (label **Feker**) |
-| versionCode / versionName | **7** / **1.0.6** |
-| Upload this | `Feker-1.0.6.aab` (repo root, 6.9 MB) |
-| Sideload test build | `Feker-1.0.6.apk` (repo root, 7.3 MB — same code, signed, release config) |
+| versionCode / versionName | **8** / **1.0.6** |
+| Upload this | `Feker-1.0.6.aab` (repo root, 6,940,120 bytes) |
+| Sideload test build | `Feker-1.0.6.apk` (repo root, 7,287,467 bytes — same code, signed, release config) |
 | Signed by | `CN=Students Alahliyya`, SHA-256 `09340f795faa304bb7503055ba9ec8356814986df3ef9ca07f21ccab72ecdf71` |
-| Built from | `main` @ `26790dc` |
+| Built from | `main` @ `4a575ac` |
 
 Both artifacts are gitignored. Do not commit them.
+
+**Rebuilt on 8 November** over the original 1.0.6 artifacts, which were
+versionCode 7 and are gone. This build carries a fix to the video player: its
+expand control never actually covered the screen — the wrapper kept a
+`relative` class that beat the `fixed` one Tailwind emits earlier, so the
+player was sized to the screen but left in the page flow. The same change keeps
+iOS inside that expanded view rather than the system's own fullscreen; that half
+does nothing on Android but travels in the same file.
+
+Note the working tree is not clean: the privacy and support pages,
+`MainLayout.jsx`, `SupportPage.jsx` and `vite.config.js` carry uncommitted
+edits, and they are inside this build. They were inside the previous one too.
+Committing them is the owner's call, not a blocker for publishing.
 
 ## 1. Re-verify the build
 
@@ -37,7 +50,7 @@ SDK="C:/Users/User/AppData/Local/Android/Sdk/build-tools/36.0.0"
 cd ../.. && node scripts/scan-apk-secrets.mjs client/android/app/build/outputs/apk/release/app-release.apk
 ```
 
-Expected: `CN=Students Alahliyya` with the SHA-256 above, `versionCode='7'
+Expected: `CN=Students Alahliyya` with the SHA-256 above, `versionCode='8'
 versionName='1.0.6'`, and `PASS: no server secret found in the APK.`
 
 If the signature block is missing entirely, `client/android/keystore.properties`
@@ -52,10 +65,14 @@ Feker-1.0.6.apk`) and check:
 2. **Open a course video.** It must start within a few seconds. This release
    follows a server fix for videos that would not play at all; if a video still
    hangs, stop and report it rather than publishing.
-3. **Past questions** open in the in-app reader, with no download button.
-4. **Account deletion** — the link sits in the student sidebar; the page must
+3. **Full screen on a video.** Tap the expand control beside the player: the
+   video must cover the whole screen with the page gone behind it, the moving
+   watermark must still appear over it, and the collapse control must bring the
+   lesson back. This is the fix this rebuild exists for.
+4. **Past questions** open in the in-app reader, with no download button.
+5. **Account deletion** — the link sits in the student sidebar; the page must
    load and accept a request (Play requires this path to exist).
-5. **Teacher account**: open a course → Curriculum, move a section and a lesson,
+6. **Teacher account**: open a course → Curriculum, move a section and a lesson,
    reload, and confirm the order held.
 
 A debug build must never be published: debug permits cleartext traffic to a LAN
@@ -70,7 +87,7 @@ Give these steps to whoever holds Play Console access for `com.alahliyya.lms`:
    after a long gap).
 2. **Create new release**.
 3. Upload `Feker-1.0.6.aab`.
-4. If Play rejects it with *"Version code 7 has already been used"*: raise
+4. If Play rejects it with *"Version code 8 has already been used"*: raise
    `versionCode` in `client/android/app/build.gradle` to one above whatever the
    Console shows as the highest, rebuild (section 1), and upload again. Never
    lower it.
@@ -87,6 +104,7 @@ Review usually takes a few hours to a couple of days.
 
 ```
 Videos now start playing right away, including long lectures.
+Full screen fills the whole screen properly.
 Past questions open in the app with practice questions underneath.
 You can report or block someone in a Q&A thread.
 You can request account deletion from your account page.
@@ -98,6 +116,7 @@ Fixes and polish throughout, in both Arabic and English.
 
 ```
 تبدأ مقاطع الفيديو بالعمل فورًا، بما في ذلك المحاضرات الطويلة.
+يملأ وضع ملء الشاشة الشاشة بالكامل كما ينبغي.
 تُفتح الأسئلة السابقة داخل التطبيق مع أسئلة تدريب تحتها.
 يمكنك الإبلاغ عن مستخدم أو حظره في نقاشات الأسئلة والأجوبة.
 يمكنك طلب حذف حسابك من صفحة الحساب.
