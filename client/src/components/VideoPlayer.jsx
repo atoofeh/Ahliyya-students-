@@ -153,6 +153,52 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     };
   }, [isExpanded]);
 
+  /**
+   * WebKit's two ways of taking the video out from under this component.
+   *
+   * Both end with the video painting alone — the watermark, the expand control
+   * and everything else here gone, at exactly the moment a screen is worth
+   * filming. `controlsList` does not prevent either: it is a Chromium feature
+   * Safari ignores. Nor does hiding the fullscreen control in CSS, because a
+   * pinch-out gesture on the video enters fullscreen with no button involved.
+   *
+   * AirPlay: `x-webkit-airplay="deny"` removes the route picker, so the video
+   * cannot be sent to a television where this overlay does not follow it.
+   * Mirroring is a different path, and the iOS app already covers its window.
+   *
+   * Fullscreen: leave again the moment it begins, and switch on the expanded
+   * layout above instead — the same filled screen, with the watermark still on
+   * it. Expanding first means there is no flash of the small player on the way
+   * back. If leaving does not take, the video is playing unmarked, so it
+   * stops: a surprising pause is the cheaper mistake.
+   *
+   * Keyed to `src` because the element below only exists once there is one.
+   */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+    video.setAttribute('x-webkit-airplay', 'deny');
+    video.setAttribute('disableremoteplayback', '');
+    if (typeof video.webkitExitFullscreen !== 'function') return undefined;
+    let check;
+    const onBegin = () => {
+      setIsExpanded(true);
+      try { video.webkitExitFullscreen(); } catch { /* the check below covers it */ }
+      clearTimeout(check);
+      check = setTimeout(() => {
+        if (video.webkitDisplayingFullscreen) video.pause();
+      }, 600);
+    };
+    const onEnd = () => clearTimeout(check);
+    video.addEventListener('webkitbeginfullscreen', onBegin);
+    video.addEventListener('webkitendfullscreen', onEnd);
+    return () => {
+      clearTimeout(check);
+      video.removeEventListener('webkitbeginfullscreen', onBegin);
+      video.removeEventListener('webkitendfullscreen', onEnd);
+    };
+  }, [src]);
+
   // Pause when tab hidden
   useEffect(() => {
     const onVis = () => { if (document.hidden) videoRef.current?.pause(); };
@@ -246,10 +292,10 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   return (
     <>
     <div
-      className={`relative select-none overflow-hidden bg-black ${
+      className={`select-none overflow-hidden bg-black ${
         isExpanded
           ? 'fixed inset-0 z-[70] flex h-[100dvh] w-screen items-center justify-center rounded-none'
-          : 'aspect-video w-full rounded-xl'}`}
+          : 'relative aspect-video w-full rounded-xl'}`}
       style={isExpanded ? {
         paddingTop: 'var(--safe-top)',
         paddingBottom: 'var(--safe-bottom)',

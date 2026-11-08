@@ -129,8 +129,16 @@
 */
 .bidi-isolate { unicode-bidi: isolate; }
 
-/* Keep lesson videos inline; the app's own expand control resizes the player. */
-.lesson-video::-webkit-media-controls-fullscreen-button { display: none; }
+/*
+  Keep lesson videos inline; the app's own expand control resizes the player.
+
+  This hides the control WebKit draws in its own media controls, which is the
+  only thing that reaches iOS — `controlsList="nofullscreen"` is ignored there.
+  It is an unspecified shadow-DOM pseudo-element, so treat it as a courtesy and
+  not a guard: VideoPlayer catches the fullscreen itself, because a pinch
+  gesture on the video needs no control at all.
+*/
+.lesson-video::-webkit-media-controls-fullscreen-button { display: none !important; }
 
 /*
   Arabic in a Latin-first type stack falls back unpredictably per platform.
