@@ -11,7 +11,7 @@ made on macOS and nothing in this repo has ever produced one.
 | Development team | `JAXM7Y97H8`, automatic signing (already set in the project) |
 | Dependencies | Swift Package Manager — **no CocoaPods, no `pod install`** |
 | Deployment target | iOS 15.0 |
-| Current version in git | `MARKETING_VERSION = 1.0.1`, `CURRENT_PROJECT_VERSION = 9` |
+| Version in git | `MARKETING_VERSION = 1.0.7`, `CURRENT_PROJECT_VERSION = 10` — matching Android |
 | API the build talks to | `https://students-alahliyaa.com/api/v1`, from `client/.env.ios` |
 
 ## 1. Build the web bundle
@@ -24,6 +24,11 @@ npm run build:ios      # vite build --mode ios && cap sync ios
 npm run ios:open       # opens ios/App in Xcode
 ```
 
+`npm run build:ios` is not optional. `ios/App/App/public` — the web bundle the
+app actually runs — is a build artifact and is deliberately not in git, so a
+fresh clone has no copy of it at all and an older checkout has a stale one.
+Everything in this release lives in that bundle, not in the Swift code.
+
 `npm run build:ios` is the only correct command. A plain `npm run build` bakes
 in a different API base and produces an app that cannot reach the server — this
 exact mistake has been made twice on the Android side. Confirm before archiving:
@@ -34,20 +39,16 @@ grep -l "https://students-alahliyaa.com/api/v1" ios/App/App/public/assets/*.js
 
 That must print a filename. If it prints nothing, the wrong build is staged.
 
-## 2. Set the version numbers
+## 2. Version numbers
 
-This is the one decision that cannot be made from Windows, because it depends
-on what App Store Connect already shows.
+**Already set**: the project is on version `1.0.7`, build `10`, the same
+numbers Android 1.0.7 carries. Nothing to change unless App Store Connect
+disagrees.
 
-In Xcode, select the **App** target → *General*:
-
-- **Version** (`MARKETING_VERSION`) — currently `1.0.1`. The recommendation is
-  `1.0.7`, so iOS and Android carry the same number for the same code.
-- **Build** (`CURRENT_PROJECT_VERSION`) — currently `9`. It must be **higher
-  than any build already uploaded** for that version. If builds 1–9 have been
-  uploaded before, use `10`.
-
-App Store Connect rejects a build whose number it has already seen, and the
+It will disagree only if build 10 of this version has been uploaded before.
+In that case, in Xcode select the **App** target → *General* and raise
+**Build** (`CURRENT_PROJECT_VERSION`) above the highest number the Console
+shows. App Store Connect rejects a build number it has already seen, and the
 number can never go down.
 
 ## 3. Signing
