@@ -132,13 +132,77 @@
 /*
   Keep lesson videos inline; the app's own expand control resizes the player.
 
-  This hides the control WebKit draws in its own media controls, which is the
-  only thing that reaches iOS — `controlsList="nofullscreen"` is ignored there.
-  It is an unspecified shadow-DOM pseudo-element, so treat it as a courtesy and
-  not a guard: VideoPlayer catches the fullscreen itself, because a pinch
-  gesture on the video needs no control at all.
+  The first rule is a courtesy for Safari on the Mac, where the media controls
+  are a styleable shadow tree. It does nothing on iOS, where the controls are
+  painted by the system outside the page — which is why VideoPlayer switches
+  the native controls off on WebKit and draws its own instead.
+
+  The second rule does matter on iOS: a video with no `controls` still gets a
+  large system play button laid over it until playback starts, and it would
+  cover the controls below.
 */
 .lesson-video::-webkit-media-controls-fullscreen-button { display: none !important; }
+.lesson-video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
+/*
+  The scrubber for those controls. It stays a real <input type="range">, so a
+  keyboard and VoiceOver get it for nothing and only the paint is ours.
+  `--played` carries the progress, which saves a second element for the filled
+  part of the track. `touch-action: none` is the same lesson as the drag
+  handles: without it the browser claims the swipe for scrolling and the
+  scrubber cannot be dragged on a phone.
+*/
+.video-scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  background: transparent;
+  touch-action: none;
+  cursor: pointer;
+}
+.video-scrubber::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    rgb(255 255 255 / 0.95) var(--played, 0%),
+    rgb(255 255 255 / 0.3) var(--played, 0%)
+  );
+}
+.video-scrubber::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    rgb(255 255 255 / 0.95) var(--played, 0%),
+    rgb(255 255 255 / 0.3) var(--played, 0%)
+  );
+}
+.video-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.55);
+}
+.video-scrubber::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.55);
+}
+.video-scrubber:disabled { cursor: default; opacity: 0.5; }
+.video-scrubber:focus-visible { outline: 2px solid #fff; outline-offset: 3px; border-radius: 999px; }
 
 /*
   Arabic in a Latin-first type stack falls back unpredictably per platform.

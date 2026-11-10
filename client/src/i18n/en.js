@@ -281,6 +281,13 @@ export default {
   'video.limitHint': 'Ask your teacher if you need it reopened.',
   'video.expand': 'Expand video to fit the phone screen',
   'video.collapse': 'Return video to the lesson',
+  'video.play': 'Play',
+  'video.pause': 'Pause',
+  'video.back10': 'Back 10 seconds',
+  'video.forward10': 'Forward 10 seconds',
+  'video.mute': 'Mute sound',
+  'video.unmute': 'Turn sound back on',
+  'video.seek': 'Position in the video',
 
   // ── Quiz ───────────────────────────────────────────────────────────
   'quiz.question': 'Question {n} of {total}',

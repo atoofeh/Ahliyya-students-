@@ -71,19 +71,25 @@ not show you the screen-recording behaviour) and check:
 
 1. **Sign in** as a student account.
 2. **Play a course video.** It must start within a few seconds.
-3. **Full screen.** Tap the expand control beside the player: the video must
+3. **The player's own controls.** The video must carry the app's control bar —
+   play, 10 seconds back and forward, a scrubber, mute — and **nothing else**.
+   If a full-screen arrow or a picture-in-picture button appears in a corner
+   of the video, those are WebKit's own controls and the app is serving an old
+   bundle: section 1 was skipped. Both are ways out of the player, and
+   whatever leaves the player leaves the watermark behind.
+4. **Full screen.** Tap the expand control at the top corner: the video must
    cover the whole screen with the page gone behind it, and the moving
    watermark must still appear over it. Then **pinch outwards on the video** —
-   iOS tries to open its own fullscreen player, and the app must bounce
-   straight back into its own expanded view rather than showing a bare video.
-   If a bare, unwatermarked video appears and stays, stop and report it: that
-   guard is the reason this build exists and it has never been run on a phone.
-4. **Screen recording.** Start one from Control Centre while a video plays: the
+   iOS tries to open its own fullscreen player even with no button on screen,
+   and the app must bounce straight back into its own expanded view rather
+   than showing a bare video. If a bare, unwatermarked video appears and
+   stays, stop and report it: that guard has never been run on a phone.
+5. **Screen recording.** Start one from Control Centre while a video plays: the
    app must cover itself and the video must pause.
-5. **Past questions** open in the in-app reader, with no share or save control.
-6. **Account deletion** — the link is in the student sidebar; the page must
+6. **Past questions** open in the in-app reader, with no share or save control.
+7. **Account deletion** — the link is in the student sidebar; the page must
    load and accept a request. Apple requires this path to exist.
-7. **Arabic.** Switch language in the header and confirm the layout flips.
+8. **Arabic.** Switch language in the header and confirm the layout flips.
 
 ## 5. Archive and upload
 

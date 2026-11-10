@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLanguage } from '../hooks/useLanguage';
-import { Loader2, ShieldCheck, Lock, Eye, AlertTriangle, Maximize, Minimize } from 'lucide-react';
+import {
+  Loader2, ShieldCheck, Lock, Eye, AlertTriangle, Maximize, Minimize,
+  Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX,
+} from 'lucide-react';
 import api, { API_BASE, apiError } from '../api/axios';
 import LmsNative, { isNative, platformName } from '../api/native';
 
@@ -11,6 +14,8 @@ import LmsNative, { isNative, platformName } from '../api/native';
  *  - Intermittent dynamic watermark (name / id / timestamp), including expanded view.
  *  - Download & PiP disabled, context menu blocked, playback pauses when the
  *    tab is hidden (limits screen-capture-while-hidden and casting tricks).
+ *  - On WebKit the native controls are replaced by the bar below, because
+ *    Safari ignores every request to drop its full-screen and PiP buttons.
  *  - Resume: seeks to last saved position; progress heartbeat every 10s.
  *
  * Honest limitation: browsers cannot fully prevent screen recording (OS-level
@@ -33,6 +38,51 @@ const WM_FIRST_MS = 5000;
 // The most one `timeupdate` may credit. Ticks arrive ~4x a second, so this
 // covers playback up to 8x and treats anything larger as a seek.
 const MAX_STEP_SECONDS = 2;
+
+/**
+ * Whether this browser draws media controls we are not allowed to trim.
+ *
+ * Every lever for removing the full-screen and picture-in-picture buttons is a
+ * Chromium feature: `controlsList`, `disablePictureInPicture`, and the
+ * `::-webkit-media-controls-fullscreen-button` pseudo-element, which only
+ * reaches Safari on the Mac. On iOS the control overlay is painted by the
+ * system, outside the page, and it carries a full-screen button, a
+ * picture-in-picture button and an overflow menu whatever the page asks for.
+ * All three take the video out from under this component — no watermark, no
+ * expand control, nothing — at exactly the moment a screen is worth filming.
+ *
+ * So where the controls cannot be trimmed they are switched off entirely and
+ * the bar below is used instead. The question is asked of the engine, not of
+ * the user agent string: every browser on iOS is WebKit underneath, Chrome
+ * and Firefox included, so sniffing for Safari would miss most of them.
+ *
+ * Both clauses were measured rather than assumed. `controlsList` is the
+ * Chromium feature this all hinges on, so a browser without it is a browser
+ * whose controls we cannot trim — WebKit 605 (Safari 27) still reports it
+ * missing, along with `disablePictureInPicture`, which is why a
+ * picture-in-picture button appears there whatever the markup says.
+ * `webkitSetPresentationMode` then covers a future Safari that adds
+ * `controlsList` but keeps drawing its own full-screen and PiP buttons; it is
+ * Apple-only, and current Chromium has neither it nor the old
+ * `webkitEnterFullscreen`, so no Chromium build is caught by either clause.
+ */
+const webkitMediaUi = typeof HTMLVideoElement !== 'undefined'
+  && (typeof HTMLVideoElement.prototype.webkitSetPresentationMode === 'function'
+    || !('controlsList' in HTMLMediaElement.prototype));
+
+const SKIP_SECONDS = 10;
+// How long the bar stays after a tap before fading, while the video plays.
+const BAR_HIDE_MS = 3400;
+
+/** Seconds as a clock, dropping the hours on anything under one. */
+function clock(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const whole = Math.floor(seconds);
+  const ss = String(whole % 60).padStart(2, '0');
+  const mm = Math.floor(whole / 60) % 60;
+  const hh = Math.floor(whole / 3600);
+  return hh ? `${hh}:${String(mm).padStart(2, '0')}:${ss}` : `${mm}:${ss}`;
+}
 export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress }) {
   const videoRef = useRef(null);
   const watchedRef = useRef(0);
@@ -50,7 +100,35 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   // for a student while the platform limit is switched off.
   const [views, setViews] = useState(null);
   const [blocked, setBlocked] = useState(false);
+  // Playback mirrored into state, for the controls this component draws itself
+  // on WebKit. Nothing else reads it, so it stays unset everywhere else.
+  const [playing, setPlaying] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [waiting, setWaiting] = useState(false);
+  const [barShown, setBarShown] = useState(true);
+  const hideTimer = useRef(null);
   const { t } = useLanguage();
+
+  /**
+   * The control bar fades while the video plays and returns on a tap — what
+   * iOS's own player does, so it is what a student expects. It stays put
+   * whenever playback is stopped: a paused screen with no controls on it
+   * reads as broken rather than as tidy.
+   */
+  const holdBar = useCallback(() => {
+    clearTimeout(hideTimer.current);
+    setBarShown(true);
+  }, []);
+  const revealBar = useCallback(() => {
+    clearTimeout(hideTimer.current);
+    setBarShown(true);
+    hideTimer.current = setTimeout(() => {
+      if (videoRef.current && !videoRef.current.paused) setBarShown(false);
+    }, BAR_HIDE_MS);
+  }, []);
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
 
   useEffect(() => {
     if (!isNative || platformName() !== 'ios') return undefined;
@@ -154,17 +232,22 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   }, [isExpanded]);
 
   /**
-   * WebKit's two ways of taking the video out from under this component.
+   * WebKit's ways of taking the video out from under this component.
    *
-   * Both end with the video painting alone — the watermark, the expand control
-   * and everything else here gone, at exactly the moment a screen is worth
-   * filming. `controlsList` does not prevent either: it is a Chromium feature
-   * Safari ignores. Nor does hiding the fullscreen control in CSS, because a
-   * pinch-out gesture on the video enters fullscreen with no button involved.
+   * Each one ends with the video painting alone — the watermark, the expand
+   * control and everything else here gone, at exactly the moment a screen is
+   * worth filming. Switching off the native controls removes the buttons that
+   * offered it, but not the routes themselves: a pinch-out gesture on the
+   * video enters full screen with no control involved, and the presentation
+   * API can be reached whether or not anything on screen calls it.
    *
    * AirPlay: `x-webkit-airplay="deny"` removes the route picker, so the video
    * cannot be sent to a television where this overlay does not follow it.
    * Mirroring is a different path, and the iOS app already covers its window.
+   *
+   * Picture in picture: the video would float above the app, unmarked, and
+   * keep playing while the student is somewhere else entirely — so it is put
+   * straight back inline, and paused if that refuses.
    *
    * Fullscreen: leave again the moment it begins, and switch on the expanded
    * layout above instead — the same filled screen, with the watermark still on
@@ -179,23 +262,41 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     if (!video) return undefined;
     video.setAttribute('x-webkit-airplay', 'deny');
     video.setAttribute('disableremoteplayback', '');
-    if (typeof video.webkitExitFullscreen !== 'function') return undefined;
     let check;
     const onBegin = () => {
       setIsExpanded(true);
-      try { video.webkitExitFullscreen(); } catch { /* the check below covers it */ }
+      try { video.webkitExitFullscreen?.(); } catch { /* the check below covers it */ }
       clearTimeout(check);
       check = setTimeout(() => {
         if (video.webkitDisplayingFullscreen) video.pause();
       }, 600);
     };
     const onEnd = () => clearTimeout(check);
+    // Either picture-in-picture API starting is treated the same way: back
+    // inline, and failing that paused, because the thing to stop is unmarked
+    // playback rather than any particular API.
+    const onPip = () => {
+      try {
+        if (typeof video.webkitSetPresentationMode === 'function') {
+          video.webkitSetPresentationMode('inline');
+        } else if (document.pictureInPictureElement === video) {
+          document.exitPictureInPicture().catch(() => video.pause());
+        }
+      } catch { video.pause(); }
+    };
+    const onPresentation = () => {
+      if (video.webkitPresentationMode === 'picture-in-picture') onPip();
+    };
     video.addEventListener('webkitbeginfullscreen', onBegin);
     video.addEventListener('webkitendfullscreen', onEnd);
+    video.addEventListener('webkitpresentationmodechanged', onPresentation);
+    video.addEventListener('enterpictureinpicture', onPip);
     return () => {
       clearTimeout(check);
       video.removeEventListener('webkitbeginfullscreen', onBegin);
       video.removeEventListener('webkitendfullscreen', onEnd);
+      video.removeEventListener('webkitpresentationmodechanged', onPresentation);
+      video.removeEventListener('enterpictureinpicture', onPip);
     };
   }, [src]);
 
@@ -258,12 +359,51 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     const position = video.currentTime;
     const advanced = position - lastPos.current;
     lastPos.current = position;
+    // Only the bar below reads this, and only WebKit draws that bar — so no
+    // other browser re-renders four times a second for nothing.
+    if (webkitMediaUi) setCurrent(position);
     if (video.paused) return;
     if (advanced > 0 && advanced <= MAX_STEP_SECONDS) watchedRef.current += advanced;
     if (Date.now() - lastBeat.current > 10000) {
       lastBeat.current = Date.now();
       heartbeat(position);
     }
+  };
+
+  /*
+    The controls this component draws on WebKit. Each one nudges the element
+    and lets the element's own events settle the state, so the bar can never
+    disagree with the video — including when something other than a tap moves
+    it, such as the heartbeat swapping in a renewed stream URL.
+  */
+  const togglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) video.play().catch(() => {});
+    else video.pause();
+    revealBar();
+  };
+  const skip = (seconds) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const end = Number.isFinite(video.duration) ? video.duration : video.currentTime;
+    video.currentTime = Math.min(Math.max(video.currentTime + seconds, 0), end);
+    revealBar();
+  };
+  const toggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    // `muted` is the only part of volume a phone lets a page touch; the
+    // loudness itself belongs to the hardware buttons.
+    video.muted = !video.muted;
+    revealBar();
+  };
+  const seekTo = (value) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = value;
+    setCurrent(value);
+    revealBar();
   };
 
   if (blocked) {
@@ -307,20 +447,117 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
       <video
         ref={videoRef}
         src={src}
-        controls
+        controls={!webkitMediaUi}
         controlsList="nofullscreen nodownload noremoteplayback noplaybackrate"
         disablePictureInPicture
         playsInline
         className={`lesson-video ${isExpanded ? 'h-full w-full object-contain' : 'aspect-video w-full'}`}
+        onClick={webkitMediaUi ? revealBar : undefined}
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={(e) => {
           if (startAt > 2) e.target.currentTime = startAt;
           lastPos.current = e.target.currentTime;
+          setCurrent(e.target.currentTime);
+          setDuration(Number.isFinite(e.target.duration) ? e.target.duration : 0);
         }}
-        onSeeked={(e) => { lastPos.current = e.target.currentTime; }}
-        onPause={() => heartbeat(videoRef.current?.currentTime || 0)}
-        onEnded={() => finish(videoRef.current?.duration || 0)}
+        onDurationChange={(e) => setDuration(Number.isFinite(e.target.duration) ? e.target.duration : 0)}
+        onSeeked={(e) => { lastPos.current = e.target.currentTime; setCurrent(e.target.currentTime); }}
+        onPlay={() => { setPlaying(true); revealBar(); }}
+        onPlaying={() => setWaiting(false)}
+        onCanPlay={() => setWaiting(false)}
+        onWaiting={() => setWaiting(true)}
+        onVolumeChange={(e) => setMuted(e.target.muted)}
+        onPause={() => { setPlaying(false); holdBar(); heartbeat(videoRef.current?.currentTime || 0); }}
+        onEnded={() => { setPlaying(false); holdBar(); finish(videoRef.current?.duration || 0); }}
       />
+      {/* WebKit's controls are off, so these are the controls. Everything the
+          native bar offered that is not here — full screen, picture in
+          picture, AirPlay, the overflow menu — was a way out of this
+          component, and leaving it out is the point. */}
+      {webkitMediaUi && (
+        <>
+          {/* Fixed to LTR for the same reason as the scrubber: these move
+              playback along the time axis, and that axis does not flip. Let
+              the row mirror and "forward" lands on the left while the
+              progress it controls still fills to the right. */}
+          <div
+            dir="ltr"
+            className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-7 transition-opacity duration-300 ${
+              barShown ? 'opacity-100' : 'opacity-0'}`}
+          >
+            <button
+              type="button"
+              onClick={() => skip(-SKIP_SECONDS)}
+              aria-label={t('video.back10')}
+              title={t('video.back10')}
+              className="pointer-events-auto rounded-full bg-black/40 p-2.5 text-white transition-colors hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <RotateCcw size={24} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={t(playing ? 'video.pause' : 'video.play')}
+              title={t(playing ? 'video.pause' : 'video.play')}
+              className="pointer-events-auto rounded-full bg-black/55 p-3.5 text-white shadow-lg transition-colors hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              {waiting && playing
+                ? <Loader2 size={28} className="animate-spin" aria-hidden="true" />
+                : playing ? <Pause size={28} aria-hidden="true" /> : <Play size={28} aria-hidden="true" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => skip(SKIP_SECONDS)}
+              aria-label={t('video.forward10')}
+              title={t('video.forward10')}
+              className="pointer-events-auto rounded-full bg-black/40 p-2.5 text-white transition-colors hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <RotateCw size={24} aria-hidden="true" />
+            </button>
+          </div>
+          <div
+            className={`absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/90 via-black/65 to-transparent px-3 pb-2 pt-7 transition-opacity duration-300 ${
+              barShown ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+            style={isExpanded ? {
+              bottom: 'var(--safe-bottom)',
+              paddingInlineStart: 'calc(var(--safe-left) + 0.75rem)',
+              paddingInlineEnd: 'calc(var(--safe-right) + 0.75rem)',
+            } : undefined}
+          >
+            {/* Time runs left to right in Arabic as well: the scrubber is a
+                clock rather than a sentence, and a mirrored one reads as
+                rewinding. The two readings are isolated so the bidi algorithm
+                cannot pull a colon across into the wrong number. */}
+            <div dir="ltr" className="flex items-center gap-2.5">
+              <span className="bidi-isolate w-10 shrink-0 text-end text-[11px] tabular-nums text-white/80">{clock(current)}</span>
+              <input
+                type="range"
+                className="video-scrubber min-w-0 flex-1"
+                min={0}
+                max={duration || 0}
+                step="any"
+                value={duration ? Math.min(current, duration) : 0}
+                disabled={!duration}
+                aria-label={t('video.seek')}
+                aria-valuetext={`${clock(current)} / ${clock(duration)}`}
+                onChange={(e) => seekTo(Number(e.target.value))}
+                style={{ '--played': `${duration ? (Math.min(current, duration) / duration) * 100 : 0}%` }}
+              />
+              <span className="bidi-isolate w-10 shrink-0 text-[11px] tabular-nums text-white/80">{clock(duration)}</span>
+              <button
+                type="button"
+                onClick={toggleMute}
+                aria-label={t(muted ? 'video.unmute' : 'video.mute')}
+                title={t(muted ? 'video.unmute' : 'video.mute')}
+                aria-pressed={muted}
+                className="shrink-0 rounded-lg p-1 text-white/85 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                {muted ? <VolumeX size={17} aria-hidden="true" /> : <Volume2 size={17} aria-hidden="true" />}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
       <button
         type="button"
         onClick={() => setIsExpanded((expanded) => !expanded)}
@@ -346,7 +583,17 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
           <div>{new Date().toLocaleString()}</div>
         </div>
       )}
-      <div className="pointer-events-none absolute bottom-14 end-3 z-10 flex items-center gap-1 rounded bg-black/30 px-1.5 py-0.5 text-[10px] text-white/50">
+      {/* Sits clear of whichever control bar is in use, and above the home
+          indicator once expanded. It outlives the bar's fade on purpose: the
+          mark is a statement about the stream, not a control. */}
+      <div
+        dir="ltr"
+        className="pointer-events-none absolute z-10 flex items-center gap-1 rounded bg-black/30 px-1.5 py-0.5 text-[10px] text-white/50"
+        style={{
+          bottom: isExpanded ? 'calc(var(--safe-bottom) + 3.75rem)' : '3.75rem',
+          insetInlineEnd: isExpanded ? 'calc(var(--safe-right) + 0.75rem)' : '0.75rem',
+        }}
+      >
         <ShieldCheck size={11} /> Protected stream
       </div>
     </div>
