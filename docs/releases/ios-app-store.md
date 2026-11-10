@@ -42,7 +42,7 @@ on what App Store Connect already shows.
 In Xcode, select the **App** target → *General*:
 
 - **Version** (`MARKETING_VERSION`) — currently `1.0.1`. The recommendation is
-  `1.0.6`, so iOS and Android carry the same number for the same code.
+  `1.0.7`, so iOS and Android carry the same number for the same code.
 - **Build** (`CURRENT_PROJECT_VERSION`) — currently `9`. It must be **higher
   than any build already uploaded** for that version. If builds 1–9 have been
   uploaded before, use `10`.
