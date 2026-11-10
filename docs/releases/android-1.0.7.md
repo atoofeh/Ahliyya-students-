@@ -9,16 +9,17 @@ nobody can push to Play from the command line.
 |---|---|
 | Package | `com.alahliyya.lms` (label **Feker**) |
 | versionCode / versionName | **10** / **1.0.7** |
-| Upload this | `Feker-1.0.7.aab` (repo root, 6,956,777 bytes) |
-| Sideload test build | `Feker-1.0.7.apk` (repo root, 7,304,179 bytes — same code, signed, release config) |
+| Upload this | `Feker-1.0.7.aab` (repo root, 6,957,381 bytes) |
+| Sideload test build | `Feker-1.0.7.apk` (repo root, 7,304,783 bytes — same code, signed, release config) |
 | Signed by | `CN=Students Alahliyya`, SHA-256 `09340f795faa304bb7503055ba9ec8356814986df3ef9ca07f21ccab72ecdf71` |
-| Built from | `main` @ `345866e` |
+| Built from | `main` @ `f995969` |
 
 Both artifacts are gitignored. Do not commit them.
 
-**`Feker-1.0.6.aab` and `Feker-1.0.6.apk` are also at the repo root and are
-superseded.** They are version code 9, built before this release. Play is
-already serving 1.0.6 as code 8. Upload the 1.0.7 files and nothing else.
+The superseded 1.0.6 artifacts have been deleted, so the only release files at
+the repo root are the two named above. (`Feker-فكر.apk` is also there: it is a
+version code 1 build from October, unrelated to this release and not for
+upload.)
 
 ## What changed since the version on Play
 
@@ -35,6 +36,9 @@ already serving 1.0.6 as code 8. Upload the 1.0.7 files and nothing else.
   player was resized to the screen but left sitting in the page.
 - Safe-area padding on the privacy and support pages, so neither sits under
   the status bar on an edge-to-edge phone.
+
+The website carrying these pages was deployed on 10 November and verified
+live, so the store listing URLs already serve the new pages.
 
 ## 1. Re-verify the build
 
