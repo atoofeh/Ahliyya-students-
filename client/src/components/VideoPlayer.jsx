@@ -262,6 +262,16 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     if (!video) return undefined;
     video.setAttribute('x-webkit-airplay', 'deny');
     video.setAttribute('disableremoteplayback', '');
+    // A pinch is WebKit's own route into full screen and no event can refuse
+    // it — `webkitbeginfullscreen` fires once the decision is already made.
+    // These refuse the *gesture* instead, before it is recognised as one, and
+    // `touch-action: pan-y` on the element says the same thing to the
+    // compositor while leaving the page scrollable. Whether WebKit routes its
+    // video pinch through them is undocumented and untested on a device, so
+    // they are a first line and never the guard: the bounce below is.
+    const swallowGesture = (event) => event.preventDefault();
+    video.addEventListener('gesturestart', swallowGesture);
+    video.addEventListener('gesturechange', swallowGesture);
     let check;
     const onBegin = () => {
       setIsExpanded(true);
@@ -293,6 +303,8 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     video.addEventListener('enterpictureinpicture', onPip);
     return () => {
       clearTimeout(check);
+      video.removeEventListener('gesturestart', swallowGesture);
+      video.removeEventListener('gesturechange', swallowGesture);
       video.removeEventListener('webkitbeginfullscreen', onBegin);
       video.removeEventListener('webkitendfullscreen', onEnd);
       video.removeEventListener('webkitpresentationmodechanged', onPresentation);

@@ -142,6 +142,14 @@
   cover the controls below.
 */
 .lesson-video::-webkit-media-controls-fullscreen-button { display: none !important; }
+
+/*
+  `pan-y` keeps the page scrollable with a finger that lands on the video
+  while refusing the pinch that WebKit turns into full screen. It is a first
+  line only — whether WebKit's video pinch honours touch-action is
+  undocumented — and VideoPlayer's bounce remains the actual guard.
+*/
+.lesson-video { touch-action: pan-y; }
 .lesson-video::-webkit-media-controls-start-playback-button {
   display: none !important;
   -webkit-appearance: none;
