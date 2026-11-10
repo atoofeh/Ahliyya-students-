@@ -16,7 +16,11 @@
         text-rendering: optimizeLegibility;
       }
       * { box-sizing: border-box; }
-      body { margin: 0; padding: 28px 16px; }
+      body { margin: 0; padding: max(28px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+      .back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 18px; padding: 9px 16px; border: 1px solid #ffffff3d; border-radius: 999px; color: #fff; background: #ffffff1a; font-size: 13px; font-weight: 650; text-decoration: none; }
+      .back:hover { background: #ffffff2e; }
+      .back:focus-visible { outline: 2px solid #f3d66f; outline-offset: 2px; }
+      .back svg { flex: none; }
       a { color: #31508c; }
       main {
         width: min(100%, 900px);
@@ -81,7 +85,7 @@
       #arabic summary::after { right: auto; left: 18px; }
       #arabic details p { line-height: 2; }
       @media (max-width: 560px) {
-        body { padding: 10px 7px; }
+        body { padding: max(28px, env(safe-area-inset-top)) max(7px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left)); }
         main { border-radius: 12px; }
         .hero { padding-top: 30px; }
         .content { padding-top: 24px; }
@@ -95,6 +99,10 @@
   <body>
     <main>
       <header class="hero">
+        <a class="back" id="back-link" href="/" aria-label="Back to the app — العودة إلى التطبيق">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+          <span>Back</span><span aria-hidden="true">·</span><span>رجوع</span>
+        </a>
         <p class="brand">Feker · Help Center</p>
         <h1>How can we help?</h1>
         <p class="intro">Find quick help for signing in, opening courses, watching lessons, and completing quizzes.</p>
@@ -179,5 +187,19 @@
         </nav>
       </div>
     </main>
+    <script>
+      document.getElementById('back-link').addEventListener('click', function (event) {
+        try {
+          var cameFromTheApp = document.referrer
+            && new URL(document.referrer).origin === window.location.origin;
+          if (window.history.length > 1 && cameFromTheApp) {
+            event.preventDefault();
+            window.history.back();
+          }
+        } catch (err) {
+          /* Opened from a store listing or a bookmark: the href takes them home. */
+        }
+      });
+    </script>
   </body>
 </html>
