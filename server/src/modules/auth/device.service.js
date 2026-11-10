@@ -136,12 +136,49 @@ class DeviceService {
   /** Store a reset request only when the account exists; the caller's reply is identical either way. */
   static async requestReset({ username, note, ip, userAgent }) {
     const DeviceResetRequest = require('../../models/DeviceResetRequest');
-    const user = await User.findOne({ username: String(username).toLowerCase(), deletedAt: null }).select('_id');
+    const user = await User.findOne({ username: String(username).toLowerCase(), deletedAt: null }).select('_id name username');
     await audit({ user: user?._id, action: 'DEVICE_RESET_REQUESTED', targetUser: user?._id, ip, meta: { username, known: !!user } });
     if (!user) return null;
     const open = await DeviceResetRequest.findOne({ user: user._id, status: 'open' });
     if (open) return open; // one open request per account
-    return DeviceResetRequest.create({ username, user: user._id, note, ip, userAgent });
+    const created = await DeviceResetRequest.create({ username, user: user._id, note, ip, userAgent });
+    await DeviceService.#announceResetRequest(user, note);
+    return created;
+  }
+
+  /**
+   * Tell the owner a student is waiting to be moved to a new phone.
+   *
+   * This is the one queue nobody is watching: the request arrives from a
+   * signed-out device, so until someone opens the Security Center it sits
+   * there and the student stays locked out. A push is what reaches a closed
+   * app, and `/admin/security/requests` is an owner-only route — notifying
+   * the admins too would hand them a link to a page they cannot open.
+   *
+   * Only a genuinely new request gets here: a repeat while one is still open
+   * returns the existing row above without passing through. With the route's
+   * limits (three per address an hour, three per account a day) that puts a
+   * firm ceiling on how often this can ring.
+   *
+   * It is awaited for the same reason it is wrapped: the request is already
+   * stored, so a notification that fails must not turn a successful one into
+   * an error the student sees.
+   */
+  static async #announceResetRequest(user, note) {
+    try {
+      const { notifyUser } = require('../notifications/notifications.service');
+      const owners = await User.find({ role: 'super_admin', status: 'active', deletedAt: null }).select('_id');
+      const who = user.name || user.username || 'A student';
+      await Promise.all(owners.map((owner) => notifyUser(owner._id, {
+        type: 'system',
+        title: 'Device change requested',
+        body: note ? `${who} asked to move to a new device: ${note}` : `${who} asked to move to a new device.`,
+        link: '/admin/security/requests',
+      })));
+    } catch {
+      // The request is stored and the queue will still show it; a missing
+      // notification is not worth failing the student's only way back in.
+    }
   }
 
   static async activeFor(userId) {

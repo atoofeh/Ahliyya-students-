@@ -77,3 +77,40 @@ test('platform device list is paginated, searchable and hides hashes', async () 
   assert.ok(r.data.items.every((d) => d.deviceKeyHash === undefined));
   assert.ok(r.data.items.some((d) => d.user.username === 'sam'));
 });
+
+/*
+  The queue is the one nobody is watching: the request arrives from a
+  signed-out device, so until someone opens the Security Center the student
+  stays locked out. The owner is told, once, and the repeat that a worried
+  student will certainly send must not ring again.
+*/
+test('a new reset request notifies the owner, and a repeat does not', async () => {
+  await app.createUser(admin.token, { name: 'Lina', username: 'lina', password: 'Learn@1234', role: 'student' }, 'dev-admin');
+  const owned = async () => {
+    const r = await as(owner, 'GET', '/notifications');
+    assert.equal(r.status, 200);
+    return r.data.items.filter((n) => n.title === 'Device change requested');
+  };
+
+  const before = (await owned()).length;
+  assert.equal((await request('lina', 'Phone was stolen', '10.4.4.1')).status, 202);
+
+  const after = await owned();
+  assert.equal(after.length, before + 1, 'exactly one notification for a new request');
+  const mine = after.find((n) => n.body.includes('Lina'));
+  assert.ok(mine, 'the notification names the student');
+  assert.match(mine.body, /Phone was stolen/, 'and carries their note');
+  assert.equal(mine.link, '/admin/security/requests', 'and links to the owner-only queue');
+  assert.equal(mine.readAt, null);
+
+  assert.equal((await request('lina', 'Still waiting', '10.4.4.2')).status, 202);
+  assert.equal((await owned()).length, before + 1, 'a repeat while one is open does not ring again');
+});
+
+test('a request for an account that does not exist notifies nobody', async () => {
+  const count = async () => (await as(owner, 'GET', '/notifications')).data.items
+    .filter((n) => n.title === 'Device change requested').length;
+  const before = await count();
+  assert.equal((await request('no-such-person', 'Let me in', '10.4.4.3')).status, 202);
+  assert.equal(await count(), before, 'an unknown username must not reach the owner');
+});
