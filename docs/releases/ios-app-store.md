@@ -2,7 +2,15 @@
 
 Written for whoever has the Mac. Everything needed is in the repository —
 there is no separate iOS artifact to fetch, because an iOS build can only be
-made on macOS and nothing in this repo has ever produced one.
+made on macOS.
+
+**Build 11 replaces build 10.** Build 10 shipped with WebKit's own media
+controls over every lesson video: a full-screen arrow and a
+picture-in-picture button, either of which lifts the video out of the player
+and away from its watermark. The attributes meant to remove them are Chromium
+features that Safari ignores, so the player now draws its own controls on
+WebKit and those two buttons do not exist. The app carries its own copy of the
+web bundle, so this reaches an installed app only through a new build.
 
 | | |
 |---|---|
@@ -11,7 +19,7 @@ made on macOS and nothing in this repo has ever produced one.
 | Development team | `JAXM7Y97H8`, automatic signing (already set in the project) |
 | Dependencies | Swift Package Manager — **no CocoaPods, no `pod install`** |
 | Deployment target | iOS 15.0 |
-| Version in git | `MARKETING_VERSION = 1.0.7`, `CURRENT_PROJECT_VERSION = 10` — matching Android |
+| Version in git | `MARKETING_VERSION = 1.0.7`, `CURRENT_PROJECT_VERSION = 11` |
 | API the build talks to | `https://students-alahliyaa.com/api/v1`, from `client/.env.ios` |
 
 ## 1. Build the web bundle
@@ -41,15 +49,15 @@ That must print a filename. If it prints nothing, the wrong build is staged.
 
 ## 2. Version numbers
 
-**Already set**: the project is on version `1.0.7`, build `10`, the same
-numbers Android 1.0.7 carries. Nothing to change unless App Store Connect
-disagrees.
+**Already set**: version `1.0.7`, build `11`. The version is unchanged because
+1.0.7 has not been released to the public; only the build number moves, which
+is what App Store Connect requires for a second upload of the same version.
 
-It will disagree only if build 10 of this version has been uploaded before.
-In that case, in Xcode select the **App** target → *General* and raise
-**Build** (`CURRENT_PROJECT_VERSION`) above the highest number the Console
-shows. App Store Connect rejects a build number it has already seen, and the
-number can never go down.
+If the Console still rejects it, a build above 11 exists already: in Xcode
+select the **App** target → *General* and raise **Build**
+(`CURRENT_PROJECT_VERSION`) above the highest number shown. The number can
+never go down. Once 1.0.7 *is* public, the next upload needs a new
+`MARKETING_VERSION` as well, not just a new build.
 
 ## 3. Signing
 
