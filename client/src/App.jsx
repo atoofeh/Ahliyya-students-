@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import { LanguageProvider } from './context/LanguageContext';
 import MainLayout from './layouts/MainLayout';
 import NativeShell from './components/NativeShell';
@@ -66,6 +67,7 @@ export default function App() {
     <ThemeProvider>
       <LanguageProvider>
       <ToastProvider>
+        <ConfirmProvider>
         <NativeShell />
         <BrowserRouter>
           <AuthProvider>
@@ -124,6 +126,7 @@ export default function App() {
             </Suspense>
           </AuthProvider>
         </BrowserRouter>
+        </ConfirmProvider>
       </ToastProvider>
       </LanguageProvider>
     </ThemeProvider>

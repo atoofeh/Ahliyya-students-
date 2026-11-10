@@ -3,6 +3,7 @@ import { UserPlus, Crown, X, Users } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { useLanguage } from '../../../hooks/useLanguage';
+import { useConfirm } from '../../../hooks/useConfirm';
 import { Card, Button, Input, Textarea, Badge, EmptyState, Modal } from '../../../components/ui';
 import { SkeletonCard } from '../../../components/Skeletons';
 
@@ -15,6 +16,7 @@ import { SkeletonCard } from '../../../components/Skeletons';
  */
 export default function TeachersTab({ courseId }) {
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const toast = useToast();
   const [data, setData] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -51,8 +53,8 @@ export default function TeachersTab({ courseId }) {
     t('cot.toastWithdrawn')
   );
 
-  const removeTeacher = (teacher) => {
-    if (!window.confirm(t('cot.confirmRemove', { name: teacher.name }))) return;
+  const removeTeacher = async (teacher) => {
+    if (!(await confirm(t('cot.confirmRemove', { name: teacher.name })))) return;
     return run(() => api.delete(`/co-teaching/courses/${courseId}/teachers/${teacher._id}`), t('cot.toastRemoved'));
   };
 

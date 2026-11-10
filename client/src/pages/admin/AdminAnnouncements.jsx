@@ -3,11 +3,13 @@ import { Megaphone, Trash2, Send } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useConfirm } from '../../hooks/useConfirm';
 import { Card, Button, Input, Textarea, Toggle, Badge, Spinner, EmptyState } from '../../components/ui';
 
 export default function AdminAnnouncements() {
   const toast = useToast();
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const [items, setItems] = useState(null);
   const [form, setForm] = useState({ title: '', body: '', pinned: false });
   const [busy, setBusy] = useState(false);
@@ -28,7 +30,7 @@ export default function AdminAnnouncements() {
   };
 
   const remove = async (id) => {
-    if (!window.confirm(t('ann.confirmDelete'))) return;
+    if (!(await confirm(t('ann.confirmDelete')))) return;
     try { await api.delete(`/announcements/${id}`); load(); }
     catch (err) { toast.error(apiError(err)); }
   };

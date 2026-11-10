@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2, X, Inbox, Eye, EyeOff } from 'lucide-react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useLanguage } from '../hooks/useLanguage';
+import { useConfirm } from '../hooks/useConfirm';
 import { pushBackHandler } from '../app/shell';
 
 /**
@@ -331,8 +332,9 @@ export function Pagination({ meta, onPage }) {
 }
 
 export function ConfirmButton({ onConfirm, children, message = 'Are you sure?', variant = 'danger', size = 'sm' }) {
+  const confirm = useConfirm();
   return (
-    <Button variant={variant} size={size} onClick={() => { if (window.confirm(message)) onConfirm(); }}>
+    <Button variant={variant} size={size} onClick={async () => { if (await confirm(message)) onConfirm(); }}>
       {children}
     </Button>
   );

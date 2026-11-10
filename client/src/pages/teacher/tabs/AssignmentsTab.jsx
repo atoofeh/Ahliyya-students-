@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, ClipboardList, Inbox } from 'lucide-react';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { useLanguage } from '../../../hooks/useLanguage';
+import { useConfirm } from '../../../hooks/useConfirm';
 import { Card, Button, Modal, Input, Textarea, Toggle, Badge, EmptyState, Spinner } from '../../../components/ui';
 import { SkeletonCard } from '../../../components/Skeletons';
 import DownloadButton from '../../../components/DownloadButton';
@@ -10,6 +11,7 @@ import DownloadButton from '../../../components/DownloadButton';
 export default function AssignmentsTab({ courseId }) {
   const toast = useToast();
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const [assignments, setAssignments] = useState(null);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({});
@@ -54,7 +56,7 @@ export default function AssignmentsTab({ courseId }) {
   };
 
   const remove = async (id) => {
-    if (!window.confirm(t('asg.confirmDelete'))) return;
+    if (!(await confirm(t('asg.confirmDelete')))) return;
     try { await api.delete(`/assignments/courses/${courseId}/${id}`); load(); }
     catch (err) { toast.error(apiError(err)); }
   };
