@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, HelpCircle, ImagePlus, X, Image as ImageIcon } fr
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { useLanguage } from '../../../hooks/useLanguage';
+import { useConfirm } from '../../../hooks/useConfirm';
 import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState, Pagination } from '../../../components/ui';
 import AuthedImage from '../../../components/AuthedImage';
 import { SkeletonCard } from '../../../components/Skeletons';
@@ -65,6 +66,7 @@ function ImagePicker({ courseId, value, onChange, compact = false }) {
 
 export default function QuestionBankTab({ courseId }) {
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const toast = useToast();
   const [result, setResult] = useState(null);
   const [page, setPage] = useState(1);
@@ -132,7 +134,7 @@ export default function QuestionBankTab({ courseId }) {
   };
 
   const remove = async (id) => {
-    if (!window.confirm(t('qb.confirmDelete'))) return;
+    if (!(await confirm(t('qb.confirmDelete')))) return;
     try { await api.delete(`/quizzes/courses/${courseId}/questions/${id}`); load(); }
     catch (err) { toast.error(apiError(err)); }
   };

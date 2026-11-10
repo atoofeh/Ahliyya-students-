@@ -1,8 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Video, Trash2, Eye, FileUp, File as FileIcon, Play, Users, ChevronUp, ChevronDown } from 'lucide-react';
+import { Video, Trash2, Eye, FileUp, File as FileIcon, Play, Users } from 'lucide-react';
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { useLanguage } from '../../../hooks/useLanguage';
+import { useConfirm } from '../../../hooks/useConfirm';
+import { useDragSensors, dragStyle } from '../../../hooks/useDragSensors';
+import DragHandle from '../../../components/DragHandle';
 import ChunkedUploader from '../../../components/ChunkedUploader';
 import { Card, Badge, Button, EmptyState, Spinner, Modal } from '../../../components/ui';
 import VideoPlayer from '../../../components/VideoPlayer';
@@ -11,9 +16,48 @@ import VideoViewsModal from '../../../components/VideoViewsModal';
 const fmtSize = (b) => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.ceil(b / 1024)} KB`);
 const fmtDur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '—');
 
+/** One video row, dragged by the handle at its end. */
+function VideoRow({ video, t, reordering, statusColor, onPreview, onViews, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: video._id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={dragStyle(transform, transition)}
+      className={`flex items-center gap-3 px-4 py-3 ${isDragging ? 'relative z-10 bg-white opacity-90 shadow-float dark:bg-surface-800' : ''}`}
+    >
+      <Video size={18} className="shrink-0 text-surface-400" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <p dir="auto" className="truncate text-sm font-medium text-surface-800 dark:text-surface-100">{video.title}</p>
+        <p className="text-xs text-surface-400">
+          {fmtDur(video.durationSeconds)} · {fmtSize(video.sizeBytes || 0)} · <Eye size={11} className="inline" /> {video.viewCount}
+          {video.status === 'uploading' && ` · ${t('vid.chunks', { received: video.receivedChunks?.length || 0, total: video.totalChunks })}`}
+        </p>
+      </div>
+      <Badge color={statusColor[video.status]}>{video.status}</Badge>
+      {video.status === 'ready' && (
+        <>
+          <Button size="sm" variant="ghost" aria-label={t('vid.previewOf', { title: video.title })} onClick={onPreview}>
+            <Play size={14} /> <span className="hidden sm:inline">{t('vid.preview')}</span>
+          </Button>
+          <Button size="sm" variant="ghost" aria-label={t('vid.whoWatchedOf', { title: video.title })} onClick={onViews}>
+            <Users size={14} /> <span className="hidden sm:inline">{t('vid.views')}</span>
+          </Button>
+        </>
+      )}
+      <Button size="sm" variant="ghost" aria-label={t('vid.deleteOf', { title: video.title })} onClick={onDelete}>
+        <Trash2 size={14} className="text-rose-400" />
+      </Button>
+      <DragHandle attributes={attributes} listeners={listeners} disabled={reordering}
+        label={t('vid.dragVideo', { title: video.title })} />
+    </div>
+  );
+}
+
 export default function VideosTab({ courseId }) {
   const toast = useToast();
   const { t } = useLanguage();
+  const confirm = useConfirm();
+  const sensors = useDragSensors();
   // Staff preview. No lessonId is passed, so the player skips its progress
   // heartbeat — watch counts and completion belong to students only.
   const [preview, setPreview] = useState(null);
@@ -38,7 +82,7 @@ export default function VideosTab({ courseId }) {
   }, [videos, load]);
 
   const deleteVideo = async (id) => {
-    if (!window.confirm(t('vid.confirmDelete'))) return;
+    if (!(await confirm(t('vid.confirmDelete')))) return;
     try { await api.delete(`/videos/${id}`); toast.success(t('vid.deleted')); load(); }
     catch (err) { toast.error(apiError(err)); }
   };
@@ -61,18 +105,21 @@ export default function VideosTab({ courseId }) {
     try { await api.delete(`/files/${id}`); load(); } catch (err) { toast.error(apiError(err)); }
   };
 
-  const moveVideo = async (index, dir) => {
-    if (!videos) return;
-    const target = index + dir;
-    if (target < 0 || target >= videos.length) return;
+  const onDragEnd = async ({ active, over }) => {
+    if (!videos || !over || active.id === over.id) return;
     const ids = videos.map((item) => item._id);
-    [ids[index], ids[target]] = [ids[target], ids[index]];
+    const from = ids.indexOf(String(active.id));
+    const to = ids.indexOf(String(over.id));
+    if (from === -1 || to === -1) return;
+    const next = arrayMove(ids, from, to);
+    // Show the new order at once; load() below replaces it with the saved one.
+    setVideos((current) => arrayMove(current, from, to));
     setReordering(true);
     try {
-      await api.post(`/courses/${courseId}/reorder`, { videos: ids });
+      await api.post(`/courses/${courseId}/reorder`, { videos: next });
       toast.success(t('vid.orderSaved'));
       load();
-    } catch (err) { toast.error(apiError(err)); }
+    } catch (err) { toast.error(apiError(err)); load(); }
     finally { setReordering(false); }
   };
 
@@ -87,38 +134,24 @@ export default function VideosTab({ courseId }) {
         {!videos ? <Spinner /> : videos.length === 0 ? (
           <Card><EmptyState icon={<Video size={24} />} title={t('vid.noVideos')} /></Card>
         ) : (
-          <Card className="divide-y divide-surface-100 dark:divide-surface-700">
-            {videos.map((v, index) => (
-              <div key={v._id} className="flex items-center gap-3 px-4 py-3">
-                <Video size={18} className="shrink-0 text-surface-400" />
-                <div className="min-w-0 flex-1">
-                  <p dir="auto" className="truncate text-sm font-medium text-surface-800 dark:text-surface-100">{v.title}</p>
-                  <p className="text-xs text-surface-400">
-                    {fmtDur(v.durationSeconds)} · {fmtSize(v.sizeBytes || 0)} · <Eye size={11} className="inline" /> {v.viewCount}
-                    {v.status === 'uploading' && ` · ${t('vid.chunks', { received: v.receivedChunks?.length || 0, total: v.totalChunks })}`}
-                  </p>
-                </div>
-                <Badge color={statusColor[v.status]}>{v.status}</Badge>
-                <div className="flex shrink-0 items-center">
-                  <Button size="sm" variant="ghost" aria-label={t('vid.moveVideoUp', { title: v.title })}
-                    disabled={index === 0 || reordering} onClick={() => moveVideo(index, -1)}><ChevronUp size={14} /></Button>
-                  <Button size="sm" variant="ghost" aria-label={t('vid.moveVideoDown', { title: v.title })}
-                    disabled={index === videos.length - 1 || reordering} onClick={() => moveVideo(index, 1)}><ChevronDown size={14} /></Button>
-                </div>
-                {v.status === 'ready' && (
-                  <>
-                    <Button size="sm" variant="ghost" aria-label={t('vid.previewOf', { title: v.title })} onClick={() => setPreview(v)}>
-                      <Play size={14} /> {t('vid.preview')}
-                    </Button>
-                    <Button size="sm" variant="ghost" aria-label={t('vid.whoWatchedOf', { title: v.title })} onClick={() => setViewsOf(v)}>
-                      <Users size={14} /> {t('vid.views')}
-                    </Button>
-                  </>
-                )}
-                <Button size="sm" variant="ghost" aria-label={t('vid.deleteOf', { title: v.title })} onClick={() => deleteVideo(v._id)}><Trash2 size={14} className="text-rose-400" /></Button>
-              </div>
-            ))}
-          </Card>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={videos.map((v) => v._id)} strategy={verticalListSortingStrategy}>
+              <Card className="divide-y divide-surface-100 dark:divide-surface-700">
+                {videos.map((v) => (
+                  <VideoRow
+                    key={v._id}
+                    video={v}
+                    t={t}
+                    reordering={reordering}
+                    statusColor={statusColor}
+                    onPreview={() => setPreview(v)}
+                    onViews={() => setViewsOf(v)}
+                    onDelete={() => deleteVideo(v._id)}
+                  />
+                ))}
+              </Card>
+            </SortableContext>
+          </DndContext>
         )}
         <p className="text-xs text-surface-400">
           {t('vid.encryptedNote')}

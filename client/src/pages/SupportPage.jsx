@@ -1,3 +1,5 @@
+import { ChevronLeft } from 'lucide-react';
+
 const englishFaqs = [
   [
     "I can’t sign in. What should I try?",
@@ -61,12 +63,53 @@ function FaqList({ items }) {
   );
 }
 
+/**
+ * The way back into the app.
+ *
+ * This page is also rendered standalone, straight from main.jsx, so it has
+ * none of the app's chrome around it and no router to ask. Stepping back
+ * returns to whatever the person was reading; arriving here cold — from a
+ * store listing or a bookmark — the href opens the app instead.
+ */
+function BackToApp() {
+  const onClick = (event) => {
+    try {
+      const cameFromTheApp = document.referrer
+        && new URL(document.referrer).origin === window.location.origin;
+      if (window.history.length > 1 && cameFromTheApp) {
+        event.preventDefault();
+        window.history.back();
+      }
+    } catch { /* the href takes them home */ }
+  };
+  return (
+    <a
+      href="/"
+      onClick={onClick}
+      aria-label="Back to the app — العودة إلى التطبيق"
+      className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-[13px] font-semibold text-white no-underline transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400"
+    >
+      <ChevronLeft size={15} aria-hidden="true" />
+      <span>Back</span><span aria-hidden="true">·</span><span>رجوع</span>
+    </a>
+  );
+}
+
 export default function SupportPage() {
   return (
-    <main className="min-h-screen bg-surface-50 px-4 py-8 text-surface-900 dark:bg-surface-950 dark:text-white sm:py-12">
+    <main
+      className="min-h-screen bg-surface-50 px-4 py-8 text-surface-900 dark:bg-surface-950 dark:text-white sm:py-12"
+      style={{
+        paddingTop: 'max(2rem, var(--safe-top))',
+        paddingBottom: 'max(2rem, var(--safe-bottom))',
+        paddingInlineStart: 'max(1rem, var(--safe-left))',
+        paddingInlineEnd: 'max(1rem, var(--safe-right))',
+      }}
+    >
       <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-surface-200 bg-white shadow-sm dark:border-surface-800 dark:bg-surface-900">
         <header className="border-t-4 border-gold-500 bg-brand-900 px-6 py-8 text-white sm:px-10">
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-gold-300">Feker · Help Center</p>
+          <BackToApp />
+          <p className="mt-5 text-xs font-extrabold uppercase tracking-[0.16em] text-gold-300">Feker · Help Center</p>
           <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">How can we help?</h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-brand-100">
             Find quick help for signing in, opening courses, watching lessons, and completing quizzes.

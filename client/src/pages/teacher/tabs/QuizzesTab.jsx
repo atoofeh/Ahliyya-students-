@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Lock, Unlock, BarChart3, Users, BellRing, HelpCir
 import api, { apiError } from '../../../api/axios';
 import { useToast } from '../../../hooks/useToast';
 import { useLanguage } from '../../../hooks/useLanguage';
+import { useConfirm } from '../../../hooks/useConfirm';
 import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState, Spinner } from '../../../components/ui';
 import { SkeletonCard } from '../../../components/Skeletons';
 
@@ -18,6 +19,7 @@ const emptyQuiz = () => ({
 export default function QuizzesTab({ courseId }) {
   const toast = useToast();
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const [quizzes, setQuizzes] = useState(null);
   const [bank, setBank] = useState([]);
   const [modal, setModal] = useState(false);
@@ -98,7 +100,7 @@ export default function QuizzesTab({ courseId }) {
   };
 
   const remove = async (id) => {
-    if (!window.confirm(t('qz.confirmDelete'))) return;
+    if (!(await confirm(t('qz.confirmDelete')))) return;
     try { await api.delete(`/quizzes/courses/${courseId}/${id}`); load(); }
     catch (err) { toast.error(apiError(err)); }
   };

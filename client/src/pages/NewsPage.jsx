@@ -4,6 +4,7 @@ import api, { apiError } from '../api/axios';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
+import { useConfirm } from '../hooks/useConfirm';
 import { isAdminRole } from '../utils/roles';
 import AuthedImage from '../components/AuthedImage';
 import { Card, Button, Modal, Input, Textarea, Toggle, Badge, EmptyState, Pagination, PageIntro } from '../components/ui';
@@ -30,6 +31,7 @@ export default function NewsPage() {
   const toast = useToast();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const canPost = isAdminRole(user?.role);
 
   const [result, setResult] = useState(null);
@@ -90,7 +92,7 @@ export default function NewsPage() {
   };
 
   const remove = async (p) => {
-    if (!window.confirm(t('news.deleteConfirm'))) return;
+    if (!(await confirm(t('news.deleteConfirm')))) return;
     try { await api.delete(`/news/${p._id}`); load(); }
     catch (err) { toast.error(apiError(err)); }
   };

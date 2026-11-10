@@ -7,6 +7,7 @@ import { PACKAGES, packageOf, money, DEFAULT_CURRENCY } from '../../../utils/pac
 import { Card, Button, Modal, Input, Select, Badge, EmptyState, Spinner, ProgressBar, Pagination } from '../../../components/ui';
 import { useAuth } from '../../../hooks/useAuth';
 import { useLanguage } from '../../../hooks/useLanguage';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 const packageOptions = (t) => PACKAGES.map((p) => ({ value: p.value, label: t(p.key) }));
 
@@ -14,6 +15,7 @@ export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
   const toast = useToast();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const staff = isAdminRole(user?.role);
   const [students, setStudents] = useState(null);
   const [page, setPage] = useState(1);
@@ -85,8 +87,8 @@ export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
     setPayModal(null);
   }, t('stu.paymentUpdated'));
 
-  const remove = (studentId) => {
-    if (!window.confirm(t('stu.confirmRemove'))) return;
+  const remove = async (studentId) => {
+    if (!(await confirm(t('stu.confirmRemove')))) return;
     return run(() => api.delete(`/enrollments/courses/${courseId}/students/${studentId}`));
   };
 

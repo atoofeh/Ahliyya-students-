@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, ClipboardPaste, Check, ArrowLeft } from 'lucide-r
 import api, { apiError } from '../api/axios';
 import { useToast } from '../hooks/useToast';
 import { useLanguage } from '../hooks/useLanguage';
+import { useConfirm } from '../hooks/useConfirm';
 import { parseQuestions } from '../utils/parseQuestions';
 import { Button, Input, Textarea, Modal, Toggle, EmptyState } from './ui';
 import { SkeletonCard } from './Skeletons';
@@ -24,6 +25,7 @@ const blank = () => ({ text: '', options: [{ text: '', isCorrect: true }, { text
  */
 export default function PracticeEditor({ paper, onClose, onChanged }) {
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const toast = useToast();
   const [data, setData] = useState(null); // { published, items }
   const [view, setView] = useState('list'); // list | one | paste
@@ -76,7 +78,7 @@ export default function PracticeEditor({ paper, onClose, onChanged }) {
   };
 
   const remove = async (question) => {
-    if (!window.confirm(t('pp.ed.confirmDelete'))) return;
+    if (!(await confirm(t('pp.ed.confirmDelete')))) return;
     try {
       await api.delete(`/past-papers/${paper._id}/practice/${question._id}`);
       toast.success(t('pp.ed.removed'));

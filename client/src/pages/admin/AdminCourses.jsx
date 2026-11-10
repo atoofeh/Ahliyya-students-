@@ -4,12 +4,14 @@ import { BookOpen, Pencil, Trash2, Users } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useConfirm } from '../../hooks/useConfirm';
 import { Card, Button, Badge, Pagination, EmptyState, Input } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 
 export default function AdminCourses() {
   const toast = useToast();
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const navigate = useNavigate();
   const [result, setResult] = useState(null);
   const [page, setPage] = useState(1);
@@ -22,7 +24,7 @@ export default function AdminCourses() {
   useEffect(() => { const t = setTimeout(load, search ? 300 : 0); return () => clearTimeout(t); }, [load, search]);
 
   const remove = async (course) => {
-    if (!window.confirm(t('ac2.confirmDelete', { title: course.title }))) return;
+    if (!(await confirm(t('ac2.confirmDelete', { title: course.title })))) return;
     try {
       await api.delete(`/courses/${course._id}`);
       toast.success(t('ac2.deleted'));

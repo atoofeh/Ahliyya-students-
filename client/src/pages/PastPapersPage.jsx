@@ -5,6 +5,7 @@ import { downloadFile } from '../api/download';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
+import { useConfirm } from '../hooks/useConfirm';
 import { isAdminRole } from '../utils/roles';
 import { Card, Button, Modal, Input, EmptyState, PageIntro, ProgressBar } from '../components/ui';
 import { SkeletonCard } from '../components/Skeletons';
@@ -60,6 +61,7 @@ export default function PastPapersPage() {
   const toast = useToast();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const canManage = isAdminRole(user?.role);
   const canDownload = user?.role !== 'student';
 
@@ -155,7 +157,7 @@ export default function PastPapersPage() {
   };
 
   const remove = async (paper) => {
-    if (!window.confirm(t('pp.confirmDelete', { title: paper.title }))) return;
+    if (!(await confirm(t('pp.confirmDelete', { title: paper.title })))) return;
     try { await api.delete(`/past-papers/${paper._id}`); toast.success(t('pp.removed')); load(); }
     catch (err) { toast.error(apiError(err)); }
   };

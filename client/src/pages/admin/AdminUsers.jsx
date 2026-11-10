@@ -4,6 +4,7 @@ import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useConfirm } from '../../hooks/useConfirm';
 import { Card, Button, Modal, Input, Select, Badge, Spinner, Pagination, EmptyState, Tabs } from '../../components/ui';
 import { SkeletonRows } from '../../components/Skeletons';
 
@@ -14,6 +15,7 @@ export default function AdminUsers() {
   const toast = useToast();
   const { user: me } = useAuth();
   const { t } = useLanguage();
+  const confirm = useConfirm();
   const isOwner = me?.role === 'super_admin';
   const [result, setResult] = useState(null);
   const [deletionRequests, setDeletionRequests] = useState([]);
@@ -78,7 +80,7 @@ export default function AdminUsers() {
   };
 
   const deleteUser = async (user) => {
-    if (!window.confirm(t('usr.confirmDelete', { name: user.name }))) return;
+    if (!(await confirm(t('usr.confirmDelete', { name: user.name })))) return;
     try {
       await api.delete(`/admin/users/${user._id}`);
       toast.success(t('usr.toastDeleted'));
