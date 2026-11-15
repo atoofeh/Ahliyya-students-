@@ -322,3 +322,27 @@ test('a student is still locked to one device, and staff tokens stay device-pinn
   const replayed = await api('GET', '/auth/me', { token: teach.data.accessToken, deviceId: 'dev-teach-elsewhere' });
   assert.equal(replayed.status, 401, 'a staff token was accepted from another device');
 });
+
+/*
+  The Windows app is a hardened window onto the same site, not a packaged copy
+  of it, so it must behave like the browser it is: the refresh token stays a
+  cookie, and the binding takes the student's one device slot. The phones are
+  the exception to both, and that exception must not quietly widen to cover
+  the desktop just because the desktop is also "an app".
+*/
+test('the Windows app is recorded as windows, keeps the cookie token, and takes the one slot', async () => {
+  const wes = await app.createUser(admin.token, { name: 'Wes', username: 'wes', password: 'Learn@1234', role: 'student' }, 'dev-admin');
+  const desktop = { platform: 'windows' };
+
+  const first = await login('wes', 'Learn@1234', 'dev-wes-desktop-01', desktop);
+  assert.equal(first.status, 200, JSON.stringify(first.data));
+  assert.equal(first.data.refreshToken, undefined, 'no body copy: this is not a native client');
+
+  const view = await api('GET', `/admin/users/${wes.id}/device`, { token: admin.token, deviceId: 'dev-admin' });
+  assert.equal(view.status, 200);
+  assert.equal(view.data.active.platform, 'windows', 'named, not filed under "other"');
+
+  const second = await login('wes', 'Learn@1234', 'dev-wes-laptop-02', desktop);
+  assert.equal(second.status, 403, 'a desktop binding must occupy the single device slot');
+  assert.equal(second.data.code, 'DEVICE_NOT_AUTHORIZED');
+});

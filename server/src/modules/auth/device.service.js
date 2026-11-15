@@ -7,7 +7,12 @@ const Device = require('../../models/Device');
 const Session = require('../../models/Session');
 const User = require('../../models/User');
 
-const PLATFORMS = new Set(['web', 'android', 'ios']);
+// 'windows' is the desktop app. It is listed here so the platform device
+// list names it rather than filing it under 'other' — and deliberately not in
+// NATIVE_PLATFORMS (auth.controller) or isNativeAppPlatform below, because it
+// loads the real origin and so keeps the cookie refresh token, and because a
+// desktop binding is meant to occupy the student's one device slot.
+const PLATFORMS = new Set(['web', 'android', 'ios', 'windows']);
 
 /**
  * One account ↔ one authorized device.

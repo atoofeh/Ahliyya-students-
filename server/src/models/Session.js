@@ -22,7 +22,7 @@ const sessionSchema = new mongoose.Schema(
     browser: { type: String, default: '' },
     os: { type: String, default: '' },
     deviceType: { type: String, default: 'desktop' },
-    platform: { type: String, enum: ['web', 'android', 'ios', 'other'], default: 'web' },
+    platform: { type: String, enum: ['web', 'android', 'ios', 'windows', 'other'], default: 'web' },
     ip: { type: String, default: '' },
     location: { type: String, default: '' },
 

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feker</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
+    text-align: center;
+  }
+  .card { max-width: 30rem; }
+  .mark {
+    width: 56px; height: 56px;
+    margin: 0 auto 20px;
+    border-radius: 16px;
+    display: grid; place-items: center;
+    background: #1e293b;
+    border: 1px solid #334155;
+  }
+  svg { stroke: #94a3b8; }
+  h1 { margin: 0 0 6px; font-size: 1.3rem; font-weight: 650; color: #f1f5f9; }
+  h2 { margin: 0 0 18px; font-size: 1.05rem; font-weight: 600; color: #cbd5e1; }
+  p { margin: 0 0 6px; font-size: 0.9rem; line-height: 1.65; color: #94a3b8; }
+  p.ar { margin-bottom: 26px; }
+  a.retry {
+    display: inline-block;
+    padding: 11px 26px;
+    border-radius: 10px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  a.retry:hover { background: #1d4ed8; }
+  a.retry:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round">
+        <path d="M2 8.8a16 16 0 0 1 20 0"></path>
+        <path d="M5 12.6a11 11 0 0 1 14 0"></path>
+        <path d="M8.5 16.4a6 6 0 0 1 7 0"></path>
+        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+        <line x1="3" y1="3" x2="21" y2="21"></line>
+      </svg>
+    </div>
+    <h1>No connection</h1>
+    <h2 dir="rtl" lang="ar">لا يوجد اتصال</h2>
+    <p>Feker could not reach the school. Check your internet connection and try again.</p>
+    <p class="ar" dir="rtl" lang="ar">تعذّر على فكر الوصول إلى المدرسة. تحقّق من اتصالك بالإنترنت ثم أعد المحاولة.</p>
+    <a class="retry" href="https://students-alahliyaa.com/">Try again · إعادة المحاولة</a>
+  </div>
+</body>
+</html>

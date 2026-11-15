@@ -1,0 +1,50 @@
+{
+  "name": "feker-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Feker — the protected desktop client for Al Ahliyya students",
+  "author": "VortexMind",
+  "license": "UNLICENSED",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.alahliyya.lms.desktop",
+    "productName": "Feker",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "build/icon.png"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Feker",
+      "artifactName": "Feker-Setup-${version}.exe",
+      "uninstallDisplayName": "Feker"
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.3.2",
+    "electron-builder": "^26.18.0"
+  }
+}

@@ -7,10 +7,19 @@
  * - fingerprint: hash of environment characteristics, sent with every request so
  *   the server can flag token theft across differing environments.
  */
-import { isNative, nativeDeviceId } from './native';
+import { isNative, nativeDeviceId, desktop } from './native';
 
-/** Web device id. Kept synchronous — several callers rely on it. */
+/**
+ * Web device id. Kept synchronous — several callers rely on it.
+ *
+ * The Windows app answers first and answers from the machine, so clearing
+ * site data or reinstalling does not hand the student a new identity and lock
+ * them out of their own account until an administrator resets it. That is the
+ * same reason the phones derive theirs from a platform id rather than from
+ * storage. Everywhere else this is a random id, per browser profile.
+ */
 export function getDeviceId() {
+  if (desktop?.deviceId) return desktop.deviceId;
   let id = localStorage.getItem('lms_device_id');
   if (!id) {
     id = crypto.randomUUID();

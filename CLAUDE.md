@@ -102,3 +102,18 @@ security stack (helmet/cors/sanitize/hpp) → rate limit → /api/v1 router (rou
 ## Docs
 
 `docs/ARCHITECTURE.md` (module map, data model, scaling seams — payments, HLS, object storage), `docs/SECURITY.md` (threat model), `docs/API.md` (endpoint reference).
+
+## Windows desktop (desktop/)
+
+A third npm package: an Electron shell that loads the live site rather than
+bundling a copy, so website fixes reach it with no new installer and the
+refresh-token cookie works because the origin is the same. Its reason for
+existing is `setContentProtection(true)` — Windows leaves the window out of
+screen capture, the one protection no web page can ask for. `src/preload.js`
+is the only bridge and carries only a device id derived from `MachineGuid`,
+which `client/src/api/fingerprint.js` prefers over browser storage so a
+reinstall does not lock a student out. Platform `windows` is deliberately
+*not* in `NATIVE_PLATFORMS` or `isNativeAppPlatform`: a desktop binding takes
+the student's one device slot and keeps the cookie token. See
+`docs/releases/windows-desktop.md`; note that VS Code's `ELECTRON_RUN_AS_NODE=1`
+makes any Electron binary exit silently as plain Node.

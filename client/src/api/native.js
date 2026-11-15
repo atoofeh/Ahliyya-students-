@@ -16,8 +16,27 @@ const LmsNative = registerPlugin('LmsNative');
 
 export const isNative = Capacitor.isNativePlatform();
 
+/**
+ * The Windows app, which is a hardened window onto this same site rather than
+ * a packaged copy of it. Its preload sets `__fekerDesktop` before any of this
+ * runs; nothing else on the web can forge a value the server trusts, because
+ * the only thing it carries is a device id, and a device id is a claim the
+ * server already treats as unproven until the session is bound to it.
+ *
+ * It is deliberately *not* native: `isNative` stays false, so the refresh
+ * token remains an httpOnly cookie — correct here, because the app loads the
+ * real origin and gets the real cookie jar — and the multi-device exception
+ * that iOS and Android carry does not apply. A desktop binding occupies the
+ * student's one device slot, which is exactly what it is for.
+ */
+export const desktop = (typeof window !== 'undefined' && window.__fekerDesktop) || null;
+export const isDesktop = !!desktop;
+
 /** The value sent as `x-client-platform`; the server grants native clients a refresh-token body copy. */
-export const platformName = () => (isNative ? Capacitor.getPlatform() : 'web');
+export const platformName = () => {
+  if (isNative) return Capacitor.getPlatform();
+  return isDesktop ? 'windows' : 'web';
+};
 
 /**
  * Refresh tokens on native live in the platform secure store, never in web storage.

@@ -15,7 +15,7 @@ const deviceSchema = new mongoose.Schema(
     publicId: { type: String, required: true },
     fingerprintHash: { type: String, default: null },
 
-    platform: { type: String, enum: ['web', 'android', 'ios', 'other'], default: 'web' },
+    platform: { type: String, enum: ['web', 'android', 'ios', 'windows', 'other'], default: 'web' },
     browser: { type: String, default: '' },
     os: { type: String, default: '' },
     deviceType: { type: String, default: 'desktop' },
