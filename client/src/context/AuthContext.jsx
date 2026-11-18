@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthContext } from '../hooks/useAuth';
 import api, { bootstrapSession } from '../api/axios';
-import { setAccessToken, clearAccessToken, saveRefreshToken, clearRefreshToken } from '../api/token';
+import { getAccessToken, setAccessToken, clearAccessToken, saveRefreshToken, clearRefreshToken } from '../api/token';
 import { resolveDeviceId, getFingerprint } from '../api/fingerprint';
 
 
@@ -14,15 +14,26 @@ export function AuthProvider({ children }) {
   // Cached profile paints immediately; the cookie refresh below re-validates it.
   const [user, setUser] = useState(readCachedUser);
   const [loading, setLoading] = useState(true);
+  const authRevision = useRef(0);
 
   useEffect(() => {
-    bootstrapSession()
-      .then((u) => {
+    let active = true;
+    const restore = async () => {
+      const revision = authRevision.current;
+      try {
+        const u = await bootstrapSession();
+        if (!active || revision !== authRevision.current) return;
         setUser(u);
         if (u) localStorage.setItem('lms_user', JSON.stringify(u));
         else localStorage.removeItem('lms_user');
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    const onOnline = () => { if (!getAccessToken()) restore(); };
+    restore();
+    window.addEventListener('online', onOnline);
+    return () => { active = false; window.removeEventListener('online', onOnline); };
   }, []);
 
   // On native the server also returns the refresh token in the body. Whether it
@@ -30,6 +41,7 @@ export function AuthProvider({ children }) {
   // "Remember me" — see token.js. On web the field is absent; the refresh token
   // is an httpOnly cookie the page never sees.
   const applyAuth = useCallback(async (data, { rememberMe } = {}) => {
+    authRevision.current += 1;
     setAccessToken(data.accessToken);
     if (data.refreshToken) await saveRefreshToken(data.refreshToken, { persist: !!rememberMe });
     localStorage.setItem('lms_user', JSON.stringify(data.user));
@@ -53,6 +65,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async ({ forgetDevice = false } = {}) => {
+    authRevision.current += 1;
     // Drop this phone's push address first, while the session can still
     // authorise it — otherwise the server keeps pushing to a signed-out device.
     const { unregisterPush } = await import('../api/pushNotifications');

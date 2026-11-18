@@ -34,7 +34,9 @@ let persisted = false;
 export const saveRefreshToken = async (token, { persist } = {}) => {
   if (persist !== undefined) persisted = !!persist;
   if (persisted) {
-    memoryRefreshToken = null;
+    // Keep the latest rotation usable in this process even if the native
+    // secure store is temporarily unavailable.
+    memoryRefreshToken = token;
     await secure.set(REFRESH_KEY, token);
   } else {
     memoryRefreshToken = token;

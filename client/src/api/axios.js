@@ -74,14 +74,17 @@ export const refreshAccessToken = () => {
   return refreshing;
 };
 
+// An unavailable network or busy server does not invalidate a remembered login.
+const sessionRejected = (error) => [401, 403].includes(error.response?.status);
+
 /** On app start: try the stored session; resolve the user or null. */
 export const bootstrapSession = async () => {
   try {
     const { user } = await refreshAccessToken();
     return user;
-  } catch {
+  } catch (error) {
     clearAccessToken();
-    if (isNative) await clearRefreshToken();
+    if (isNative && sessionRejected(error)) await clearRefreshToken();
     return null;
   }
 };
@@ -119,7 +122,7 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(original);
       } catch (refreshErr) {
-        hardLogout('Your session expired. Please sign in again.');
+        if (sessionRejected(refreshErr)) hardLogout('Your session expired. Please sign in again.');
         return Promise.reject(refreshErr);
       }
     }

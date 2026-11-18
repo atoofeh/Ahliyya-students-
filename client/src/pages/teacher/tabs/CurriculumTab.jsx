@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, PlayCircle, FileText, HelpCircle, ClipboardList, AlignLeft, Unlock } from 'lucide-react';
 import { DndContext, closestCenter, useDroppable } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -7,6 +7,9 @@ import { useToast } from '../../../hooks/useToast';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useDragSensors, dragStyle } from '../../../hooks/useDragSensors';
 import DragHandle from '../../../components/DragHandle';
+import LessonPreview from './LessonPreview';
+import ErrorState from '../../../components/ErrorState';
+import { SkeletonCard } from '../../../components/Skeletons';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { Card, Button, Modal, Input, Select, Textarea, Toggle, Badge, EmptyState } from '../../../components/ui';
 
@@ -14,7 +17,7 @@ const LESSON_ICONS = { video: PlayCircle, pdf: FileText, document: FileText, qui
 const LESSON_TYPE_KEYS = ['video', 'pdf', 'document', 'text', 'quiz', 'assignment'];
 
 /** One lesson row, draggable within its section and into any other. */
-function LessonRow({ lesson, sectionId, onEdit, onDelete, busy, t }) {
+function LessonRow({ lesson, sectionId, onPreview, onEdit, onDelete, busy, t }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lesson._id,
     data: { type: 'lesson', sectionId },
@@ -27,8 +30,12 @@ function LessonRow({ lesson, sectionId, onEdit, onDelete, busy, t }) {
       className={`flex items-center gap-2 border-b border-surface-100 px-4 py-2 last:border-0 dark:border-surface-700/50 ${
         isDragging ? 'relative z-10 rounded-lg bg-white opacity-90 shadow-float dark:bg-surface-800' : ''}`}
     >
-      <Icon size={16} className="shrink-0 text-surface-400" aria-hidden="true" />
-      <span dir="auto" className="min-w-0 flex-1 truncate text-sm text-surface-700 dark:text-surface-200">{lesson.title}</span>
+      <button type="button" onClick={onPreview} disabled={busy}
+        aria-label={t('cur.previewLesson', { title: lesson.title })}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 text-start text-sm text-surface-700 transition-colors hover:text-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-50 dark:text-surface-200 dark:hover:text-brand-300">
+        <Icon size={16} className="shrink-0 text-surface-400" aria-hidden="true" />
+        <span dir="auto" className="truncate">{lesson.title}</span>
+      </button>
       {!lesson.isPublished && <Badge>{t('cur.draft')}</Badge>}
       {lesson.isFree && <Badge color="green"><Unlock size={11} className="me-0.5 inline" />{t('cur.free')}</Badge>}
       {lesson.durationMinutes > 0 && (
@@ -59,7 +66,7 @@ function LessonDropZone({ sectionId, empty, children, t }) {
 }
 
 /** One section card, draggable among the other sections. */
-function SectionCard({ section, busy, t, onEditSection, onDeleteSection, onAddLesson, onEditLesson, onDeleteLesson }) {
+function SectionCard({ section, busy, t, onEditSection, onDeleteSection, onAddLesson, onPreviewLesson, onEditLesson, onDeleteLesson }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section._id,
     data: { type: 'section' },
@@ -88,6 +95,7 @@ function SectionCard({ section, busy, t, onEditSection, onDeleteSection, onAddLe
                 sectionId={section._id}
                 busy={busy}
                 t={t}
+                onPreview={() => onPreviewLesson(lesson)}
                 onEdit={() => onEditLesson(section, lesson)}
                 onDelete={() => onDeleteLesson(lesson)}
               />
@@ -99,18 +107,21 @@ function SectionCard({ section, busy, t, onEditSection, onDeleteSection, onAddLe
   );
 }
 
-export default function CurriculumTab({ courseId, curriculum, reload }) {
+export default function CurriculumTab({ courseId, curriculum, reload, onOpenTab }) {
   const toast = useToast();
   const confirm = useConfirm();
   const { t } = useLanguage();
   const [sectionModal, setSectionModal] = useState(null); // null | {} | section
   const [lessonModal, setLessonModal] = useState(null); // null | { section, lesson? }
+  const [previewLesson, setPreviewLesson] = useState(null);
   const [videos, setVideos] = useState([]);
   const [files, setFiles] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({});
+  const editRequest = useRef(null);
+  useEffect(() => () => editRequest.current?.abort(), []);
   /**
    * The arrangement being dragged, which the server has not confirmed yet.
    * Rendering from it rather than from the prop is what makes a drag feel
@@ -267,19 +278,50 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
     }), t('cur.orderSaved'));
   };
 
-  const openLessonModal = (section, lesson) => {
-    setForm(lesson ? {
-      _id: lesson._id, title: lesson.title, type: lesson.type, durationMinutes: lesson.durationMinutes,
-      isPublished: lesson.isPublished, isFree: lesson.isFree, content: lesson.content,
-      video: lesson.video || '', fileAsset: lesson.fileAsset || '', quiz: lesson.quiz || '', assignment: lesson.assignment || '',
-    } : { type: 'video', title: '', durationMinutes: 0, isPublished: true, isFree: false });
-    setLessonModal({ section, lesson });
+  const openLessonModal = async (section, lesson) => {
+    editRequest.current?.abort();
+    if (!lesson) {
+      setForm({ type: 'video', title: '', durationMinutes: 0, isPublished: true, isFree: false });
+      setLessonModal({ section });
+      return;
+    }
+    // Curriculum summaries omit content and may carry only media ids. Never
+    // edit a summary: saving it would otherwise erase an existing text lesson.
+    const controller = new AbortController();
+    editRequest.current = controller;
+    setLessonModal({ section, lesson, loading: true });
+    try {
+      const { data } = await api.get(`/courses/${courseId}/lessons/${lesson._id}`, {
+        signal: controller.signal, timeout: 15000,
+      });
+      if (controller.signal.aborted) return;
+      const mediaId = (value) => value?._id || value || '';
+      setForm({
+        _id: data._id, title: data.title, type: data.type, durationMinutes: data.durationMinutes ?? 0,
+        isPublished: data.isPublished, isFree: data.isFree, content: data.content || '',
+        video: mediaId(data.video), fileAsset: mediaId(data.fileAsset),
+        quiz: mediaId(data.quiz), assignment: mediaId(data.assignment),
+      });
+      setLessonModal({ section, lesson: data });
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        setLessonModal({ section, lesson, error: { code: err.response?.data?.code, message: apiError(err) } });
+      }
+    }
+  };
+
+  const closeLessonModal = () => {
+    editRequest.current?.abort();
+    setLessonModal(null);
   };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-surface-400">{t('cur.orderHint')}</p>
+        <div className="space-y-1 text-xs text-surface-400">
+          <p>{t('cur.previewHint')}</p>
+          <p>{t('cur.orderHint')}</p>
+        </div>
         <Button onClick={() => { setForm({ title: '', description: '' }); setSectionModal({}); }}>
           <Plus size={15} /> {t('cur.addSection')}
         </Button>
@@ -305,6 +347,7 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
                 onAddLesson={() => openLessonModal(section)}
                 onEditSection={() => { setForm(section); setSectionModal(section); }}
                 onDeleteSection={() => deleteSection(section)}
+                onPreviewLesson={setPreviewLesson}
                 onEditLesson={openLessonModal}
                 onDeleteLesson={deleteLesson}
               />
@@ -312,6 +355,13 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
           </div>
         </SortableContext>
       </DndContext>
+
+      <Modal open={!!previewLesson} onClose={() => setPreviewLesson(null)}
+        title={t('cur.previewLesson', { title: previewLesson?.title || '' })} wide>
+        {previewLesson && <LessonPreview key={`${courseId}:${previewLesson._id}`}
+          courseId={courseId} lessonId={previewLesson._id} quizzes={quizzes} assignments={assignments}
+          onOpenTab={onOpenTab ? (tab) => { setPreviewLesson(null); onOpenTab(tab); } : undefined} />}
+      </Modal>
 
       <Modal open={!!sectionModal} onClose={() => setSectionModal(null)} title={t(form._id ? 'cur.editSection' : 'cur.newSection')}>
         <div className="space-y-4">
@@ -321,13 +371,16 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
         </div>
       </Modal>
 
-      <Modal open={!!lessonModal} onClose={() => setLessonModal(null)} title={form._id ? t('cur.editLesson') : t('cur.newLessonIn', { section: lessonModal?.section?.title || '' })}>
-        <div className="space-y-4">
+      <Modal open={!!lessonModal} onClose={closeLessonModal} title={lessonModal?.lesson ? t('cur.editLesson') : t('cur.newLessonIn', { section: lessonModal?.section?.title || '' })}>
+        {lessonModal?.loading ? <SkeletonCard lines={4} /> : lessonModal?.error
+          ? <ErrorState compact code={lessonModal.error.code} message={lessonModal.error.message}
+              onRetry={() => openLessonModal(lessonModal.section, lessonModal.lesson)} />
+          : <div className="space-y-4">
           <Input label={t('cur.title')} dir="auto" value={form.title || ''} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
           <div className="grid grid-cols-2 gap-3">
             <Select label={t('cur.type')} value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
               options={LESSON_TYPE_KEYS.map((k) => ({ value: k, label: t(`cur.type.${k}`) }))} />
-            <Input label={t('cur.duration')} type="number" min="0" value={form.durationMinutes || 0}
+            <Input label={t('cur.duration')} type="number" min="0" value={form.durationMinutes ?? ''}
               onChange={(e) => setForm((f) => ({ ...f, durationMinutes: e.target.value }))} />
           </div>
 
@@ -359,7 +412,7 @@ export default function CurriculumTab({ courseId, curriculum, reload }) {
           <Toggle label={t('cur.freeToggle')} hint={t('cur.freeHint')}
             checked={form.isFree === true} onChange={(v) => setForm((f) => ({ ...f, isFree: v }))} />
           <Button className="w-full" loading={busy} onClick={saveLesson} disabled={!form.title?.trim()}>{t('cur.saveLesson')}</Button>
-        </div>
+        </div>}
       </Modal>
     </div>
   );

@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Plus, BookOpen } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Card, Button, EmptyState, Badge, Pagination, Modal, Input, Textarea, Select } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
+import { coursePage } from '../../utils/courseNavigation';
 
 const LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'];
 const difficulties = (t) => LEVELS.map((d) => ({ value: d, label: t(`diff.${d}`) }));
@@ -17,8 +18,15 @@ const visibilities = (t) => [
 export default function TeacherCourses() {
   const toast = useToast();
   const { t } = useLanguage();
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
   const [result, setResult] = useState(null);
-  const [page, setPage] = useState(1);
+  const page = coursePage(params);
+  const setPage = (next) => setParams((previous) => {
+    const updated = new URLSearchParams(previous);
+    updated.set('page', String(next));
+    return updated;
+  });
   const [modal, setModal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
@@ -61,7 +69,7 @@ export default function TeacherCourses() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {result.items.map((c) => (
-            <Link key={c._id} to={`/teacher/courses/${c._id}`}>
+            <Link key={c._id} to={`/teacher/courses/${c._id}`} state={{ returnTo: `${location.pathname}${location.search}` }}>
               <Card className="h-full p-4 transition-shadow hover:shadow-md">
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <Badge color="primary">{c.category}</Badge>

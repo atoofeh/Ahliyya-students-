@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { BookOpen, Pencil, Trash2, Users } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
@@ -7,15 +7,33 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useConfirm } from '../../hooks/useConfirm';
 import { Card, Button, Badge, Pagination, EmptyState, Input } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
+import { coursePage } from '../../utils/courseNavigation';
 
 export default function AdminCourses() {
   const toast = useToast();
   const { t } = useLanguage();
   const confirm = useConfirm();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [params, setParams] = useSearchParams();
   const [result, setResult] = useState(null);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const page = coursePage(params);
+  const search = params.get('search') || '';
+  const setPage = (next) => setParams((previous) => {
+    const updated = new URLSearchParams(previous);
+    updated.set('page', String(next));
+    return updated;
+  });
+  const setSearch = (value) => setParams((previous) => {
+    const updated = new URLSearchParams(previous);
+    updated.delete('page');
+    if (value) updated.set('search', value);
+    else updated.delete('search');
+    return updated;
+  }, { replace: true });
+  const openCourse = (courseId, tab = '') => navigate(`/teacher/courses/${courseId}${tab ? `/${tab}` : ''}`, {
+    state: { returnTo: `${location.pathname}${location.search}` },
+  });
 
   const load = useCallback(() => {
     api.get('/courses/mine', { params: { page, limit: 20, search: search || undefined } })
@@ -42,7 +60,7 @@ export default function AdminCourses() {
           <p className="text-sm text-surface-500">{t('ac2.allCoursesSub')}</p>
         </div>
         <div className="w-64"><Input placeholder={t('ac2.searchCourses')} dir="auto" value={search}
-          onChange={(e) => { setPage(1); setSearch(e.target.value); }} /></div>
+          onChange={(e) => setSearch(e.target.value)} /></div>
       </div>
 
       <Card className="overflow-x-auto">
@@ -67,7 +85,7 @@ export default function AdminCourses() {
                     <Badge>{c.visibility}</Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <button type="button" onClick={() => navigate(`/teacher/courses/${c._id}/students`)}
+                    <button type="button" onClick={() => openCourse(c._id, 'students')}
                       className="font-medium text-brand-600 hover:underline dark:text-brand-300">
                       {c.enrollmentCount}
                     </button>
@@ -78,11 +96,11 @@ export default function AdminCourses() {
                       {/* Enrolling a student was reachable only through an unlabelled
                           pencil and then a tab, so nobody found it. Link straight to it. */}
                       <Button size="sm" variant="ghost" aria-label={t('ac2.studentsIn', { title: c.title })}
-                        onClick={() => navigate(`/teacher/courses/${c._id}/students`)}>
+                        onClick={() => openCourse(c._id, 'students')}>
                         <Users size={14} /> {t('ac2.students')}
                       </Button>
                       <Button size="sm" variant="ghost" aria-label={t('ac2.manageCourse', { title: c.title })}
-                        onClick={() => navigate(`/teacher/courses/${c._id}`)}>
+                        onClick={() => openCourse(c._id)}>
                         <Pencil size={14} /> {t('ac2.manage')}
                       </Button>
                       <Button size="sm" variant="ghost" aria-label={t('ac2.deleteCourse', { title: c.title })} onClick={() => remove(c)}>
