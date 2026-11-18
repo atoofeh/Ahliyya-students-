@@ -8,16 +8,18 @@ const asyncHandler = require('../../core/asyncHandler');
 const ApiError = require('../../core/ApiError');
 const audit = require('../../core/audit');
 const { requireCourseAccess, requireCourseOwnership } = require('../../middleware/courseAccess');
-const { validate, paginationSchema } = require('../../middleware/validate');
+const { validate, paginationSchema, objectId } = require('../../middleware/validate');
 const { paginatedQuery } = require('../../core/pagination');
 const Announcement = require('../../models/Announcement');
 const Enrollment = require('../../models/Enrollment');
-const { notifyMany } = require('../notifications/notifications.service');
+const AnnouncementService = require('./announcements.service');
 const { staffCourseFilter } = require('../courses/courseStaff');
 
 const announcementSchema = z.object({
-  title: z.string().min(1).max(200).trim(),
-  body: z.string().min(1).max(10000).trim(),
+  title: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(10000),
+  image: objectId.nullable().optional(),
+  requestId: z.string().uuid().optional(),
   pinned: z.boolean().optional().default(false),
   expiresAt: z.coerce.date().nullable().optional(),
 });
@@ -53,30 +55,14 @@ router.get('/feed', asyncHandler(async (req, res) => {
 
 // Platform-wide announcements (admin)
 router.post('/global', requirePermission(P.ANNOUNCEMENTS_GLOBAL), validate(announcementSchema), asyncHandler(async (req, res) => {
-  const announcement = await Announcement.create({ ...req.body, author: req.user.id, course: null });
-  await audit({ user: req.user.id, action: 'ANNOUNCEMENT_CREATED', ip: req.ip, resource: `announcement:${announcement._id}` });
-  const User = require('../../models/User');
-  const users = await User.find({ deletedAt: null, status: 'active' }).select('_id');
-  await notifyMany(users.map((u) => u._id), {
-    type: 'announcement', title: req.body.title, body: req.body.body.slice(0, 300), link: '/announcements',
-  });
-  res.status(201).json(announcement);
+  const { announcement, created } = await AnnouncementService.create(req.body, req.user.id, null, req.ip);
+  res.status(created ? 201 : 200).json(announcement);
 }));
 
 // Course announcements (owner/admin)
 router.post('/courses/:courseId', requireCourseOwnership, validate(announcementSchema), asyncHandler(async (req, res) => {
-  const announcement = await Announcement.create({ ...req.body, author: req.user.id, course: req.course._id });
-  await audit({ user: req.user.id, action: 'ANNOUNCEMENT_CREATED', course: req.course._id, ip: req.ip });
-  const enrollments = await Enrollment.find({ course: req.course._id, status: 'active' }).select('student');
-  await notifyMany(enrollments.map((e) => e.student), {
-    type: 'announcement',
-    title: `${req.course.title}: ${req.body.title}`,
-    body: req.body.body.slice(0, 300),
-    link: `/student/courses/${req.course._id}`,
-    course: req.course._id,
-    email: true,
-  });
-  res.status(201).json(announcement);
+  const { announcement, created } = await AnnouncementService.create(req.body, req.user.id, req.course, req.ip);
+  res.status(created ? 201 : 200).json(announcement);
 }));
 
 router.get('/courses/:courseId', requireCourseAccess, validate(paginationSchema, 'query'), asyncHandler(async (req, res) => {

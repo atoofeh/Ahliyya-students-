@@ -3,6 +3,8 @@ const { isAdminRole } = require('../../core/permissions');
 const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
 const { v4: uuidv4 } = require('uuid');
 const { staffCourseFilter } = require('../courses/courseStaff');
 const execFileAsync = promisify(execFile);
@@ -16,6 +18,7 @@ const {
   generateVideoKey, wrapKey, unwrapKey, createEncryptStream, createDecryptStreamAtOffset,
 } = require('../../core/cryptoUtils');
 const { signStreamToken, verifyStreamToken } = require('../../core/signedUrl');
+const resolveByteRange = require('./byteRange');
 const { UPLOAD } = require('../../config/constants');
 const Video = require('../../models/Video');
 const Session = require('../../models/Session');
@@ -152,14 +155,35 @@ class VideoService {
     if (!video) throw ApiError.notFound('Upload not found');
     if (String(video.uploadedBy) !== String(userId)) throw ApiError.forbidden('Not your upload');
     if (video.status !== 'uploading') throw ApiError.badRequest('Upload already finalized');
-    if (chunkIndex < 0 || chunkIndex >= video.totalChunks) throw ApiError.badRequest('Chunk index out of range');
+    if (!Number.isSafeInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= video.totalChunks) throw ApiError.badRequest('Chunk index out of range');
+    const chunkSize = env.CHUNK_SIZE_MB * 1024 * 1024;
+    const expectedSize = Math.min(chunkSize, video.declaredSize - chunkIndex * chunkSize);
+    if (buffer.length !== expectedSize) throw ApiError.badRequest('Chunk size does not match the upload', 'CHUNK_SIZE_MISMATCH');
 
-    await fs.promises.writeFile(path.join(CHUNK_DIR(uploadId), `chunk-${chunkIndex}`), buffer);
-    if (!video.receivedChunks.includes(chunkIndex)) {
-      video.receivedChunks.push(chunkIndex);
-      await video.save();
+    // A retried request must not truncate a chunk another request is writing.
+    const temporaryPath = path.join(CHUNK_DIR(uploadId), `.chunk-${chunkIndex}-${uuidv4()}`);
+    try {
+      await fs.promises.writeFile(temporaryPath, buffer);
+      // Install a fully written chunk only once. Concurrent retries then share
+      // the confirmed file instead of replacing it while another request reads
+      // or installs it (Windows also refuses concurrent replacement renames).
+      try {
+        await fs.promises.link(temporaryPath, path.join(CHUNK_DIR(uploadId), `chunk-${chunkIndex}`));
+      } catch (err) {
+        if (err.code !== 'EEXIST') throw err;
+        const existing = await fs.promises.stat(path.join(CHUNK_DIR(uploadId), `chunk-${chunkIndex}`));
+        if (existing.size !== expectedSize) throw ApiError.badRequest('Stored chunk size does not match the upload', 'CHUNK_SIZE_MISMATCH');
+      }
+    } finally {
+      await fs.promises.unlink(temporaryPath).catch(() => {});
     }
-    return { received: video.receivedChunks.length, total: video.totalChunks };
+    const updated = await Video.findOneAndUpdate(
+      { _id: video._id, status: 'uploading', deletedAt: null },
+      { $addToSet: { receivedChunks: chunkIndex } },
+      { new: true }
+    ).select('receivedChunks totalChunks');
+    if (!updated) throw ApiError.badRequest('Upload already finalized');
+    return { received: new Set(updated.receivedChunks).size, total: updated.totalChunks };
   }
 
   /** Resume support: client asks which chunks the server already has. */
@@ -180,14 +204,19 @@ class VideoService {
     if (!video) throw ApiError.notFound('Upload not found');
     if (String(video.uploadedBy) !== String(userId)) throw ApiError.forbidden('Not your upload');
     if (video.status !== 'uploading') return video;
-    if (video.receivedChunks.length !== video.totalChunks) {
+    if (new Set(video.receivedChunks).size !== video.totalChunks) {
       const missing = [];
       for (let i = 0; i < video.totalChunks; i++) if (!video.receivedChunks.includes(i)) missing.push(i);
       throw ApiError.badRequest(`Missing chunks: ${missing.slice(0, 20).join(', ')}`, 'CHUNKS_MISSING', { missing });
     }
 
-    video.status = 'processing';
-    await video.save();
+    // Only one completion request may start assembly/encryption.
+    const claimed = await Video.findOneAndUpdate(
+      { _id: video._id, status: 'uploading', deletedAt: null },
+      { $set: { status: 'processing' } },
+      { new: true }
+    );
+    if (!claimed) return Video.findById(video._id);
 
     // Assemble + process asynchronously so the HTTP request returns fast.
     setImmediate(() => {
@@ -198,7 +227,7 @@ class VideoService {
     });
 
     await audit({ user: userId, action: 'VIDEO_UPLOADED', course: video.course, ip, resource: `video:${video._id}` });
-    return video;
+    return claimed;
   }
 
   static async #processUpload(videoId) {
@@ -207,16 +236,12 @@ class VideoService {
     const assembledPath = path.join(STORAGE.tmp, `assembled-${video.uploadId}${path.extname(video.originalName || '.mp4')}`);
 
     // 1. Assemble chunks in order.
-    const out = fs.createWriteStream(assembledPath);
-    for (let i = 0; i < video.totalChunks; i++) {
-      await new Promise((resolve, reject) => {
-        const readStream = fs.createReadStream(path.join(dir, `chunk-${i}`));
-        readStream.on('error', reject);
-        readStream.on('end', resolve);
-        readStream.pipe(out, { end: false });
-      });
+    async function* parts() {
+      for (let i = 0; i < video.totalChunks; i++) {
+        yield* fs.createReadStream(path.join(dir, `chunk-${i}`));
+      }
     }
-    await new Promise((resolve) => out.end(resolve));
+    await pipeline(Readable.from(parts()), fs.createWriteStream(assembledPath));
 
     // Container sniff: ftyp box at offset 4 (mp4/mov/m4v) or EBML header (webm/mkv).
     const head = Buffer.alloc(12);
@@ -275,13 +300,7 @@ class VideoService {
     fs.mkdirSync(videoDir, { recursive: true });
     const encryptedPath = path.join(videoDir, 'source.enc');
 
-    await new Promise((resolve, reject) => {
-      fs.createReadStream(assembledPath)
-        .pipe(createEncryptStream(key, iv))
-        .pipe(fs.createWriteStream(encryptedPath))
-        .on('finish', resolve)
-        .on('error', reject);
-    });
+    await pipeline(fs.createReadStream(assembledPath), createEncryptStream(key, iv), fs.createWriteStream(encryptedPath));
 
     video.storagePath = encryptedPath;
     const { wrapped, keyVersion } = wrapKey(key);
@@ -375,30 +394,27 @@ class VideoService {
     const iv = Buffer.from(video.encryption.iv, 'hex');
     const totalSize = video.sizeBytes;
 
-    let start = 0;
-    let end = totalSize - 1;
-    if (rangeHeader) {
-      const match = /bytes=(\d*)-(\d*)/.exec(rangeHeader);
-      if (match) {
-        if (match[1]) start = parseInt(match[1], 10);
-        if (match[2]) end = Math.min(parseInt(match[2], 10), totalSize - 1);
-        if (start > end || start >= totalSize) {
-          res.status(416).set('Content-Range', `bytes */${totalSize}`).end();
-          return;
-        }
-      }
+    const range = resolveByteRange(rangeHeader, totalSize);
+    if (!range) {
+      res.status(416).set('Content-Range', `bytes */${totalSize}`).end();
+      return;
     }
+    const { start, end, partial } = range;
 
     const chunkLength = end - start + 1;
-    res.status(rangeHeader ? 206 : 200);
+    res.status(partial ? 206 : 200);
     res.set({
       'Content-Type': video.mimeType || 'video/mp4',
       'Accept-Ranges': 'bytes',
       'Content-Length': chunkLength,
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
-      ...(rangeHeader && { 'Content-Range': `bytes ${start}-${end}/${totalSize}` }),
+      ...(partial && { 'Content-Range': `bytes ${start}-${end}/${totalSize}` }),
     });
+    if (chunkLength === 0) {
+      res.end();
+      return;
+    }
 
     // CTR random access: align decryption to the AES block containing `start`.
     const { decipher, skipBytes } = createDecryptStreamAtOffset(key, iv, start);
@@ -407,6 +423,7 @@ class VideoService {
     // We must read encrypted bytes from (start - skipBytes) so the first
     // decrypted block aligns, then drop skipBytes plaintext bytes.
     let dropped = 0;
+    fileStream.on('error', () => res.destroy());
     fileStream.pipe(decipher);
     decipher.on('data', (chunk) => {
       let data = chunk;

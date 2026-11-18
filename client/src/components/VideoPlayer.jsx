@@ -73,6 +73,17 @@ const webkitMediaUi = typeof HTMLVideoElement !== 'undefined'
 const SKIP_SECONDS = 10;
 // How long the bar stays after a tap before fading, while the video plays.
 const BAR_HIDE_MS = 3400;
+const STREAM_RETRY_MS = 5000;
+
+function playbackState(video) {
+  return {
+    position: video.currentTime,
+    paused: video.paused || video.ended,
+    rate: video.playbackRate,
+    muted: video.muted,
+    volume: video.volume,
+  };
+}
 
 /** Seconds as a clock, dropping the hours on anything under one. */
 function clock(seconds) {
@@ -90,8 +101,16 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   // Where playback was at the previous tick, so watched time can be measured
   // along the video rather than along the clock.
   const lastPos = useRef(0);
-  const [src, setSrc] = useState(null);
+  // Kept outside React state so a media reload cannot erase the last good
+  // position before loadedmetadata restores it. startAt is used only once.
+  const playback = useRef({ position: Math.max(0, startAt), paused: true, rate: 1, muted: false, volume: 1 });
+  const restoring = useRef(true);
+  const renewStream = useRef(null);
+  const [stream, setStream] = useState(null);
+  const src = stream?.url;
   const [error, setError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [mediaError, setMediaError] = useState(false);
   const [watermark, setWatermark] = useState(null);
   const [wmPos, setWmPos] = useState({ top: '8%', left: '6%' });
   const [wmShown, setWmShown] = useState(false);
@@ -135,7 +154,10 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     let active = true;
     let listener;
     LmsNative.addListener('screenRecordingChanged', ({ captured }) => {
-      if (captured) videoRef.current?.pause();
+      if (captured) {
+        playback.current.paused = true;
+        videoRef.current?.pause();
+      }
     }).then((handle) => {
       if (active) listener = handle;
       else handle.remove();
@@ -143,26 +165,32 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     return () => { active = false; listener?.remove(); };
   }, []);
 
-  const fetchToken = useCallback(async () => {
-    const { data } = await api.post(`/videos/${videoId}/token`);
+  const fetchToken = useCallback(async (signal) => {
+    const { data } = await api.post(`/videos/${videoId}/token`, undefined, { signal, timeout: 15000 });
     // Every token issue re-counts the allowance, so the strip below the video
     // stays honest as the student watches rather than only at first load.
-    setViews(data.viewLimit ? { remaining: data.viewsRemaining, limit: data.viewLimit } : null);
-    return `${API_BASE}/videos/${videoId}/stream?token=${encodeURIComponent(data.token)}`;
+    if (!signal?.aborted) setViews(data.viewLimit ? { remaining: data.viewsRemaining, limit: data.viewLimit } : null);
+    const ttl = (Number(data.expiresInSeconds) || 300) * 1000;
+    return {
+      url: `${API_BASE}/videos/${videoId}/stream?token=${encodeURIComponent(data.token)}`,
+      renewAfterMs: Math.max(1000, ttl - Math.min(60000, ttl / 5)),
+    };
   }, [videoId]);
 
   // Initial token + watermark payload. State is only set from the async
   // continuation; callers remount the player with key={videoId} to reset it.
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     // Deferred by a tick: fetchToken() reports the watch allowance back into
     // state, and setting state straight from an effect body is what the
     // react-hooks rule forbids.
     const timer = setTimeout(() => {
-      Promise.all([fetchToken(), api.get('/videos/watermark/me')])
-        .then(([url, wm]) => {
+      setError(null);
+      Promise.all([fetchToken(controller.signal), api.get('/videos/watermark/me', { signal: controller.signal, timeout: 15000 })])
+        .then(([fresh, wm]) => {
           if (cancelled) return;
-          setSrc(url);
+          setStream(fresh);
           if (wm.data.enabled) setWatermark(wm.data.lines);
         })
         .catch((err) => {
@@ -173,30 +201,54 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
           else setError(apiError(err, 'Could not load video'));
         });
     }, 0);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [videoId, fetchToken]);
+    return () => { cancelled = true; controller.abort(); clearTimeout(timer); };
+  }, [videoId, fetchToken, loadAttempt]);
 
-  // Renew the signed URL before the 5-minute token expires.
+  // A new URL is a new media resource. Capture state AFTER the request, then
+  // restore it once the replacement has metadata and its seek completes.
+  // A failed request keeps the working source and retries before expiry.
   useEffect(() => {
-    if (!src) return undefined;
-    const interval = setInterval(async () => {
+    if (!stream || blocked) return undefined;
+    let cancelled = false;
+    let pending = false;
+    let timer;
+    const controller = new AbortController();
+    const renew = async () => {
+      if (pending || cancelled) return;
+      pending = true;
+      clearTimeout(timer);
       try {
+        const fresh = await fetchToken(controller.signal);
         const video = videoRef.current;
-        if (!video) return;
-        const { currentTime, paused } = video;
-        const fresh = await fetchToken();
-        // Only swap when paused to avoid interrupting playback; the browser
-        // keeps buffered ranges for the old URL otherwise.
-        if (paused) {
-          video.src = fresh;
-          video.currentTime = currentTime;
-        } else {
-          setSrc(fresh); // takes effect on next load/seek
+        if (cancelled || !video) return;
+        if (!restoring.current && video.readyState > 0 && !video.error) {
+          playback.current = playbackState(video);
         }
-      } catch { /* next heartbeat retries */ }
-    }, 4 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [src, fetchToken]);
+        if (document.hidden) playback.current.paused = true;
+        restoring.current = true;
+        setWaiting(true);
+        setMediaError(false);
+        setStream(fresh);
+      } catch (err) {
+        if (cancelled) return;
+        if (err.response?.data?.code === 'VIDEO_VIEW_LIMIT') {
+          playback.current.paused = true;
+          videoRef.current?.pause();
+          setBlocked(true);
+        } else {
+          timer = setTimeout(renew, STREAM_RETRY_MS);
+        }
+      } finally { pending = false; }
+    };
+    renewStream.current = renew;
+    timer = setTimeout(renew, stream.renewAfterMs);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timer);
+      renewStream.current = null;
+    };
+  }, [stream, blocked, fetchToken]);
 
   // Show the watermark in bursts, each at a fresh random position so cropping a
   // fixed corner never removes it. Runs while paused too — a still photograph of
@@ -314,7 +366,12 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
 
   // Pause when tab hidden
   useEffect(() => {
-    const onVis = () => { if (document.hidden) videoRef.current?.pause(); };
+    const onVis = () => {
+      if (document.hidden) {
+        playback.current.paused = true;
+        videoRef.current?.pause();
+      }
+    };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
@@ -352,6 +409,45 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     }
   }, [heartbeat, videoId]);
 
+  const completeRestore = (video) => {
+    if (!restoring.current || video.readyState < 1 || video.seeking) return;
+    restoring.current = false;
+    playback.current.position = video.currentTime;
+    lastPos.current = video.currentTime;
+    setCurrent(video.currentTime);
+    if (!playback.current.paused && !document.hidden && !video.ended) {
+      video.play().catch(() => {
+        // iOS may require another tap after an interruption. Keep the restored
+        // position and offer Play, rather than silently starting from zero.
+        playback.current.paused = true;
+        setPlaying(false);
+        holdBar();
+      });
+    }
+  };
+
+  const onLoadedMetadata = (event) => {
+    const video = event.currentTarget;
+    const saved = playback.current;
+    restoring.current = true;
+    setDuration(Number.isFinite(video.duration) ? video.duration : 0);
+    try {
+      video.playbackRate = saved.rate;
+      video.muted = saved.muted;
+      video.volume = saved.volume;
+      const position = Number.isFinite(video.duration)
+        ? Math.min(saved.position, video.duration) : saved.position;
+      video.currentTime = Math.max(0, position);
+      lastPos.current = video.currentTime;
+      setCurrent(video.currentTime);
+      completeRestore(video);
+    } catch {
+      setMediaError(true);
+      setWaiting(false);
+      holdBar();
+    }
+  };
+
   /**
    * Watched time, measured along the video.
    *
@@ -367,10 +463,11 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
    */
   const onTimeUpdate = () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || restoring.current || video.readyState === 0 || video.seeking) return;
     const position = video.currentTime;
     const advanced = position - lastPos.current;
     lastPos.current = position;
+    playback.current.position = position;
     // Only the bar below reads this, and only WebKit draws that bar — so no
     // other browser re-renders four times a second for nothing.
     if (webkitMediaUi) setCurrent(position);
@@ -391,6 +488,14 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
+    if (restoring.current) {
+      playback.current.paused = !playback.current.paused;
+      setPlaying(!playback.current.paused);
+      if (playback.current.paused) video.pause();
+      else completeRestore(video);
+      revealBar();
+      return;
+    }
     if (video.paused) video.play().catch(() => {});
     else video.pause();
     revealBar();
@@ -399,8 +504,7 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     const video = videoRef.current;
     if (!video) return;
     const end = Number.isFinite(video.duration) ? video.duration : video.currentTime;
-    video.currentTime = Math.min(Math.max(video.currentTime + seconds, 0), end);
-    revealBar();
+    seekTo(Math.min(Math.max((restoring.current ? playback.current.position : video.currentTime) + seconds, 0), end));
   };
   const toggleMute = () => {
     const video = videoRef.current;
@@ -413,6 +517,7 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   const seekTo = (value) => {
     const video = videoRef.current;
     if (!video) return;
+    playback.current.position = value;
     video.currentTime = value;
     setCurrent(value);
     revealBar();
@@ -428,7 +533,14 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     );
   }
   if (error) {
-    return <div className="flex aspect-video items-center justify-center rounded-xl bg-surface-900 text-sm text-rose-400">{error}</div>;
+    return (
+      <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-xl bg-surface-900 px-4 text-center text-sm text-rose-400">
+        <p>{error}</p>
+        <button type="button" className="rounded-lg bg-white/10 px-4 py-2 font-semibold text-white" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
+          {t('video.retry')}
+        </button>
+      </div>
+    );
   }
   if (!src) {
     return (
@@ -466,22 +578,69 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
         className={`lesson-video ${isExpanded ? 'h-full w-full object-contain' : 'aspect-video w-full'}`}
         onClick={webkitMediaUi ? revealBar : undefined}
         onTimeUpdate={onTimeUpdate}
-        onLoadedMetadata={(e) => {
-          if (startAt > 2) e.target.currentTime = startAt;
-          lastPos.current = e.target.currentTime;
-          setCurrent(e.target.currentTime);
-          setDuration(Number.isFinite(e.target.duration) ? e.target.duration : 0);
-        }}
+        onLoadedMetadata={onLoadedMetadata}
+        onEmptied={() => { restoring.current = true; setWaiting(true); }}
         onDurationChange={(e) => setDuration(Number.isFinite(e.target.duration) ? e.target.duration : 0)}
-        onSeeked={(e) => { lastPos.current = e.target.currentTime; setCurrent(e.target.currentTime); }}
-        onPlay={() => { setPlaying(true); revealBar(); }}
-        onPlaying={() => setWaiting(false)}
-        onCanPlay={() => setWaiting(false)}
+        onSeeked={(e) => {
+          const video = e.currentTarget;
+          if (restoring.current) completeRestore(video);
+          else playback.current = playbackState(video);
+          lastPos.current = video.currentTime;
+          setCurrent(video.currentTime);
+        }}
+        onPlay={() => {
+          if (document.hidden) {
+            playback.current.paused = true;
+            videoRef.current?.pause();
+            return;
+          }
+          if (!restoring.current) playback.current.paused = false;
+          setPlaying(true);
+          revealBar();
+        }}
+        onPlaying={() => { setWaiting(false); setMediaError(false); }}
+        onCanPlay={(e) => { completeRestore(e.currentTarget); setWaiting(false); }}
         onWaiting={() => setWaiting(true)}
-        onVolumeChange={(e) => setMuted(e.target.muted)}
-        onPause={() => { setPlaying(false); holdBar(); heartbeat(videoRef.current?.currentTime || 0); }}
-        onEnded={() => { setPlaying(false); holdBar(); finish(videoRef.current?.duration || 0); }}
+        onStalled={() => { if (!videoRef.current?.paused) setWaiting(true); }}
+        onError={() => { setMediaError(true); setWaiting(false); holdBar(); }}
+        onRateChange={(e) => { if (!restoring.current) playback.current.rate = e.currentTarget.playbackRate; }}
+        onVolumeChange={(e) => {
+          const video = e.currentTarget;
+          setMuted(video.muted);
+          if (!restoring.current) {
+            playback.current.muted = video.muted;
+            playback.current.volume = video.volume;
+          }
+        }}
+        onPause={(e) => {
+          if (restoring.current || e.currentTarget.readyState === 0) return;
+          playback.current = playbackState(e.currentTarget);
+          setPlaying(false);
+          holdBar();
+          heartbeat(e.currentTarget.currentTime);
+        }}
+        onEnded={(e) => {
+          if (restoring.current) return;
+          playback.current = playbackState(e.currentTarget);
+          setPlaying(false);
+          holdBar();
+          finish(e.currentTarget.duration || 0);
+        }}
       />
+      {mediaError && (
+        <div role="alert" className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/85 px-5 text-center text-sm text-white">
+          <p>{t('video.playbackError')}</p>
+          <button type="button" className="rounded-lg bg-white/15 px-4 py-2 font-semibold" onClick={() => renewStream.current?.()}>
+            {t('video.retry')}
+          </button>
+        </div>
+      )}
+      {waiting && !mediaError && (
+        <div role="status" className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 bg-black/40 text-sm text-white">
+          <Loader2 className="animate-spin" size={22} aria-hidden="true" />
+          <span>{t('video.buffering')}</span>
+        </div>
+      )}
       {/* WebKit's controls are off, so these are the controls. Everything the
           native bar offered that is not here — full screen, picture in
           picture, AirPlay, the overflow menu — was a way out of this

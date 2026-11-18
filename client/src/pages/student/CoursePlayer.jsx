@@ -10,6 +10,7 @@ import { useToast } from '../../hooks/useToast';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
 import VideoPlayer from '../../components/VideoPlayer';
+import AuthedImage from '../../components/AuthedImage';
 import { Card, Button, Badge, ProgressBar, EmptyState, Textarea, Input, Select, Modal, Skeleton } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 import ErrorState from '../../components/ErrorState';
@@ -52,6 +53,18 @@ export default function CoursePlayer() {
   const [reply, setReply] = useState({});
   const [bookmarkModal, setBookmarkModal] = useState(false);
   const [bookmarkNote, setBookmarkNote] = useState('');
+  const currentLessonId = lesson?._id;
+  const rememberVideoPosition = useCallback((positionSeconds) => {
+    if (!currentLessonId) return;
+    setDetail((current) => current && ({
+      ...current,
+      curriculum: current.curriculum.map((section) => ({
+        ...section,
+        lessons: section.lessons.map((item) => item._id === currentLessonId
+          ? { ...item, progress: { ...item.progress, positionSeconds } } : item),
+      })),
+    }));
+  }, [currentLessonId]);
   const [openSections, setOpenSections] = useState({});
   const [submitModal, setSubmitModal] = useState(null);
   const [submissionText, setSubmissionText] = useState('');
@@ -262,7 +275,7 @@ export default function CoursePlayer() {
           lesson.video.status === 'ready'
             ? <VideoPlayer key={lesson.video._id} videoId={lesson.video._id} lessonId={lesson._id}
                 startAt={flatLessons.find((l) => l._id === lesson._id)?.progress?.positionSeconds || 0}
-                onProgress={() => {}} />
+                onProgress={rememberVideoPosition} />
             : <Card className="p-6 text-center text-sm text-surface-500">{t('player.processing')}</Card>
         )}
         {(lesson.type === 'pdf' || lesson.type === 'document') && lesson.fileAsset && (
@@ -387,6 +400,7 @@ export default function CoursePlayer() {
             <p dir="auto" className="font-medium text-surface-900 dark:text-white">{an.title}</p>
           </div>
           <p dir="auto" className="mt-1 whitespace-pre-wrap text-sm text-surface-600 dark:text-surface-300">{an.body}</p>
+          {an.image && <AuthedImage fileId={an.image} alt={an.title} className="mt-3 max-h-96 w-full rounded-xl object-contain" />}
           <p className="mt-2 text-xs text-surface-400">{an.author?.name} · {new Date(an.publishedAt).toLocaleString()}</p>
         </div>
       ))}

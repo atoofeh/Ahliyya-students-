@@ -10,6 +10,9 @@ import PaymentsTab from './PaymentsTab';
 import { useAuth } from '../../../hooks/useAuth';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { isAdminRole } from '../../../utils/roles';
+import useAnnouncementSend from '../../../hooks/useAnnouncementSend';
+import AnnouncementPhoto from '../../../components/AnnouncementPhoto';
+import AuthedImage from '../../../components/AuthedImage';
 
 export default function InsightsTab({ courseId }) {
   const toast = useToast();
@@ -24,6 +27,8 @@ export default function InsightsTab({ courseId }) {
   const [cheat, setCheat] = useState(null);
   const [announcements, setAnnouncements] = useState(null);
   const [annForm, setAnnForm] = useState({ title: '', body: '' });
+  const [annPhoto, setAnnPhoto] = useState(null);
+  const { send, busy, phase } = useAnnouncementSend(`/announcements/courses/${courseId}`, `/files/courses/${courseId}/images`);
 
   const loadAll = useCallback(() => {
     api.get(`/analytics/courses/${courseId}`).then(({ data }) => setAnalytics(data)).catch(() => setAnalytics({}));
@@ -34,9 +39,11 @@ export default function InsightsTab({ courseId }) {
 
   const postAnnouncement = async () => {
     try {
-      await api.post(`/announcements/courses/${courseId}`, annForm);
+      const published = await send(annForm, annPhoto);
+      if (!published) return;
       toast.success(t('ins.announcementSent'));
       setAnnForm({ title: '', body: '' });
+      setAnnPhoto(null);
       loadAll();
     } catch (err) { toast.error(apiError(err)); }
   };
@@ -146,11 +153,13 @@ export default function InsightsTab({ courseId }) {
             <p className="flex items-center gap-2 text-sm font-semibold text-surface-800 dark:text-surface-100">
               <Megaphone size={16} /> {t('ins.newAnnouncement')}
             </p>
-            <Input label={t('ann.titleField')} dir="auto" value={annForm.title} onChange={(e) => setAnnForm((f) => ({ ...f, title: e.target.value }))} />
-            <Textarea label={t('ann.message')} dir="auto" value={annForm.body} onChange={(e) => setAnnForm((f) => ({ ...f, body: e.target.value }))} />
-            <Button onClick={postAnnouncement} disabled={!annForm.title.trim() || !annForm.body.trim()}>
-              <Send size={14} /> {t('ins.publishNotify')}
+            <Input label={t('ann.titleField')} dir="auto" disabled={busy} value={annForm.title} onChange={(e) => setAnnForm((f) => ({ ...f, title: e.target.value }))} />
+            <Textarea label={t('ann.message')} dir="auto" disabled={busy} value={annForm.body} onChange={(e) => setAnnForm((f) => ({ ...f, body: e.target.value }))} />
+            <AnnouncementPhoto file={annPhoto} onChange={setAnnPhoto} disabled={busy} />
+            <Button onClick={postAnnouncement} loading={busy} disabled={busy || !annForm.title.trim() || !annForm.body.trim()}>
+              {!busy && <Send size={14} />} {busy ? t(phase === 'uploading' ? 'ann.uploadingPhoto' : 'ann.sending') : t('ins.publishNotify')}
             </Button>
+            {busy && <p role="status" className="text-xs text-surface-500">{t('ann.sendingHint')}</p>}
           </Card>
           <div className="space-y-3">
             {!announcements ? <SkeletonCard /> : announcements.length === 0 ? (
@@ -159,6 +168,7 @@ export default function InsightsTab({ courseId }) {
               <Card key={a._id} className="p-4">
                 <p dir="auto" className="font-medium text-surface-900 dark:text-white">{a.title}</p>
                 <p dir="auto" className="mt-1 whitespace-pre-wrap text-sm text-surface-500">{a.body}</p>
+                <AuthedImage fileId={a.image} alt={a.title} className="mt-3 max-h-96 w-full rounded-xl object-contain" />
                 <p className="mt-2 text-xs text-surface-400">{new Date(a.publishedAt).toLocaleString()}</p>
               </Card>
             ))}

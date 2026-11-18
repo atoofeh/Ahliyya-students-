@@ -21,8 +21,8 @@ const initUpload = asyncHandler(async (req, res) => {
 
 const uploadChunk = asyncHandler(async (req, res) => {
   if (!req.file?.buffer) throw ApiError.badRequest('Chunk data missing');
-  const chunkIndex = parseInt(req.body.chunkIndex, 10);
-  if (Number.isNaN(chunkIndex)) throw ApiError.badRequest('chunkIndex required');
+  const chunkIndex = Number(req.body.chunkIndex);
+  if (!/^\d+$/.test(String(req.body.chunkIndex)) || !Number.isSafeInteger(chunkIndex)) throw ApiError.badRequest('chunkIndex required');
   res.json(await VideoService.saveChunk(req.params.uploadId, chunkIndex, req.file.buffer, req.user.id));
 });
 

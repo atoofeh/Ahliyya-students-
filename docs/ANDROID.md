@@ -1,5 +1,7 @@
 # Android app
 
+The current prepared release is **Feker 1.0.8, version code 11**. See [release 1.0.8](releases/1.0.8.md) for the signed artifacts and validation. Packaged releases use the checked-in HTTPS API address in `client/.env.android`; older development examples below are historical.
+
 The Android app is the web client, packaged with [Capacitor 8](https://capacitorjs.com/) and given the
 protections a browser cannot offer: the refresh token lives in the Android Keystore, and the window is
 closed to screenshots and screen recording.

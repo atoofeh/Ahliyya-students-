@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useAuth } from '../../hooks/useAuth';
+import { courseReturnTo } from '../../utils/courseNavigation';
 import { Card, Button, Badge, Tabs, Toggle, Input, Textarea, Select, ConfirmButton } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 import CurriculumTab from './tabs/CurriculumTab';
@@ -21,6 +23,10 @@ const TAB_KEYS = ['curriculum', 'videos', 'questions', 'quizzes', 'assignments',
 export default function CourseManager() {
   const { courseId, tab = 'curriculum' } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const returnTo = courseReturnTo(user?.role, location.state?.returnTo);
+  const openTab = (next) => navigate(`/teacher/courses/${courseId}/${next}`, { state: { returnTo } });
   const toast = useToast();
   const { t } = useLanguage();
   const [detail, setDetail] = useState(null);
@@ -66,7 +72,7 @@ export default function CourseManager() {
     try {
       await api.delete(`/courses/${courseId}`);
       toast.success(t('crs.deleted'));
-      navigate('/teacher/courses');
+      navigate(returnTo);
     } catch (err) { toast.error(apiError(err)); }
   };
 
@@ -76,7 +82,7 @@ export default function CourseManager() {
 
   return (
     <div className="space-y-4">
-      <button onClick={() => navigate('/teacher/courses')} className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline">
+      <button onClick={() => navigate(returnTo)} className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline">
         <ArrowLeft size={15} className="rtl:rotate-180" /> {t('crs.allCourses')}
       </button>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -90,10 +96,10 @@ export default function CourseManager() {
       </div>
 
       <Tabs tabs={TAB_KEYS.map((k) => ({ key: k, label: t(`tab.${k}`) }))} active={tab}
-        onChange={(next) => navigate(`/teacher/courses/${courseId}/${next}`)} />
+        onChange={openTab} />
 
       <div className="pt-1">
-        {tab === 'curriculum' && <CurriculumTab courseId={courseId} curriculum={curriculum} reload={load} />}
+        {tab === 'curriculum' && <CurriculumTab courseId={courseId} curriculum={curriculum} reload={load} onOpenTab={openTab} />}
         {tab === 'videos' && <VideosTab courseId={courseId} />}
         {tab === 'questions' && <QuestionBankTab courseId={courseId} />}
         {tab === 'quizzes' && <QuizzesTab courseId={courseId} />}

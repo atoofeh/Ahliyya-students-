@@ -4,6 +4,7 @@ import api from '../api/axios';
 import { useLanguage } from '../hooks/useLanguage';
 import { Card, EmptyState, Badge, PageIntro, Avatar } from '../components/ui';
 import { SkeletonCard } from '../components/Skeletons';
+import AuthedImage from '../components/AuthedImage';
 
 export default function AnnouncementsPage() {
   const { t } = useLanguage();
@@ -34,6 +35,7 @@ export default function AnnouncementsPage() {
                     <Badge color={a.course ? 'blue' : 'primary'}>{a.course ? a.course.title : t('announcements.platform')}</Badge>
                   </div>
                   <p dir="auto" className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-surface-600 dark:text-surface-300">{a.body}</p>
+                  <AuthedImage fileId={a.image} alt={a.title} className="mt-3 max-h-96 w-full rounded-xl object-contain" />
                   <p className="mt-3 text-xs text-surface-400">
                     {a.author?.name} · <span className="capitalize">{a.author?.role}</span> · {new Date(a.publishedAt).toLocaleString()}
                   </p>

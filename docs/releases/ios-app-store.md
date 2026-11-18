@@ -1,5 +1,7 @@
 # Publishing Feker to the App Store
 
+**November 19, 2026 update (Asia/Amman):** the current project is prepared as **1.0.8, build 12**, including the playback renewal and teacher-workflow fixes. Follow [the current release handoff](1.0.8.md). The build 11 discussion and version examples below describe the earlier release; verify the next available build in App Store Connect before uploading.
+
 Written for whoever has the Mac. Everything needed is in the repository —
 there is no separate iOS artifact to fetch, because an iOS build can only be
 made on macOS.

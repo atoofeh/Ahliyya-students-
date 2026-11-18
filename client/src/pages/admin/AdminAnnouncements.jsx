@@ -5,6 +5,9 @@ import { useToast } from '../../hooks/useToast';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useConfirm } from '../../hooks/useConfirm';
 import { Card, Button, Input, Textarea, Toggle, Badge, Spinner, EmptyState } from '../../components/ui';
+import useAnnouncementSend from '../../hooks/useAnnouncementSend';
+import AnnouncementPhoto from '../../components/AnnouncementPhoto';
+import AuthedImage from '../../components/AuthedImage';
 
 export default function AdminAnnouncements() {
   const toast = useToast();
@@ -12,7 +15,8 @@ export default function AdminAnnouncements() {
   const confirm = useConfirm();
   const [items, setItems] = useState(null);
   const [form, setForm] = useState({ title: '', body: '', pinned: false });
-  const [busy, setBusy] = useState(false);
+  const [photo, setPhoto] = useState(null);
+  const { send, busy, phase } = useAnnouncementSend('/announcements/global', '/files/news-image');
 
   const load = useCallback(() => {
     api.get('/announcements/feed').then(({ data }) => setItems(data)).catch(() => setItems([]));
@@ -20,13 +24,14 @@ export default function AdminAnnouncements() {
   useEffect(() => { load(); }, [load]);
 
   const publish = async () => {
-    setBusy(true);
     try {
-      await api.post('/announcements/global', form);
+      const published = await send(form, photo);
+      if (!published) return;
       toast.success(t('ann.published'));
       setForm({ title: '', body: '', pinned: false });
+      setPhoto(null);
       load();
-    } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
+    } catch (err) { toast.error(apiError(err)); }
   };
 
   const remove = async (id) => {
@@ -47,12 +52,14 @@ export default function AdminAnnouncements() {
           <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100">
             <Megaphone size={17} /> {t('ann.new')}
           </p>
-          <Input label={t('ann.titleField')} dir="auto" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-          <Textarea label={t('ann.message')} dir="auto" rows={6} value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} />
-          <Toggle label={t('ann.pinToTop')} checked={form.pinned} onChange={(v) => setForm((f) => ({ ...f, pinned: v }))} />
-          <Button className="w-full" loading={busy} onClick={publish} disabled={!form.title.trim() || !form.body.trim()}>
-            <Send size={15} /> {t('ann.publishToEveryone')}
+          <Input label={t('ann.titleField')} dir="auto" disabled={busy} value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+          <Textarea label={t('ann.message')} dir="auto" rows={6} disabled={busy} value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} />
+          <AnnouncementPhoto file={photo} onChange={setPhoto} disabled={busy} />
+          <Toggle label={t('ann.pinToTop')} checked={form.pinned} onChange={(v) => { if (!busy) setForm((f) => ({ ...f, pinned: v })); }} />
+          <Button className="w-full" loading={busy} onClick={publish} disabled={busy || !form.title.trim() || !form.body.trim()}>
+            {!busy && <Send size={15} />} {busy ? t(phase === 'uploading' ? 'ann.uploadingPhoto' : 'ann.sending') : t('ann.publishToEveryone')}
           </Button>
+          {busy && <p role="status" className="text-xs text-surface-500">{t('ann.sendingHint')}</p>}
         </Card>
 
         <div className="space-y-3">
@@ -71,6 +78,7 @@ export default function AdminAnnouncements() {
                 </Button>
               </div>
               <p dir="auto" className="mt-1 whitespace-pre-wrap text-sm text-surface-500">{a.body}</p>
+              <AuthedImage fileId={a.image} alt={a.title} className="mt-3 max-h-96 w-full rounded-xl object-contain" />
               <p className="mt-2 text-xs text-surface-400">{a.author?.name} · {new Date(a.publishedAt).toLocaleString()}</p>
             </Card>
           ))}

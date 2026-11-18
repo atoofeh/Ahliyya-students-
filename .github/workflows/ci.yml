@@ -38,6 +38,10 @@ jobs:
       # Zero problems is the standard; no eslint-disable is added to reach it.
       - run: npm run lint
         working-directory: client
+      - run: npx playwright install --with-deps chromium
+        working-directory: client
+      - run: npm test
+        working-directory: client
       - run: npm run build
         working-directory: client
 
@@ -56,6 +60,10 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: android-actions/setup-android@v3
+        with:
+          # The obsolete SDK package named "tools" is no longer available.
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          log-accepted-android-sdk-licenses: false
       - run: npm ci
         working-directory: client
       - run: npm run build:android
