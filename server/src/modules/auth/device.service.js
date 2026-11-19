@@ -43,7 +43,7 @@ class DeviceService {
    * Returns { device, rejected }. Never throws for a foreign device — the
    * caller records LoginHistory and audits before failing the request.
    */
-  static async bindOrVerify({ user, deviceId, fingerprint, ip, ua = {}, platform = 'web', appVersion = '' }) {
+  static async bindOrVerify({ user, deviceId, desktopLegacyDeviceId, fingerprint, ip, ua = {}, userAgent = '', platform = 'web', appVersion = '' }) {
     const keyHash = DeviceService.hashDeviceId(deviceId);
     const fingerprintHash = fingerprint ? sha256(String(fingerprint)) : null;
     const multiDevice = isMultiDeviceUser(user) || DeviceService.isNativeAppPlatform(platform);
@@ -97,7 +97,14 @@ class DeviceService {
     }
 
     if (!multiDevice && !safeEqual(active.deviceKeyHash, keyHash)) {
-      return { device: active, rejected: true };
+      // An older website used a profile UUID inside the same Windows EXE.
+      // Upgrade only with that exact existing credential, after password
+      // verification, and evidence that it belonged to the desktop app.
+      if (platform === 'windows' && /^[0-9a-f]{64}$/i.test(deviceId) && /FekerDesktop\//.test(userAgent)) {
+        const upgraded = await DeviceService.#upgradeDesktopIdentity({ user, active, deviceId, keyHash, desktopLegacyDeviceId, ip });
+        if (upgraded) active = upgraded;
+      }
+      if (!safeEqual(active.deviceKeyHash, keyHash)) return { device: active, rejected: true };
     }
 
     if (active.fingerprintHash && fingerprintHash && active.fingerprintHash !== fingerprintHash) {
@@ -117,6 +124,34 @@ class DeviceService {
     if (ua.os) active.os = ua.os;
     await active.save();
     return { device: active, rejected: false };
+  }
+
+  static async #upgradeDesktopIdentity({ user, active, deviceId, keyHash, desktopLegacyDeviceId, ip }) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(desktopLegacyDeviceId || '')) return null;
+    const previousHash = DeviceService.hashDeviceId(desktopLegacyDeviceId);
+    if (!safeEqual(active.deviceKeyHash, previousHash)) return null;
+    const desktopHistory = await Session.exists({
+      user: user._id, device: active._id, deviceKeyHash: previousHash, userAgent: /FekerDesktop\//,
+    });
+    if (!desktopHistory) return null;
+
+    // Compare-and-set keeps one slot and prevents two different target
+    // identities from both claiming the same legacy binding concurrently.
+    const upgraded = await Device.findOneAndUpdate({
+      _id: active._id, user: user._id, status: 'active', multiDevice: false,
+      deviceKeyHash: previousHash, platform: { $in: ['web', 'other', 'windows'] },
+    }, { $set: { deviceKeyHash: keyHash, publicId: DeviceService.publicIdFor(deviceId, user._id), platform: 'windows' } }, { new: true })
+      .select('+deviceKeyHash');
+    if (upgraded) {
+      await audit({
+        user: user._id, targetUser: user._id, action: 'DEVICE_IDENTITY_MIGRATED', ip, deviceId: upgraded.publicId,
+        meta: { fromPlatform: active.platform, toPlatform: 'windows', reason: 'desktop_machine_identity' },
+      });
+      return upgraded;
+    }
+    // A concurrent login may already have completed this exact upgrade.
+    return Device.findOne({ _id: active._id, user: user._id, status: 'active', multiDevice: false, deviceKeyHash: keyHash })
+      .select('+deviceKeyHash');
   }
 
   /**

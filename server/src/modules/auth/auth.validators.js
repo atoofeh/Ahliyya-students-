@@ -13,6 +13,7 @@ const loginSchema = z.object({
   username: z.string().min(3).max(50).trim().toLowerCase(),
   password: z.string().min(1).max(128),
   deviceId: z.string().min(8).max(128),
+  desktopLegacyDeviceId: z.string().uuid().optional(),
   fingerprint: z.string().max(128).optional(),
   rememberMe: z.boolean().optional().default(false),
 });

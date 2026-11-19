@@ -39,11 +39,12 @@ const authBody = (req, result) => ({
 });
 
 const login = asyncHandler(async (req, res) => {
-  const { username, password, deviceId, fingerprint, rememberMe } = req.body;
+  const { username, password, deviceId, desktopLegacyDeviceId, fingerprint, rememberMe } = req.body;
   const result = await AuthService.login({
     username,
     password,
     deviceId: deviceId || req.headers['x-device-id'],
+    desktopLegacyDeviceId,
     fingerprint: fingerprint || req.headers['x-fingerprint'],
     rememberMe,
     userAgent: req.headers['user-agent'] || '',

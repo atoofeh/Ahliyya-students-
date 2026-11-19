@@ -48,7 +48,7 @@ class AuthService {
    * A wrong password always yields the generic message, whatever the account state.
    * The single-active-session policy still applies: a new login ends other sessions.
    */
-  static async login({ username, password, deviceId, fingerprint, rememberMe, userAgent, ip, platform = 'web', appVersion = '' }) {
+  static async login({ username, password, deviceId, desktopLegacyDeviceId, fingerprint, rememberMe, userAgent, ip, platform = 'web', appVersion = '' }) {
     const settings = await getSettings();
     const device = parseDevice(userAgent);
     const historyBase = { username, ip, userAgent, deviceId: deviceId || '', fingerprint: fingerprint || '', ...device };
@@ -103,7 +103,7 @@ class AuthService {
     // ONE ACCOUNT, ONE AUTHORIZED DEVICE.
     let boundDevice = null;
     if (settings.deviceBindingEnabled !== false) {
-      const result = await DeviceService.bindOrVerify({ user, deviceId, fingerprint, ip, ua: device, platform, appVersion });
+      const result = await DeviceService.bindOrVerify({ user, deviceId, desktopLegacyDeviceId, fingerprint, ip, ua: device, userAgent, platform, appVersion });
       if (result.rejected) {
         return fail(user, 'device_not_authorized', DEVICE_NOT_AUTHORIZED_MESSAGE, 403, 'DEVICE_NOT_AUTHORIZED', 'DEVICE_LOGIN_REJECTED');
       }
