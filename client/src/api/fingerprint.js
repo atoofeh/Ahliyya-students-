@@ -28,6 +28,24 @@ export function getDeviceId() {
   return id;
 }
 
+/**
+ * Older desktop pages registered a profile UUID before reading the native
+ * bridge. Offer that existing credential during Windows login so the server
+ * can verify and migrate the binding without changing the canonical identity.
+ */
+export function legacyDesktopDeviceId() {
+  if (isNative || desktop?.platform !== 'windows'
+    || typeof desktop.deviceId !== 'string' || !/^[0-9a-f]{64}$/i.test(desktop.deviceId)) return undefined;
+  try {
+    const previous = localStorage.getItem('lms_device_id');
+    return typeof previous === 'string'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(previous)
+      ? previous : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 let resolvedDeviceId = null;
 
 /**

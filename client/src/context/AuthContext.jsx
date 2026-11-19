@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthContext } from '../hooks/useAuth';
 import api, { bootstrapSession } from '../api/axios';
 import { getAccessToken, setAccessToken, clearAccessToken, saveRefreshToken, clearRefreshToken } from '../api/token';
-import { resolveDeviceId, getFingerprint } from '../api/fingerprint';
+import { resolveDeviceId, getFingerprint, legacyDesktopDeviceId } from '../api/fingerprint';
 
 
 
@@ -51,8 +51,10 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (username, password, rememberMe) => {
     const [deviceId, fingerprint] = await Promise.all([resolveDeviceId(), getFingerprint()]);
+    const desktopLegacyDeviceId = legacyDesktopDeviceId();
     const { data } = await api.post('/auth/login', {
       username, password, rememberMe, deviceId, fingerprint,
+      ...(desktopLegacyDeviceId && { desktopLegacyDeviceId }),
     });
     return applyAuth(data, { rememberMe });
   }, [applyAuth]);
