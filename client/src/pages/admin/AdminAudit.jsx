@@ -40,7 +40,7 @@ export default function AdminAudit() {
       ]} />
 
       {tab === 'audit' && (
-        <div className="w-72">
+        <div className="w-full sm:w-72">
           <Input placeholder={t('aud.filterPlaceholder')} dir="ltr" value={action}
             onChange={(e) => { setPage(1); setAction(e.target.value.toUpperCase().replace(/\s+/g, '_')); }} />
         </div>
@@ -52,7 +52,27 @@ export default function AdminAudit() {
             {result.items.length === 0 ? <EmptyState icon={<ScrollText size={24} />} title={t('aud.empty')} /> : (
               <div className="divide-y divide-surface-100 dark:divide-surface-700">
                 {result.items.map((log) => (
-                  <div key={log._id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm">
+                  <div key={log._id}>
+                  <article className="min-w-0 space-y-2 p-4 text-sm xl:hidden">
+                    <div className="min-w-0">
+                      <Badge color={tab === 'audit' ? ACTION_COLOR(log.action) : log.success ? 'green' : 'red'} className="max-w-full whitespace-normal">
+                        <span dir="ltr" className="[overflow-wrap:anywhere]">{tab === 'audit' ? log.action : log.success ? 'SUCCESS' : (log.reason || 'FAILED').toUpperCase()}</span>
+                      </Badge>
+                    </div>
+                    <p dir="auto" className="break-words font-medium text-surface-700 dark:text-surface-200">{log.user?.name || (tab === 'audit' ? t('aud.system') : log.username)}</p>
+                    {tab === 'audit' ? (
+                      <>
+                        {log.targetUser && <p dir="auto" className="break-words text-surface-500">→ {log.targetUser.name}</p>}
+                        {log.course && <p dir="auto" className="break-words text-surface-500">{log.course.title}</p>}
+                        {log.resource && <p dir="ltr" className="font-mono text-xs text-surface-500 [overflow-wrap:anywhere]">{log.resource}</p>}
+                      </>
+                    ) : <p dir="auto" className="break-words text-xs text-surface-500">{log.browser} · {log.os}</p>}
+                    <div className="flex min-w-0 flex-col gap-1 text-xs text-surface-400 sm:flex-row sm:flex-wrap sm:justify-between sm:gap-2">
+                      {log.ip && <span dir="ltr" className="font-mono [overflow-wrap:anywhere]">{log.ip}</span>}
+                      <time className="break-words">{new Date(log.createdAt).toLocaleString()}</time>
+                    </div>
+                  </article>
+                  <div className="hidden flex-wrap items-center gap-2 px-4 py-2.5 text-sm xl:flex">
                     {tab === 'audit' ? (
                       <>
                         <Badge color={ACTION_COLOR(log.action)}><span dir="ltr">{log.action}</span></Badge>
@@ -71,6 +91,7 @@ export default function AdminAudit() {
                       </>
                     )}
                     <span className="ms-auto text-xs text-surface-400">{new Date(log.createdAt).toLocaleString()}</span>
+                  </div>
                   </div>
                 ))}
               </div>

@@ -169,7 +169,7 @@ export default function NotificationsBell() {
         )}
       </button>
       {open && (
-        <div className="absolute end-0 z-40 mt-2 w-80 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-xl animate-fade-in">
+        <div className="absolute end-0 z-40 mt-2 w-[calc(100vw-2rem)] max-w-80 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-xl animate-fade-in sm:w-80">
           <div className="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 px-4 py-2.5">
             <span className="text-sm font-semibold text-surface-800 dark:text-surface-100">{t('nav.notifications')}</span>
             <Button size="sm" variant="ghost" onClick={markAll}><CheckCheck size={14} /> {t('common.markAllRead')}</Button>

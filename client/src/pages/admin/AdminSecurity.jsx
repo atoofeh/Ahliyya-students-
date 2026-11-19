@@ -36,7 +36,7 @@ function Overview() {
   if (!data) return <SkeletonCard />;
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <StatCard icon={<MonitorSmartphone size={18} />} label={t('sec.activeSessions')} value={data.activeSessions} />
         <StatCard icon={<LogIn size={18} />} label={t('sec.failed24h')} value={data.failedLogins24h} color={data.failedLogins24h > 0 ? 'rose' : 'primary'} />
         <StatCard icon={<Lock size={18} />} label={t('sec.lockedAccounts')} value={data.lockedAccounts} color={data.lockedAccounts > 0 ? 'amber' : 'primary'} />
@@ -51,8 +51,8 @@ function Overview() {
           : (
             <div className="flex flex-wrap gap-2">
               {data.suspiciousEvents7d.map((e) => (
-                <span key={e.action} className="inline-flex items-center gap-2 rounded-full border border-surface-200 px-3 py-1 text-xs dark:border-surface-700">
-                  <Badge color={ACTION_COLOR(e.action)}><span dir="ltr">{e.action}</span></Badge>
+                <span key={e.action} className="inline-flex min-w-0 max-w-full items-center gap-2 rounded-full border border-surface-200 px-3 py-1 text-xs dark:border-surface-700">
+                  <Badge color={ACTION_COLOR(e.action)} className="min-w-0 whitespace-normal"><span dir="ltr" className="[overflow-wrap:anywhere]">{e.action}</span></Badge>
                   <span className="font-bold tabular-nums text-surface-800 dark:text-surface-100">{e.count}</span>
                 </span>
               ))}
@@ -119,16 +119,44 @@ function Devices() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3">
-        <div className="w-72"><Input placeholder={t('sec.searchDevices')} dir="auto" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} /></div>
+      <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)] xl:flex xl:flex-wrap">
+        <div className="min-w-0 xl:w-72"><Input placeholder={t('sec.searchDevices')} dir="auto" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} /></div>
         <Select value={status} onChange={(e) => { setPage(1); setStatus(e.target.value); }}
           options={[{ value: '', label: t('sec.activeAndRevoked') }, { value: 'active', label: t('sec.statusActive') }, { value: 'revoked', label: t('sec.statusRevoked') }]} />
       </div>
       {!result ? <SkeletonCard /> : (
         <>
-          <Card className="overflow-x-auto">
+          <Card className="min-w-0 overflow-x-auto">
             {result.items.length === 0 ? <EmptyState icon={<Smartphone size={22} />} title={t('sec.noDevicesMatch')} /> : (
-              <table className="w-full text-sm">
+              <>
+              <div className="grid min-w-0 divide-y divide-surface-100 dark:divide-surface-700 sm:grid-cols-2 sm:divide-y-0 xl:hidden">
+                {result.items.map((device) => (
+                  <article key={device.id} className="min-w-0 space-y-3 p-4 sm:border-b sm:border-surface-100 dark:sm:border-surface-700">
+                    <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p dir="auto" className="break-words font-semibold text-surface-900 dark:text-white">{device.user?.name || '—'}</p>
+                        <p dir="ltr" className="text-xs text-surface-500 [overflow-wrap:anywhere]">@{device.user?.username} · {device.user?.role}</p>
+                      </div>
+                      <Badge color={device.status === 'active' ? 'green' : 'gray'}>{t(device.status === 'active' ? 'sec.statusActive' : 'sec.statusRevoked')}</Badge>
+                    </div>
+                    <dl className="grid min-w-0 gap-3 text-xs sm:grid-cols-2">
+                      {[
+                        [t('sec.colDevice'), device.publicId, true],
+                        [t('sec.colPlatform'), `${device.platform} · ${device.browser || '—'} · ${device.os || '—'}`],
+                        [t('sec.colFirstAuthorised'), when(device.firstAuthorizedAt)],
+                        [t('sec.colLastSeen'), `${when(device.lastSeenAt)} · ${device.lastIp || '—'}`],
+                      ].map(([label, value, ltr]) => <div key={label} className="min-w-0">
+                        <dt className="font-medium text-surface-500">{label}</dt>
+                        <dd dir={ltr ? 'ltr' : 'auto'} className="mt-1 text-surface-700 [overflow-wrap:anywhere] dark:text-surface-200">{value}</dd>
+                      </div>)}
+                    </dl>
+                    {device.status === 'active' && device.user && device.user.role !== 'super_admin' && (
+                      <Button size="sm" variant="outline" className="min-h-11 w-full text-rose-500" onClick={() => setRevoking({ userId: device.user.id, name: device.user.name })}>{t('sec.revoke')}</Button>
+                    )}
+                  </article>
+                ))}
+              </div>
+              <table className="hidden w-full text-sm xl:table">
                 <thead>
                   <tr className="border-b border-surface-200 text-start text-xs uppercase tracking-wide text-surface-400 dark:border-surface-700">
                     <th className="px-4 py-3">{t('ses.user')}</th><th className="px-4 py-3">{t('sec.colDevice')}</th><th className="px-4 py-3">{t('sec.colPlatform')}</th>
@@ -156,6 +184,7 @@ function Devices() {
                   ))}
                 </tbody>
               </table>
+              </>
             )}
           </Card>
           <Pagination meta={result.meta} onPage={setPage} />
@@ -201,14 +230,14 @@ function Requests() {
         <>
           <Card className="divide-y divide-surface-100 dark:divide-surface-700/60">
             {result.items.map((req) => (
-              <div key={req._id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+              <div key={req._id} className="flex min-w-0 flex-col gap-3 px-4 py-3 text-sm xl:flex-row xl:flex-wrap xl:items-center">
                 <div className="min-w-0 flex-1">
-                  <p dir="auto" className="font-medium text-surface-800 dark:text-surface-100">{req.user?.name || req.username} <span dir="ltr" className="text-xs text-surface-400">@{req.username} · {req.user?.role}</span></p>
+                  <p dir="auto" className="break-words font-medium text-surface-800 dark:text-surface-100">{req.user?.name || req.username} <span dir="ltr" className="text-xs text-surface-400 [overflow-wrap:anywhere]">@{req.username} · {req.user?.role}</span></p>
                   {req.note && <p dir="auto" className="text-xs text-surface-600 dark:text-surface-300">“{req.note}”</p>}
                   <p className="text-[11px] text-surface-400">{when(req.createdAt)} · <span dir="ltr">{req.ip}</span>{req.resolvedBy && t('sec.resolvedBy', { status: t(`sec.req${status.charAt(0).toUpperCase()}${status.slice(1)}`), name: req.resolvedBy.name, date: when(req.resolvedAt) })}{req.resolution && ` — ${req.resolution}`}</p>
                 </div>
                 {status === 'open' && (
-                  <div className="flex gap-2">
+                  <div className="flex min-w-0 flex-wrap gap-2">
                     <Button size="sm" variant="danger" loading={busyId === req._id} onClick={() => resolve(req, 'revoke')}>{t('sec.approveRevoke')}</Button>
                     <Button size="sm" variant="ghost" onClick={() => resolve(req, 'dismiss')}>{t('sec.dismiss')}</Button>
                   </div>
@@ -257,7 +286,7 @@ function Policies() {
       </p>
       <Select label={t('set.inactivityTimeout')} value={String(settings.sessionTimeoutMinutes)} onChange={set('sessionTimeoutMinutes')}
         options={[15, 30, 60, 120].map((m) => ({ value: String(m), label: t('set.minutesValue', { n: m }) }))} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input label={t('set.maxFailedLogins')} type="number" min="3" max="20" value={settings.maxLoginAttempts} onChange={set('maxLoginAttempts')} />
         <Input label={t('set.lockoutDuration')} type="number" min="1" max="1440" value={settings.lockoutMinutes} onChange={set('lockoutMinutes')} />
       </div>

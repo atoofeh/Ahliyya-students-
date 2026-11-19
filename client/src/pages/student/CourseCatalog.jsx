@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Clock, BarChart3, Search, CheckCircle2, Unlock } from 'lucide-react';
 import api from '../../api/axios';
@@ -6,6 +6,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Card, Button, EmptyState, Badge, Pagination, PageIntro } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 import CourseCover from '../../components/CourseCover';
+import ErrorState from '../../components/ErrorState';
 
 const DIFFICULTY_COLOR = { beginner: 'green', intermediate: 'amber', advanced: 'red' };
 
@@ -15,20 +16,31 @@ export default function CourseCatalog() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [enrolledIds, setEnrolledIds] = useState(new Set());
+  const [error, setError] = useState(null);
+  const request = useRef(null);
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
-    const [cat, mine] = await Promise.all([
-      api.get('/courses/catalog', { params: { page, limit: 12, search: search || undefined } }),
-      api.get('/enrollments/mine'),
-    ]);
-    setResult(cat.data);
-    setEnrolledIds(new Set(mine.data.map((e) => String(e.course._id))));
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    setError(null);
+    try {
+      const [cat, mine] = await Promise.all([
+        api.get('/courses/catalog', { params: { page, limit: 12, search: search.trim() || undefined }, signal: controller.signal }),
+        api.get('/enrollments/mine', { signal: controller.signal }),
+      ]);
+      if (controller.signal.aborted) return;
+      setResult(cat.data);
+      setEnrolledIds(new Set(mine.data.map((e) => String(e.course._id))));
+    } catch (err) {
+      if (!controller.signal.aborted) setError({ code: err.response?.data?.code, message: err.response?.data?.message });
+    }
   }, [page, search]);
 
   useEffect(() => {
     const t = setTimeout(load, search ? 350 : 0);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); request.current?.abort(); };
   }, [load, search]);
 
   return (
@@ -50,7 +62,7 @@ export default function CourseCatalog() {
         }
       />
 
-      {!result ? <SkeletonCard /> : result.items.length === 0 ? (
+      {error ? <ErrorState compact code={error.code} message={error.message} onRetry={load} /> : !result ? <SkeletonCard /> : result.items.length === 0 ? (
         <Card><EmptyState icon={<BookOpen size={28} />} title={t('catalog.empty')}
           subtitle={t('catalog.emptyHint')} /></Card>
       ) : (

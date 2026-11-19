@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, KeyRound, LogOut, Trash2, Eye, Smartphone } from 'lucide-react';
+import { Plus, KeyRound, LogOut, Trash2, Eye, Smartphone, RefreshCw } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
@@ -7,6 +7,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useConfirm } from '../../hooks/useConfirm';
 import { Card, Button, Modal, Input, Select, Badge, Spinner, Pagination, EmptyState, Tabs } from '../../components/ui';
 import { SkeletonRows } from '../../components/Skeletons';
+import { generatePassword } from '../../utils/password';
 
 const ROLE_COLORS = { super_admin: 'gold', admin: 'primary', teacher: 'blue', student: 'gray' };
 const STATUS_COLORS = { active: 'green', suspended: 'amber', banned: 'red', pending: 'gray' };
@@ -128,14 +129,42 @@ export default function AdminUsers() {
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
   };
 
+  const userActions = (u, compact = false) => {
+    const actionClass = compact ? 'min-h-11 min-w-0 justify-start px-3 text-start' : '';
+    const actionProps = { size: compact ? 'md' : 'sm', variant: compact ? 'outline' : 'ghost', className: actionClass };
+    const actionText = (label) => compact && <span className="min-w-0 break-words">{label}</span>;
+    return (
+      <div className={compact ? 'grid min-w-0 grid-cols-2 gap-2' : 'flex justify-end gap-1'}>
+        <Button {...actionProps} title={t('usr.details')} aria-label={t('usr.details')} onClick={() => viewDetail(u)}>
+          <Eye size={compact ? 16 : 14} className="shrink-0" />{actionText(t('usr.details'))}
+        </Button>
+        {canManage(u) && <>
+          <Button {...actionProps} title={t('usr.resetPassword')} aria-label={t('usr.resetPassword')} onClick={() => setResetModal(u)}>
+            <KeyRound size={compact ? 16 : 14} className="shrink-0" />{actionText(t('usr.resetPassword'))}
+          </Button>
+          <Button {...actionProps} title={t('usr.forceLogout')} aria-label={t('usr.forceLogout')} onClick={() => forceLogout(u)}>
+            <LogOut size={compact ? 16 : 14} className="shrink-0" />{actionText(t('usr.forceLogout'))}
+          </Button>
+          {u.status === 'active'
+            ? <Button {...actionProps} onClick={() => setStatus(u, 'suspended')}><span className="min-w-0 break-words">{t('usr.suspend')}</span></Button>
+            : <Button {...actionProps} onClick={() => setStatus(u, 'active')}><span className="min-w-0 break-words">{t('usr.activate')}</span></Button>}
+          {u.status !== 'banned' && <Button {...actionProps} onClick={() => setStatus(u, 'banned')}><span className="min-w-0 break-words">{t('usr.ban')}</span></Button>}
+          <Button {...actionProps} aria-label={t('usr.deleteAccount')} onClick={() => deleteUser(u)}>
+            <Trash2 size={compact ? 16 : 14} className="shrink-0 text-rose-400" />{actionText(t('usr.deleteAccount'))}
+          </Button>
+        </>}
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{t('usr.title')}</h1>
           <p className="text-sm text-surface-500">{t('usr.subtitle')}</p>
         </div>
-        <Button onClick={() => setCreateModal(true)}><Plus size={15} /> {t('usr.createUser')}</Button>
+        <Button className="min-h-11 w-full sm:w-auto" onClick={() => setCreateModal(true)}><Plus size={15} /> {t('usr.createUser')}</Button>
       </div>
 
       {deletionRequests.length > 0 && (
@@ -148,15 +177,15 @@ export default function AdminUsers() {
           <p className="text-xs text-surface-500">{t('usr.deletionRequestsHint')}</p>
           <p className="text-xs text-surface-500">{t('usr.deletionContactHint')}</p>
           {deletionRequests.map((request) => (
-            <div key={request._id} className="flex flex-col gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700 sm:flex-row sm:items-center">
+            <div key={request._id} className="flex min-w-0 flex-col gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700 xl:flex-row xl:items-center">
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-surface-800 dark:text-surface-100">{request.user?.name || t('usr.deletedAccount')} · @{request.user?.username || '—'}</p>
-                <p dir="ltr" className="text-xs text-surface-400">{request.user?.email || '—'} · {new Date(request.createdAt).toLocaleString()} · {t('usr.deletionDueBy', { date: new Date(new Date(request.createdAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString() })}</p>
-                {request.reason && <p dir="auto" className="mt-1 text-sm text-surface-600 dark:text-surface-300">{request.reason}</p>}
+                <p className="break-words font-medium text-surface-800 dark:text-surface-100">{request.user?.name || t('usr.deletedAccount')} · @{request.user?.username || '—'}</p>
+                <p dir="ltr" className="break-words text-xs text-surface-400 [overflow-wrap:anywhere]">{request.user?.email || '—'} · {new Date(request.createdAt).toLocaleString()} · {t('usr.deletionDueBy', { date: new Date(new Date(request.createdAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString() })}</p>
+                {request.reason && <p dir="auto" className="mt-1 break-words text-sm text-surface-600 dark:text-surface-300">{request.reason}</p>}
               </div>
-              <div className="flex shrink-0 gap-2">
-                <Button size="sm" variant="danger" disabled={busy} onClick={() => { setRetainGradesForDeletion(false); setCompletingDeletionRequest(request); }}>{t('usr.completeDeletion')}</Button>
-                <Button size="sm" variant="outline" disabled={busy} onClick={() => resolveDeletionRequest(request, 'dismiss')}>{t('usr.dismissRequest')}</Button>
+              <div className="flex min-w-0 shrink-0 flex-wrap gap-2">
+                <Button size="sm" className="min-h-11 min-w-0 flex-1 whitespace-normal xl:min-h-0 xl:flex-none" variant="danger" disabled={busy} onClick={() => { setRetainGradesForDeletion(false); setCompletingDeletionRequest(request); }}>{t('usr.completeDeletion')}</Button>
+                <Button size="sm" className="min-h-11 min-w-0 flex-1 whitespace-normal xl:min-h-0 xl:flex-none" variant="outline" disabled={busy} onClick={() => resolveDeletionRequest(request, 'dismiss')}>{t('usr.dismissRequest')}</Button>
               </div>
             </div>
           ))}
@@ -172,16 +201,41 @@ export default function AdminUsers() {
         onChange={(role) => { setPage(1); setFilters((f) => ({ ...f, role })); }}
       />
 
-      <div className="flex flex-wrap gap-3">
-        <div className="w-64"><Input placeholder={t('usr.searchPlaceholder')} dir="auto" value={filters.search}
+      <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)] xl:flex xl:flex-wrap">
+        <div className="min-w-0 xl:w-64"><Input placeholder={t('usr.searchPlaceholder')} aria-label={t('usr.searchPlaceholder')} dir="auto" value={filters.search}
           onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, search: e.target.value })); }} /></div>
-        <Select value={filters.status} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, status: e.target.value })); }}
+        <Select aria-label={t('usr.allStatuses')} value={filters.status} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, status: e.target.value })); }}
           options={[{ value: '', label: t('usr.allStatuses') }, { value: 'active', label: t('usr.statusActive') }, { value: 'suspended', label: t('usr.statusSuspended') }, { value: 'banned', label: t('usr.statusBanned') }]} />
       </div>
 
       {!result ? <SkeletonRows /> : (
         <>
-          <Card className="overflow-x-auto">
+          {result.items.length > 0 && (
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:hidden">
+              {result.items.map((u) => (
+                <Card key={u._id} className="min-w-0 space-y-3 p-4">
+                  <button type="button" onClick={() => viewDetail(u)} aria-label={`${t('usr.details')}: ${u.name}`}
+                    className="min-h-11 min-w-0 w-full rounded-lg text-start font-semibold text-surface-900 hover:text-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 dark:text-white dark:hover:text-brand-300">
+                    <span dir="auto" className="block break-words">{u.name}</span>
+                  </button>
+                  <div dir="ltr" className="min-w-0 space-y-1 text-start text-sm text-surface-500 [overflow-wrap:anywhere]">
+                    <p>@{u.username}</p>
+                    {u.email && <p>{u.email}</p>}
+                  </div>
+                  <div className="flex min-w-0 flex-wrap gap-2">
+                    <Badge color={ROLE_COLORS[u.role]}>{t(`role.${u.role}`)}</Badge>
+                    <Badge color={STATUS_COLORS[u.status]}>{t(`usr.status${u.status.charAt(0).toUpperCase()}${u.status.slice(1)}`)}</Badge>
+                  </div>
+                  <p className="break-words text-xs text-surface-500">
+                    <span className="font-medium">{t('usr.colLastLogin')}: </span>
+                    <span className="bidi-isolate">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : t('usr.never')}</span>
+                  </p>
+                  <div className="border-t border-surface-100 pt-3 dark:border-surface-700">{userActions(u, true)}</div>
+                </Card>
+              ))}
+            </div>
+          )}
+          <Card className={result.items.length > 0 ? 'hidden overflow-x-auto xl:block' : ''}>
             {result.items.length === 0 ? <EmptyState title={t('usr.noMatch')} /> : (
               <table className="w-full text-sm">
                 <thead>
@@ -201,20 +255,7 @@ export default function AdminUsers() {
                       <td className="px-4 py-3"><Badge color={STATUS_COLORS[u.status]}>{t(`usr.status${u.status.charAt(0).toUpperCase()}${u.status.slice(1)}`)}</Badge></td>
                       <td className="px-4 py-3 text-surface-400">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : t('usr.never')}</td>
                       <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" title={t('usr.details')} onClick={() => viewDetail(u)}><Eye size={14} /></Button>
-                          {canManage(u) && (
-                            <>
-                              <Button size="sm" variant="ghost" title={t('usr.resetPassword')} onClick={() => setResetModal(u)}><KeyRound size={14} /></Button>
-                              <Button size="sm" variant="ghost" title={t('usr.forceLogout')} onClick={() => forceLogout(u)}><LogOut size={14} /></Button>
-                              {u.status === 'active'
-                                ? <Button size="sm" variant="ghost" onClick={() => setStatus(u, 'suspended')}>{t('usr.suspend')}</Button>
-                                : <Button size="sm" variant="ghost" onClick={() => setStatus(u, 'active')}>{t('usr.activate')}</Button>}
-                              {u.status !== 'banned' && <Button size="sm" variant="ghost" onClick={() => setStatus(u, 'banned')}>{t('usr.ban')}</Button>}
-                              <Button size="sm" variant="ghost" onClick={() => deleteUser(u)}><Trash2 size={14} className="text-rose-400" /></Button>
-                            </>
-                          )}
-                        </div>
+                        {userActions(u)}
                       </td>
                     </tr>
                   ))}
@@ -229,7 +270,7 @@ export default function AdminUsers() {
       <Modal open={createModal} onClose={() => setCreateModal(false)} title={t('usr.createUser')}>
         <div className="space-y-4">
           <Input label={t('usr.fullName')} dir="auto" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
             <Input label={t('usr.username')} dir="ltr" value={form.username} onChange={(e) => setForm((f) => ({ ...f, username: e.target.value.toLowerCase() }))} />
             <Select label={t('usr.role')} value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
               options={[
@@ -239,9 +280,17 @@ export default function AdminUsers() {
               ]} />
           </div>
           <Input label={t('usr.emailOptional')} dir="ltr" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-          <Input label={t('usr.tempPassword')} dir="ltr" type="text" value={form.password}
-            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-            hint={t('usr.tempPasswordHint')} />
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start">
+            <div className="min-w-0 flex-1">
+              <Input label={t('usr.tempPassword')} dir="ltr" type="text" value={form.password}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                hint={t('usr.tempPasswordHint')} />
+            </div>
+            <Button type="button" variant="outline" className="min-h-11 w-full sm:mt-6 sm:w-auto"
+              onClick={() => setForm((f) => ({ ...f, password: generatePassword() }))}>
+              <RefreshCw size={16} className="shrink-0" />{t('usr.generatePassword')}
+            </Button>
+          </div>
           {isOwner && form.role === 'student' && (
             <label className="flex items-start gap-2 rounded-xl border border-surface-200 p-3 text-sm dark:border-surface-700">
               <input type="checkbox" className="mt-1 accent-brand-600" checked={form.reviewerAccess}
@@ -285,8 +334,8 @@ export default function AdminUsers() {
 
       <Modal open={!!detailModal} onClose={() => setDetailModal(null)} title={t('usr.detailTitle', { name: detailModal?.user?.name || '' })} wide>
         {detailModal?.loading ? <Spinner /> : detailModal && (
-          <div className="space-y-5 text-sm">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="min-w-0 space-y-5 break-words text-sm [overflow-wrap:anywhere]">
+            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
               <p><span className="text-surface-400">{t('usr.fieldUsername')}</span> <span dir="ltr">@{detailModal.user.username}</span></p>
               <p><span className="text-surface-400">{t('usr.fieldEmail')}</span> <span dir="ltr">{detailModal.user.email || '—'}</span> {detailModal.user.emailVerified && <Badge color="green">{t('usr.verified')}</Badge>}</p>
               <p><span className="text-surface-400">{t('usr.fieldRole')}</span> {t(`role.${detailModal.user.role}`)}</p>
@@ -298,13 +347,13 @@ export default function AdminUsers() {
               {!detailModal.device?.active ? (
                 <p className="text-xs text-surface-400">{t('usr.noDevice')}</p>
               ) : (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-surface-200 px-3 py-2 text-xs dark:border-surface-700">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-surface-200 px-3 py-2 text-xs dark:border-surface-700">
                   <span dir="ltr" className="font-mono font-semibold text-surface-800 dark:text-surface-100">{detailModal.device.active.publicId}</span>
                   <span className="text-surface-600 dark:text-surface-300">{detailModal.device.active.platform} · {detailModal.device.active.browser || '—'} · {detailModal.device.active.os || '—'}</span>
                   <span className="text-surface-400">{t('usr.firstSeen', { date: new Date(detailModal.device.active.firstAuthorizedAt).toLocaleString() })}</span>
                   <span className="text-surface-400">{t('usr.lastSeen', { date: new Date(detailModal.device.active.lastSeenAt).toLocaleString() })}</span>
                   {canManage({ _id: detailModal.user.id, role: detailModal.user.role }) && (
-                    <Button size="sm" variant="ghost" className="ms-auto text-rose-500" onClick={() => setRevokeModal({ user: detailModal.user })}>{t('usr.revokeDevice')}</Button>
+                    <Button size="sm" variant="ghost" className="min-h-11 w-full text-rose-500 sm:ms-auto sm:w-auto xl:min-h-0" onClick={() => setRevokeModal({ user: detailModal.user })}>{t('usr.revokeDevice')}</Button>
                   )}
                 </div>
               )}
@@ -325,11 +374,11 @@ export default function AdminUsers() {
             <div>
               <p className="mb-2 font-semibold text-surface-800 dark:text-surface-100">{t('usr.recentSessions')}</p>
               {detailModal.sessions.map((s) => (
-                <div key={s._id} className="flex items-center gap-2 border-b border-surface-100 dark:border-surface-700 py-1.5 text-xs">
+                <div key={s._id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-surface-100 py-2 text-xs dark:border-surface-700 xl:py-1.5">
                   <Badge color={s.isActive ? 'green' : 'gray'}>{s.isActive ? t('usr.sessionActive') : s.endReason || t('usr.sessionEnded')}</Badge>
                   <span className="text-surface-600 dark:text-surface-300">{s.browser} · {s.os}</span>
                   <span dir="ltr" className="text-surface-400">{s.ip}</span>
-                  <span className="ms-auto text-surface-400">{new Date(s.createdAt).toLocaleString()}</span>
+                  <span className="w-full text-surface-400 sm:ms-auto sm:w-auto">{new Date(s.createdAt).toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -337,10 +386,10 @@ export default function AdminUsers() {
               <p className="mb-2 font-semibold text-surface-800 dark:text-surface-100">{t('usr.loginHistory')}</p>
               <div className="max-h-48 overflow-y-auto">
                 {detailModal.loginHistory.map((h) => (
-                  <div key={h._id} className="flex items-center gap-2 border-b border-surface-100 dark:border-surface-700 py-1.5 text-xs">
+                  <div key={h._id} className="flex min-w-0 flex-wrap items-center gap-2 border-b border-surface-100 py-2 text-xs dark:border-surface-700 xl:py-1.5">
                     <Badge color={h.success ? 'green' : 'red'}>{h.success ? t('usr.loginSuccess') : h.reason}</Badge>
                     <span dir="ltr" className="text-surface-400">{h.ip} · {h.browser}</span>
-                    <span className="ms-auto text-surface-400">{new Date(h.createdAt).toLocaleString()}</span>
+                    <span className="w-full text-surface-400 sm:ms-auto sm:w-auto">{new Date(h.createdAt).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -349,8 +398,8 @@ export default function AdminUsers() {
               <div>
                 <p className="mb-2 font-semibold text-surface-800 dark:text-surface-100">{t('usr.enrollments')}</p>
                 {detailModal.enrollments.map((e) => (
-                  <div key={e._id} className="flex items-center gap-2 py-1 text-xs">
-                    <span dir="auto" className="text-surface-600 dark:text-surface-300">{e.course?.title}</span>
+                  <div key={e._id} className="flex min-w-0 flex-wrap items-center gap-2 py-2 text-xs xl:py-1">
+                    <span dir="auto" className="min-w-0 flex-1 break-words text-surface-600 dark:text-surface-300">{e.course?.title}</span>
                     <Badge>{e.status}</Badge>
                     <span className="ms-auto text-surface-400">{e.progressPercent}%</span>
                   </div>

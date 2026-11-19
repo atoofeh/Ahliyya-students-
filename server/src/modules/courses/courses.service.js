@@ -15,6 +15,16 @@ const Assignment = require('../../models/Assignment');
 const Announcement = require('../../models/Announcement');
 const QAThread = require('../../models/QAThread');
 
+// Course-list searches are literal partial matches. Full-text search only
+// matches whole indexed words, so queries such as "bio" miss "Biology".
+const withSearch = (filter, search) => {
+  const query = search?.trim();
+  if (!query) return filter;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = { $regex: escaped, $options: 'i' };
+  return { $and: [filter, { $or: ['title', 'description', 'category', 'tags'].map((field) => ({ [field]: pattern })) }] };
+};
+
 class CourseService {
   // ── Courses ─────────────────────────────────────────────────────────
 
@@ -110,9 +120,8 @@ class CourseService {
   /** Catalog: published courses their teacher chose to list. */
   static async catalog({ page, limit, search, category }) {
     const filter = { deletedAt: null, isPublished: true, visibility: 'listed' };
-    if (search) filter.$text = { $search: search };
     if (category) filter.category = category;
-    const result = await paginatedQuery(Course, filter, {
+    const result = await paginatedQuery(Course, withSearch(filter, search), {
       page, limit,
       populate: { path: 'teacher', select: 'name' },
       select: '-__v',
@@ -131,14 +140,12 @@ class CourseService {
   /** Courses this teacher runs — created or co-taught. */
   static async teacherCourses(teacherId, { page, limit, search }) {
     const filter = { ...staffCourseFilter(teacherId), deletedAt: null };
-    if (search) filter.$text = { $search: search };
-    return paginatedQuery(Course, filter, { page, limit });
+    return paginatedQuery(Course, withSearch(filter, search), { page, limit });
   }
 
   static async allCourses({ page, limit, search }) {
     const filter = { deletedAt: null };
-    if (search) filter.$text = { $search: search };
-    return paginatedQuery(Course, filter, { page, limit, populate: { path: 'teacher', select: 'name username' } });
+    return paginatedQuery(Course, withSearch(filter, search), { page, limit, populate: { path: 'teacher', select: 'name username' } });
   }
 
   /**

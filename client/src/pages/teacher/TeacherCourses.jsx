@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Plus, BookOpen } from 'lucide-react';
 import api, { apiError } from '../../api/axios';
@@ -7,6 +7,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Card, Button, EmptyState, Badge, Pagination, Modal, Input, Textarea, Select } from '../../components/ui';
 import { SkeletonCard } from '../../components/Skeletons';
 import { coursePage } from '../../utils/courseNavigation';
+import ErrorState from '../../components/ErrorState';
 
 const LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'];
 const difficulties = (t) => LEVELS.map((d) => ({ value: d, label: t(`diff.${d}`) }));
@@ -21,7 +22,17 @@ export default function TeacherCourses() {
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const requestRef = useRef(null);
   const page = coursePage(params);
+  const search = params.get('search') || '';
+  const setSearch = (value) => setParams((previous) => {
+    const updated = new URLSearchParams(previous);
+    updated.delete('page');
+    if (value) updated.set('search', value);
+    else updated.delete('search');
+    return updated;
+  }, { replace: true });
   const setPage = (next) => setParams((previous) => {
     const updated = new URLSearchParams(previous);
     updated.set('page', String(next));
@@ -35,9 +46,18 @@ export default function TeacherCourses() {
   });
 
   const load = useCallback(() => {
-    api.get('/courses/mine', { params: { page, limit: 12 } }).then(({ data }) => setResult(data)).catch(() => {});
-  }, [page]);
-  useEffect(() => { load(); }, [load]);
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setError(null);
+    api.get('/courses/mine', { params: { page, limit: 12, search: search.trim() || undefined }, signal: controller.signal })
+      .then(({ data }) => { if (!controller.signal.aborted) setResult(data); })
+      .catch((err) => { if (!controller.signal.aborted) setError({ code: err.response?.data?.code, message: apiError(err) }); });
+  }, [page, search]);
+  useEffect(() => {
+    const timer = setTimeout(load, search ? 300 : 0);
+    return () => { clearTimeout(timer); requestRef.current?.abort(); };
+  }, [load, search]);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -52,8 +72,6 @@ export default function TeacherCourses() {
     } catch (err) { toast.error(apiError(err)); } finally { setBusy(false); }
   };
 
-  if (!result) return <SkeletonCard />;
-
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -64,7 +82,11 @@ export default function TeacherCourses() {
         <Button onClick={() => setModal(true)}><Plus size={16} /> {t('crs.newCourse')}</Button>
       </div>
 
-      {result.items.length === 0 ? (
+      <div className="w-full sm:max-w-sm">
+        <Input placeholder={t('ac2.searchCourses')} aria-label={t('ac2.searchCourses')} dir="auto" value={search} onChange={(event) => setSearch(event.target.value)} />
+      </div>
+
+      {error ? <ErrorState compact code={error.code} message={error.message} onRetry={load} /> : !result ? <SkeletonCard /> : result.items.length === 0 ? (
         <Card><EmptyState icon={<BookOpen size={26} />} title={t('crs.noCourses')} /></Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -85,7 +107,7 @@ export default function TeacherCourses() {
           ))}
         </div>
       )}
-      <Pagination meta={result.meta} onPage={setPage} />
+      <Pagination meta={result?.meta} onPage={setPage} />
 
       <Modal open={modal} onClose={() => setModal(false)} title={t('crs.createCourse')}>
         <div className="space-y-4">

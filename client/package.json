@@ -1,7 +1,7 @@
 {
   "name": "client",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "test:browser": "node --test --test-concurrency=1 tests/*.browser.test.mjs",
     "test:auth": "node --test tests/auth-session.test.mjs",
     "test:uploads": "node --test tests/upload-chunks.test.mjs",
-    "test": "npm run test:auth && npm run test:uploads && npm run test:browser",
+    "test:passwords": "node --test tests/password.test.mjs",
+    "test": "npm run test:auth && npm run test:uploads && npm run test:passwords && npm run test:browser",
     "preview": "vite preview",
     "build:android": "vite build --mode android && cap sync android",
     "android:apk": "npm run build:android && cd android && gradlew.bat assembleDebug",

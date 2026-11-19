@@ -5,6 +5,7 @@ import { useToast } from '../../hooks/useToast';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Card, Button, Modal, Input, Badge, EmptyState, PageIntro } from '../../components/ui';
 import { SkeletonRows } from '../../components/Skeletons';
+import { generatePassword } from '../../utils/password';
 
 const STATUS_COLORS = { active: 'green', suspended: 'amber', banned: 'red' };
 
@@ -62,7 +63,45 @@ export default function AdminAdmins() {
 
       <Card className="overflow-x-auto">
         {rows.length === 0 ? <EmptyState icon={<ShieldCheck size={24} />} title={t('adm2.none')} /> : (
-          <table className="w-full text-sm">
+          <>
+          <div className="divide-y divide-surface-100 dark:divide-surface-700 xl:hidden">
+            {rows.map((u) => (
+              <article key={u._id} className="min-w-0 space-y-4 p-4">
+                <div className="min-w-0 space-y-1">
+                  <p dir="auto" className="break-words font-semibold text-surface-800 dark:text-surface-100">{u.name}</p>
+                  <p dir="ltr" className="text-xs text-surface-500 [overflow-wrap:anywhere]">@{u.username}</p>
+                  {u.email && <p dir="ltr" className="text-xs text-surface-500 [overflow-wrap:anywhere]">{u.email}</p>}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge color={STATUS_COLORS[u.status] || 'gray'}>{t(`usr.status${u.status.charAt(0).toUpperCase()}${u.status.slice(1)}`)}</Badge>
+                  {u.mustChangePassword && <Badge color="amber">{t('adm2.onboarding')}</Badge>}
+                </div>
+                <dl className="grid min-w-0 gap-3 text-xs sm:grid-cols-2">
+                  <div className="min-w-0">
+                    <dt className="text-surface-400">{t('adm2.colDevice')}</dt>
+                    <dd className="mt-1 text-surface-700 dark:text-surface-200">
+                      {devices[u._id]
+                        ? <span dir="ltr" className="font-mono [overflow-wrap:anywhere]">{devices[u._id].publicId} · {devices[u._id].platform}</span>
+                        : <span className="text-surface-400">{t('adm2.noDevice')}</span>}
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-surface-400">{t('usr.colLastLogin')}</dt>
+                    <dd className="mt-1 break-words text-surface-700 dark:text-surface-200">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : t('usr.never')}</dd>
+                  </div>
+                </dl>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Button size="sm" variant="outline" className="min-h-11 justify-start text-start" onClick={() => setResetModal(u)}><KeyRound size={15} /> {t('usr.resetPassword')}</Button>
+                  <Button size="sm" variant="outline" className="min-h-11 justify-start text-start" onClick={() => forceLogout(u)}><LogOut size={15} /> {t('usr.forceLogout')}</Button>
+                  {devices[u._id] && <Button size="sm" variant="outline" className="min-h-11 justify-start text-start" onClick={() => setRevokeModal(u)}><Smartphone size={15} /> {t('usr.revokeDevice')}</Button>}
+                  {u.status === 'active'
+                    ? <Button size="sm" variant="outline" className="min-h-11 justify-start text-start" onClick={() => setStatus(u, 'suspended')}>{t('usr.suspend')}</Button>
+                    : <Button size="sm" variant="outline" className="min-h-11 justify-start text-start" onClick={() => setStatus(u, 'active')}>{t('usr.activate')}</Button>}
+                </div>
+              </article>
+            ))}
+          </div>
+          <table className="hidden w-full text-sm xl:table">
             <thead>
               <tr className="border-b border-surface-200 text-start text-xs uppercase tracking-wide text-surface-400 dark:border-surface-700">
                 <th className="px-4 py-3">{t('adm2.colAdmin')}</th><th className="px-4 py-3">{t('usr.colStatus')}</th><th className="px-4 py-3">{t('adm2.colDevice')}</th>
@@ -100,6 +139,7 @@ export default function AdminAdmins() {
               ))}
             </tbody>
           </table>
+          </>
         )}
       </Card>
 
@@ -110,6 +150,10 @@ export default function AdminAdmins() {
           <Input label={t('usr.emailOptional')} dir="ltr" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
           <Input label={t('usr.tempPassword')} dir="ltr" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
             hint={t('adm2.tempHint')} />
+          <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto xl:min-h-0" disabled={busy}
+            onClick={() => setForm((current) => ({ ...current, password: generatePassword() }))}>
+            <KeyRound size={15} /> {t('usr.generatePassword')}
+          </Button>
           <Button className="w-full" loading={busy} onClick={createAdmin}
             disabled={!form.name || form.username.length < 3 || form.password.length < 8}>{t('adm2.createAdmin')}</Button>
         </div>

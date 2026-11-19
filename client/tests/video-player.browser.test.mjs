@@ -26,6 +26,7 @@ const browserTest = (name, run) => test(name, { timeout: 45000 }, run);
 const entry = `import React from 'react';
 import { createRoot } from 'react-dom/client';
 import VideoPlayer from '/src/components/VideoPlayer.jsx';
+import '/src/index.css';
 const root = createRoot(document.getElementById('root'));
 const params = new URL(location.href).searchParams;
 const initial = Number(params.get('startAt')) || 0;
@@ -69,7 +70,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function openPlayer(t, { startAt = 0, customControls = false, initialTokenFailure = false } = {}) {
+async function openPlayer(t, { startAt = 0, customControls = false, initialTokenFailure = false, watermarkEnabled = false } = {}) {
   const context = await browser.newContext();
   t.after(() => context.close());
   const state = { tokens: 0, progress: [], streams: [], errors: [], saved: startAt, failTokens: initialTokenFailure ? 1 : 0 };
@@ -149,7 +150,7 @@ async function openPlayer(t, { startAt = 0, customControls = false, initialToken
         gate?.finished?.resolve();
       }
     }
-    if (url.pathname.endsWith('/watermark/me')) return route.fulfill({ json: { enabled: false } });
+    if (url.pathname.endsWith('/watermark/me')) return route.fulfill({ json: { enabled: watermarkEnabled, lines: ['Fixture Student', 'ID: student-0001'] } });
     if (url.pathname.endsWith('/saved-position')) return route.fulfill({ json: state.saved });
     if (url.pathname.endsWith('/progress')) {
       const progress = request.postDataJSON();
@@ -400,4 +401,39 @@ browserTest('unmount cancels a renewal response without loading a detached video
   assert.equal(await page.locator('video').count(), 0);
   assert.equal(state.streams.length, streamsBefore);
   assert.ok(await page.evaluate(() => window.__detachedVideo.getAttribute('src').includes('synthetic-1')));
+});
+
+browserTest('one speed dropdown supports slower/faster playback and survives renewal', async (t) => {
+  const { page } = await openPlayer(t, { customControls: true });
+  const speed = page.getByRole('combobox', { name: 'video.speed', exact: true });
+  assert.equal(await speed.count(), 1);
+  await speed.selectOption('0.75');
+  assert.equal(await page.locator('video').evaluate((video) => video.playbackRate), 0.75);
+  await positionPlayer(page, { paused: true, rate: 0.75 });
+  await fireRenewal(page);
+  assert.equal((await snapshot(page)).rate, 0.75);
+  assert.equal(await speed.inputValue(), '0.75');
+  await speed.selectOption('2');
+  assert.equal(await page.locator('video').evaluate((video) => video.playbackRate), 2);
+});
+
+browserTest('watermark stays longer than six seconds and moves within the video without blocking controls', async (t) => {
+  const { page } = await openPlayer(t, { customControls: true, watermarkEnabled: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mark = page.getByText('Fixture Student', { exact: true }).locator('..');
+  await page.waitForFunction(() => {
+    const mark = [...document.querySelectorAll('[aria-hidden="true"]')].find((node) => node.textContent.includes('Fixture Student'));
+    return mark && Number(getComputedStyle(mark).opacity) > 0.95;
+  });
+  const initial = await mark.evaluate((node) => ({ top: node.style.top, left: node.style.left }));
+  await page.waitForFunction((before) => {
+    const mark = [...document.querySelectorAll('[aria-hidden="true"]')].find((node) => node.textContent.includes('Fixture Student'));
+    return mark && Number(getComputedStyle(mark).opacity) > 0.95 && (mark.style.top !== before.top || mark.style.left !== before.left);
+  }, initial, { timeout: 9000 });
+  const [frame, bounds] = await Promise.all([page.locator('video').boundingBox(), mark.boundingBox()]);
+  assert.ok(bounds.x >= frame.x && bounds.y >= frame.y);
+  assert.ok(bounds.x + bounds.width <= frame.x + frame.width + 1);
+  assert.ok(bounds.y + bounds.height <= frame.y + frame.height + 1);
+  assert.equal(await mark.evaluate((node) => getComputedStyle(node).pointerEvents), 'none');
+  assert.ok(await page.getByRole('combobox', { name: 'video.speed' }).isVisible());
 });
