@@ -36,7 +36,45 @@ export default function AdminSessions() {
 
       <Card className="overflow-x-auto">
         {result.items.length === 0 ? <EmptyState icon={<MonitorSmartphone size={24} />} title={t('ses.empty')} /> : (
-          <table className="w-full text-sm">
+          <>
+          <div className="divide-y divide-surface-100 dark:divide-surface-700 xl:hidden">
+            {result.items.map((s) => (
+              <article key={s._id} className="min-w-0 space-y-3 p-4">
+                <div className="min-w-0 space-y-1">
+                  <p dir="auto" className="break-words font-semibold text-surface-800 dark:text-surface-100">{s.user?.name}</p>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-surface-400">
+                    <span dir="ltr" className="[overflow-wrap:anywhere]">@{s.user?.username}</span>
+                    <Badge color="primary">{s.user?.role}</Badge>
+                  </div>
+                </div>
+                <dl className="grid min-w-0 gap-3 text-sm sm:grid-cols-2">
+                  <div className="min-w-0">
+                    <dt className="text-xs text-surface-400">{t('ses.device')}</dt>
+                    <dd className="mt-0.5 break-words text-surface-700 dark:text-surface-200">
+                      {s.browser || t('ses.unknownBrowser')}
+                      <span className="mt-0.5 block text-xs text-surface-500">{s.os} · {s.deviceType}</span>
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-surface-400">{t('ses.ip')}</dt>
+                    <dd dir="ltr" className="mt-0.5 font-mono text-xs text-surface-600 [overflow-wrap:anywhere] dark:text-surface-300">{s.ip}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-surface-400">{t('ses.signedIn')}</dt>
+                    <dd className="mt-0.5 break-words text-xs text-surface-600 dark:text-surface-300">{new Date(s.createdAt).toLocaleString()}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-surface-400">{t('ses.lastActivity')}</dt>
+                    <dd className="mt-0.5 break-words text-xs text-surface-600 dark:text-surface-300">{new Date(s.lastActivityAt).toLocaleString()}</dd>
+                  </div>
+                </dl>
+                <Button size="sm" variant="danger" className="min-h-11 w-full sm:w-auto" onClick={() => terminate(s)}>
+                  <LogOut size={14} /> {t('ses.forceLogout')}
+                </Button>
+              </article>
+            ))}
+          </div>
+          <table className="hidden w-full text-sm xl:table">
             <thead>
               <tr className="border-b border-surface-200 dark:border-surface-700 text-start text-xs uppercase tracking-wide text-surface-400">
                 <th className="px-4 py-3">{t('ses.user')}</th><th className="px-4 py-3">{t('ses.device')}</th><th className="px-4 py-3">{t('ses.ip')}</th>
@@ -64,6 +102,7 @@ export default function AdminSessions() {
               ))}
             </tbody>
           </table>
+          </>
         )}
       </Card>
       <Pagination meta={result.meta} onPage={setPage} />

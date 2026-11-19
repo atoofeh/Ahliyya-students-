@@ -90,10 +90,15 @@ test('owner returns through manager tabs to the same filtered course list page',
   await page.getByRole('button', { name: /manage.*Biology/i }).click();
   await page.getByRole('button', { name: 'Videos', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('[data-testid="route"]')?.textContent === '/teacher/courses/bio/videos');
+  const returnResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith('/courses/mine') && url.searchParams.get('page') === '3' && url.searchParams.get('search') === 'bio';
+  });
   await page.getByRole('button', { name: 'All courses', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('[data-testid="route"]')?.textContent === '/admin/courses?page=3&search=bio');
   assert.equal(await page.getByTestId('route').textContent(), '/admin/courses?page=3&search=bio');
   assert.equal(await page.getByPlaceholder('Search courses...').inputValue(), 'bio');
+  await returnResponse;
   assert.ok(reads.filter((url) => url.includes('page=3') && url.includes('search=bio')).length >= 2);
 });
 

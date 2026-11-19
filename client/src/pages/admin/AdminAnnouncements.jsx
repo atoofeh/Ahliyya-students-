@@ -47,8 +47,8 @@ export default function AdminAnnouncements() {
         <p className="text-sm text-surface-500">{t('ann.subtitle')}</p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="h-fit space-y-4 p-5">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-2">
+        <Card className="min-w-0 h-fit space-y-4 p-5">
           <p className="flex items-center gap-2 font-semibold text-surface-800 dark:text-surface-100">
             <Megaphone size={17} /> {t('ann.new')}
           </p>
@@ -62,22 +62,22 @@ export default function AdminAnnouncements() {
           {busy && <p role="status" className="text-xs text-surface-500">{t('ann.sendingHint')}</p>}
         </Card>
 
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {!items ? <Spinner /> : items.length === 0 ? (
             <Card><EmptyState title={t('ann.empty')} /></Card>
           ) : items.map((a) => (
             <Card key={a._id} className="p-4">
               <div className="flex items-start justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   {a.pinned && <Badge color="amber">{t('announcements.pinned')}</Badge>}
                   <Badge color={a.course ? 'blue' : 'primary'}>{a.course ? a.course.title : t('announcements.platform')}</Badge>
-                  <p dir="auto" className="font-medium text-surface-900 dark:text-white">{a.title}</p>
+                  <p dir="auto" className="break-words font-medium text-surface-900 dark:text-white">{a.title}</p>
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => remove(a._id)}>
+                <Button size="sm" variant="ghost" className="min-w-11 shrink-0 xl:min-w-0" aria-label={t('ann.confirmDelete')} onClick={() => remove(a._id)}>
                   <Trash2 size={14} className="text-rose-400" />
                 </Button>
               </div>
-              <p dir="auto" className="mt-1 whitespace-pre-wrap text-sm text-surface-500">{a.body}</p>
+              <p dir="auto" className="mt-1 whitespace-pre-wrap text-sm text-surface-500 [overflow-wrap:anywhere] xl:[overflow-wrap:normal]">{a.body}</p>
               <AuthedImage fileId={a.image} alt={a.title} className="mt-3 max-h-96 w-full rounded-xl object-contain" />
               <p className="mt-2 text-xs text-surface-400">{a.author?.name} · {new Date(a.publishedAt).toLocaleString()}</p>
             </Card>

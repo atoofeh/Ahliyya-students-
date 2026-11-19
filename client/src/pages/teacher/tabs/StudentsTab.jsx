@@ -103,7 +103,7 @@ export default function StudentsTab({ courseId, currency = DEFAULT_CURRENCY }) {
   const copyCode = (code) => navigator.clipboard.writeText(code).then(() => toast.success(t('stu.codeCopied')));
 
   return (
-    <div className={staff ? 'grid gap-5 lg:grid-cols-[1fr_360px]' : 'space-y-4'}>
+    <div className={staff ? 'grid min-w-0 gap-5 xl:grid-cols-[1fr_360px]' : 'min-w-0 space-y-4'}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold text-surface-800 dark:text-surface-100">{t('stu.enrolled')}</h3>

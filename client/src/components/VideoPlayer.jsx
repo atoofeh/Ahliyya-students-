@@ -24,16 +24,16 @@ import LmsNative, { isNative, platformName } from '../api/native';
  */
 
 /**
- * Watermark cadence. The mark blinks rather than sits: a few seconds on, most
- * of a minute off. Anyone filming the screen with a second phone for longer
- * than a minute captures the student's identity, while a student who is simply
- * watching the lesson has an unobstructed picture ~87% of the time. The gap is
- * jittered so its timing cannot be learned and recorded around.
+ * A light, moving identity mark stays visible for longer bursts. Both its
+ * position and its gaps vary, while reduced-motion users get stationary bursts.
+ * This identifies filmed footage; it cannot prevent an external camera.
  */
-const WM_SHOW_MS = 6000;
-const WM_GAP_MIN_MS = 38000;
-const WM_GAP_JITTER_MS = 14000;
-const WM_FIRST_MS = 5000;
+const WM_SHOW_MS = 18000;
+const WM_MOVE_MS = 6000;
+const WM_GAP_MIN_MS = 14000;
+const WM_GAP_JITTER_MS = 8000;
+const WM_FIRST_MS = 2500;
+const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
 // The most one `timeupdate` may credit. Ticks arrive ~4x a second, so this
 // covers playback up to 8x and treats anything larger as a seek.
@@ -96,6 +96,7 @@ function clock(seconds) {
 }
 export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress }) {
   const videoRef = useRef(null);
+  const watermarkRef = useRef(null);
   const watchedRef = useRef(0);
   const lastBeat = useRef(0);
   // Where playback was at the previous tick, so watched time can be measured
@@ -125,6 +126,7 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [speed, setSpeed] = useState(1);
   const [waiting, setWaiting] = useState(false);
   const [barShown, setBarShown] = useState(true);
   const hideTimer = useRef(null);
@@ -256,17 +258,28 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
   useEffect(() => {
     if (!watermark) return undefined;
     let timer;
+    let movement;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function move() {
+      const frame = videoRef.current?.getBoundingClientRect();
+      const mark = watermarkRef.current?.getBoundingClientRect();
+      const maxTop = frame?.height ? Math.max(6, 94 - ((mark?.height || 50) / frame.height) * 100) : 65;
+      const maxLeft = frame?.width ? Math.max(5, 95 - ((mark?.width || 130) / frame.width) * 100) : 50;
+      setWmPos({ top: `${6 + Math.random() * (maxTop - 6)}%`, left: `${5 + Math.random() * (maxLeft - 5)}%` });
+    }
     function show() {
-      setWmPos({ top: `${8 + Math.random() * 74}%`, left: `${5 + Math.random() * 60}%` });
+      move();
       setWmShown(true);
+      if (!reducedMotion) movement = setInterval(move, WM_MOVE_MS);
       timer = setTimeout(hide, WM_SHOW_MS);
     }
     function hide() {
+      clearInterval(movement);
       setWmShown(false);
       timer = setTimeout(show, WM_GAP_MIN_MS + Math.random() * WM_GAP_JITTER_MS);
     }
     timer = setTimeout(show, WM_FIRST_MS);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); clearInterval(movement); };
   }, [watermark]);
 
   useEffect(() => {
@@ -576,7 +589,7 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
         disablePictureInPicture
         playsInline
         className={`lesson-video ${isExpanded ? 'h-full w-full object-contain' : 'aspect-video w-full'}`}
-        onClick={webkitMediaUi ? revealBar : undefined}
+        onClick={revealBar}
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
         onEmptied={() => { restoring.current = true; setWaiting(true); }}
@@ -603,7 +616,10 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
         onWaiting={() => setWaiting(true)}
         onStalled={() => { if (!videoRef.current?.paused) setWaiting(true); }}
         onError={() => { setMediaError(true); setWaiting(false); holdBar(); }}
-        onRateChange={(e) => { if (!restoring.current) playback.current.rate = e.currentTarget.playbackRate; }}
+        onRateChange={(e) => {
+          setSpeed(e.currentTarget.playbackRate);
+          if (!restoring.current) playback.current.rate = e.currentTarget.playbackRate;
+        }}
         onVolumeChange={(e) => {
           const video = e.currentTarget;
           setMuted(video.muted);
@@ -729,28 +745,49 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
           </div>
         </>
       )}
-      <button
+      <div className="absolute end-3 top-3 z-20 flex items-center gap-2"
+        onFocusCapture={revealBar}
+        style={isExpanded ? {
+          top: 'calc(var(--safe-top) + 0.75rem)',
+          insetInlineEnd: 'calc(var(--safe-right) + 0.75rem)',
+        } : undefined}>
+        <select aria-label={t('video.speed')} value={speed} dir="ltr"
+          onChange={(event) => {
+            const rate = Number(event.target.value);
+            if (!PLAYBACK_SPEEDS.includes(rate)) return;
+            playback.current.rate = rate;
+            if (videoRef.current) {
+              videoRef.current.playbackRate = rate;
+              if ('preservesPitch' in videoRef.current) videoRef.current.preservesPitch = true;
+            }
+            setSpeed(rate);
+            revealBar();
+          }}
+          className="min-h-10 max-w-28 rounded-lg border border-white/20 bg-black/60 py-2 ps-2 pe-1 text-xs font-semibold text-white shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-white sm:min-h-0">
+          {PLAYBACK_SPEEDS.map((rate) => <option key={rate} value={rate} className="bg-surface-900 text-white">
+            {rate === 1 ? t('video.speedNormal') : `${rate}×`}
+          </option>)}
+        </select>
+        <button
         type="button"
         onClick={() => setIsExpanded((expanded) => !expanded)}
         aria-label={t(isExpanded ? 'video.collapse' : 'video.expand')}
         title={t(isExpanded ? 'video.collapse' : 'video.expand')}
         aria-pressed={isExpanded}
-        className="absolute end-3 top-3 z-20 rounded-lg bg-black/60 p-2 text-white/90 shadow transition-colors hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-        style={isExpanded ? {
-          top: 'calc(var(--safe-top) + 0.75rem)',
-          insetInlineEnd: 'calc(var(--safe-right) + 0.75rem)',
-        } : undefined}
+        className="min-h-10 rounded-lg bg-black/60 p-2 text-white/90 shadow transition-colors hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:min-h-0"
       >
         {isExpanded ? <Minimize size={18} aria-hidden="true" /> : <Maximize size={18} aria-hidden="true" />}
       </button>
+      </div>
       {watermark && (
         <div
+          ref={watermarkRef}
           aria-hidden="true"
-          className={`pointer-events-none absolute z-10 rounded bg-black/25 px-2 py-1 text-[11px] leading-tight text-white/60 transition-opacity duration-700 ${
+          className={`pointer-events-none absolute z-10 max-w-[45%] break-words rounded bg-black/20 px-2 py-1 text-[10px] leading-tight text-white/60 transition-opacity duration-700 sm:text-[11px] ${
             wmShown ? 'opacity-100' : 'opacity-0'}`}
           style={wmPos}
         >
-          {watermark.map((line, i) => <div key={i}>{line}</div>)}
+          {watermark.map((line, i) => <div key={i} dir="auto" className="line-clamp-2 break-words">{line}</div>)}
           <div>{new Date().toLocaleString()}</div>
         </div>
       )}

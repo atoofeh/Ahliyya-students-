@@ -1,6 +1,6 @@
 # iOS app
 
-The November 19 playback/teacher-workflow release is prepared as **1.0.8, build 12**. See [release 1.0.8](releases/1.0.8.md) for validation and the Mac signing handoff.
+The November 19 responsive administration and video-controls release is prepared as **1.0.9, build 13**. See [release 1.0.9](releases/1.0.9.md) for validation and the Mac signing handoff.
 
 The iOS app uses the same React screens and API as Android, wrapped with Capacitor 8. Its native layer stores refresh tokens in iOS Keychain, keeps a hashed device binding, opens downloaded documents in the iOS document preview, and hides app content in the app switcher and during detected screen recording or mirroring.
 

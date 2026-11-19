@@ -44,7 +44,7 @@ export function Button({ variant = 'primary', size = 'md', loading, className = 
   return (
     <button
       className={cx(
-        'relative inline-flex items-center justify-center gap-2 font-medium transition-all duration-200',
+        'relative inline-flex min-h-11 items-center justify-center gap-2 font-medium transition-all duration-200 xl:min-h-0',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-950',
         'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100',
         variants[variant], sizes[size], className
@@ -216,7 +216,7 @@ export function Modal({ open, onClose, title, children, wide }) {
   useEffect(() => (open ? pushBackHandler(onClose) : undefined), [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-brand-950/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
       <div
         ref={panelRef}
@@ -226,18 +226,18 @@ export function Modal({ open, onClose, title, children, wide }) {
         tabIndex={-1}
         className={cx(
           'relative w-full rounded-2xl bg-white shadow-float dark:bg-surface-900 dark:border dark:border-surface-700/60',
-          'animate-scale-in max-h-[90vh] overflow-y-auto',
+          'animate-scale-in max-h-[90dvh] min-w-0 overflow-y-auto',
           wide ? 'max-w-3xl' : 'max-w-lg'
         )}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-2xl border-b border-surface-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-surface-700/60 dark:bg-surface-900/95">
-          <h3 className="font-display text-[15px] font-bold text-surface-900 dark:text-white">{title}</h3>
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-t-2xl border-b border-surface-200 bg-white/95 px-4 py-4 backdrop-blur dark:border-surface-700/60 dark:bg-surface-900/95 sm:px-6">
+          <h3 className="min-w-0 break-words font-display text-[15px] font-bold text-surface-900 dark:text-white">{title}</h3>
           <button onClick={onClose} aria-label={t('common.closeDialog')}
-            className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200">
+            className="min-h-11 min-w-11 shrink-0 rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200 xl:min-h-0 xl:min-w-0">
             <X size={17} />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="min-w-0 p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );
@@ -273,9 +273,9 @@ export function StatCard({ icon, label, value, sub, progress, color = 'primary' 
       <div className="relative flex items-center gap-3.5">
         <div className={cx('rounded-xl p-2.5 transition-transform duration-200 group-hover:scale-105', colors[color])}>{icon}</div>
         <div className="min-w-0">
-          <p className="truncate text-[11px] font-bold uppercase tracking-wider text-surface-400">{label}</p>
+          <p className="break-words text-[11px] font-bold uppercase tracking-wider text-surface-400 xl:truncate">{label}</p>
           <p className="font-display text-[22px] font-extrabold leading-tight text-surface-900 dark:text-white">{value ?? '—'}</p>
-          {sub && <p className="truncate text-xs text-surface-400">{sub}</p>}
+          {sub && <p className="break-words text-xs text-surface-400 xl:truncate">{sub}</p>}
         </div>
       </div>
       {progress != null && <ProgressBar value={progress} className="relative mt-3" />}
@@ -319,7 +319,7 @@ export function Pagination({ meta, onPage }) {
   const { t } = useLanguage();
   if (!meta || meta.totalPages <= 1) return null;
   return (
-    <div className="mt-4 flex items-center justify-between text-sm text-surface-500">
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-surface-500 xl:flex-nowrap xl:gap-0">
       <span className="rounded-full bg-surface-100 px-3 py-1 text-xs font-semibold text-surface-500 dark:bg-surface-800 dark:text-surface-300">
         {t('common.pageOf', { page: meta.page, total: meta.totalPages, count: meta.total })}
       </span>

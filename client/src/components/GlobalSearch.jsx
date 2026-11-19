@@ -15,7 +15,7 @@ const GROUPS = [
   { key: 'users', label: 'People', icon: <Users size={14} /> },
 ];
 
-export default function GlobalSearch() {
+export default function GlobalSearch({ className = '' }) {
   const { t } = useLanguage();
   const [q, setQ] = useState('');
   const [results, setResults] = useState(null);
@@ -59,7 +59,7 @@ export default function GlobalSearch() {
   const hasResults = results && GROUPS.some((g) => results[g.key]?.length);
 
   return (
-    <div className="relative w-full max-w-md" ref={ref}>
+    <div className={`relative min-w-0 w-full max-w-md ${className}`} ref={ref}>
       <Search size={16} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-surface-400" />
       <input
         value={q}

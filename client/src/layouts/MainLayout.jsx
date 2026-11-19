@@ -18,7 +18,7 @@ import NotificationsBell from '../components/NotificationsBell';
 import GlobalSearch from '../components/GlobalSearch';
 import { LogoMark } from '../components/Logo';
 import OfflineBanner from '../components/OfflineBanner';
-import { navFor } from '../utils/roles';
+import { navFor, isAdminRole } from '../utils/roles';
 
 const ICONS = {
   LayoutDashboard, BookOpen, GraduationCap, Award, Bookmark, Megaphone,
@@ -37,6 +37,7 @@ export default function MainLayout() {
   // The welcome tour: asked once, automatically, of a student who has never
   // answered it; replayable from the help button at any time after.
   const isStudent = user?.role === 'student';
+  const isAdmin = isAdminRole(user?.role);
   const [tourAsked, setTourAsked] = useState(false);
   const [tourReplay, setTourReplay] = useState(false);
   const tourMode = tourReplay ? 'replay' : (isStudent && !user?.tourCompletedAt && !tourAsked ? 'ask' : null);
@@ -140,29 +141,29 @@ export default function MainLayout() {
       style={{ paddingLeft: 'var(--safe-left)', paddingRight: 'var(--safe-right)' }}>
       {/* Mobile sidebar */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
+        <div className={`fixed inset-0 z-40 ${isAdmin ? 'xl:hidden' : 'lg:hidden'}`}>
           <div className="absolute inset-0 bg-brand-950/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute start-0 top-0 h-full w-72 shadow-float animate-slide-in">
+          <aside className="absolute start-0 top-0 h-full w-72 max-w-[calc(100vw-2rem)] shadow-float animate-slide-in">
             {sidebar}
           </aside>
         </div>
       )}
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 start-0 z-30 hidden w-[268px] lg:block">
+      <aside className={`fixed inset-y-0 start-0 z-30 hidden w-[268px] ${isAdmin ? 'xl:block' : 'lg:block'}`}>
         {sidebar}
       </aside>
 
-      <div className="lg:ps-[268px]">
+      <div className={`min-w-0 ${isAdmin ? 'xl:ps-[268px]' : 'lg:ps-[268px]'}`}>
         <OfflineBanner />
-        <header className="glass pt-safe sticky top-0 z-20 flex items-center gap-3 border-b border-surface-200/70 px-4 py-2.5 dark:border-surface-800"
+        <header className={`glass pt-safe sticky top-0 z-20 flex items-center gap-3 border-b border-surface-200/70 px-4 py-2.5 dark:border-surface-800 ${isAdmin ? 'max-xl:flex-wrap max-xl:gap-2' : ''}`}
           style={{ ['--pt-safe-extra']: '0.625rem' }}>
-          <button className="rounded-xl p-2 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800 lg:hidden"
+          <button className={`rounded-xl p-2 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800 ${isAdmin ? 'min-h-11 min-w-11 xl:hidden' : 'lg:hidden'}`}
             onClick={() => setSidebarOpen(true)} aria-label={t('nav.openNavigation')}>
             <Menu size={20} />
           </button>
-          <GlobalSearch />
-          <div className="ms-auto flex items-center gap-1">
+          <GlobalSearch className={isAdmin ? 'max-xl:order-last max-xl:basis-full max-xl:max-w-none' : ''} />
+          <div className="ms-auto flex shrink-0 items-center gap-1">
             <LanguageToggle className="me-1" />
             {isStudent && (
               <button onClick={() => setTourReplay(true)} title={t('tour.replay')} aria-label={t('tour.replay')}
@@ -177,7 +178,7 @@ export default function MainLayout() {
             <NotificationsBell />
           </div>
         </header>
-        <main className="mx-auto max-w-7xl p-4 md:p-6 lg:p-7 animate-fade-in">
+        <main className="mx-auto min-w-0 max-w-7xl p-4 md:p-6 lg:p-7 animate-fade-in">
           <Outlet />
           {/* The institute's accounts, at the foot of every page. Laid out
               left-to-right in both languages on purpose: "Follow us" stays on the

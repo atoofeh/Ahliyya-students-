@@ -56,7 +56,7 @@ export default function AdminSettings() {
 
   return (
     <div className="max-w-3xl space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3 xl:flex-nowrap xl:gap-0">
         <div>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{t('set.title')}</h1>
           <p className="text-sm text-surface-500">{t('set.subtitle')}</p>
@@ -81,7 +81,7 @@ export default function AdminSettings() {
         <Select label={t('set.inactivityTimeout')} value={String(settings.sessionTimeoutMinutes)} onChange={set('sessionTimeoutMinutes')}
           disabled={lock('sessionTimeoutMinutes')}
           options={[15, 30, 60, 120].map((m) => ({ value: String(m), label: t('set.minutesValue', { n: m }) }))} />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input label={t('set.maxFailedLogins')} type="number" min="3" max="20" disabled={lock('maxLoginAttempts')}
             value={settings.maxLoginAttempts} onChange={set('maxLoginAttempts')} />
           <Input label={t('set.lockoutDuration')} type="number" min="1" max="1440" disabled={lock('lockoutMinutes')}
@@ -120,7 +120,7 @@ export default function AdminSettings() {
         <Toggle label={t('set.anticheatSystem')} checked={!!settings.antiCheatEnabled} onChange={setBool('antiCheatEnabled')} />
         <Select label={t('set.strictness')} value={settings.antiCheatStrictness} onChange={set('antiCheatStrictness')}
           options={[{ value: 'low', label: t('set.strictLow') }, { value: 'medium', label: t('set.strictMedium') }, { value: 'high', label: t('set.strictHigh') }]} />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <Input label={t('set.maxUpload')} type="number" min="10" value={settings.maxUploadMb} onChange={set('maxUploadMb')} />
           <Input label={t('set.storageQuota')} type="number" min="1" value={settings.storageQuotaGb} onChange={set('storageQuotaGb')} />
           <Input label={t('set.defaultRetakes')} type="number" min="0" value={settings.defaultQuizRetakeLimit} onChange={set('defaultQuizRetakeLimit')} />

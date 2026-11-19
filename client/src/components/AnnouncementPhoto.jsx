@@ -29,11 +29,11 @@ export default function AnnouncementPhoto({ file, onChange, disabled }) {
   };
 
   return (
-    <div className="space-y-2">
-      <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-surface-700 dark:text-surface-200">
-        <ImagePlus size={16} aria-hidden="true" />
+    <div className="min-w-0 w-full space-y-2">
+      <label className="flex min-w-0 w-full cursor-pointer flex-wrap items-center gap-2 text-sm font-medium text-surface-700 dark:text-surface-200 xl:flex-nowrap">
+        <ImagePlus size={16} className="shrink-0" aria-hidden="true" />
         {t('ann.addPhoto')}
-        <input type="file" accept={PHOTO_TYPES.join(',')} disabled={disabled} onChange={choose} className="min-w-0 flex-1 text-xs" aria-label={t('ann.addPhoto')} />
+        <input type="file" accept={PHOTO_TYPES.join(',')} disabled={disabled} onChange={choose} className="min-w-0 w-full basis-full text-xs xl:w-auto xl:flex-1 xl:basis-auto" aria-label={t('ann.addPhoto')} />
       </label>
       <p className="text-xs text-surface-400">{t('ann.photoTypes')}</p>
       {file && (

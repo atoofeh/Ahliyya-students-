@@ -88,7 +88,7 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       <PageIntro title={t('adm.overviewTitle')} subtitle={t('adm.overviewSubtitle')} />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         <StatCard icon={<Users size={20} />} label={t('adm.users')} value={users.total}
           sub={t('adm.usersSub', { students: users.byRole.student || 0, teachers: users.byRole.teacher || 0 })} />
         <StatCard icon={<BookOpen size={20} />} label={t('adm.courses')} value={courses.total} sub={t('adm.published', { n: courses.published })} color="green" />
@@ -104,7 +104,7 @@ export default function AdminDashboard() {
           progress={diskUsage?.usedPercent} color="amber" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <Card className="p-5">
           <SectionTitle title={t('adm.loginActivity')} subtitle={t('adm.last14Days')}
             action={<ChartLegend items={[[t('adm.successful'), C.success], [t('adm.failed'), C.failed]]} />} />
@@ -151,7 +151,7 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <Card className="p-5">
           <SectionTitle title={t('adm.popularCourses')} subtitle={t('adm.byEnrollment')} />
           {popularCourses?.length ? popularCourses.map((c, i) => (
@@ -162,7 +162,7 @@ export default function AdminDashboard() {
                 : 'bg-surface-100 text-surface-400 dark:bg-surface-800'}`}>
                 {i + 1}
               </span>
-              <span dir="auto" className="flex-1 truncate text-sm font-medium text-surface-700 dark:text-surface-200">{c.title}</span>
+              <span dir="auto" className="min-w-0 flex-1 break-words text-sm font-medium text-surface-700 dark:text-surface-200 xl:truncate">{c.title}</span>
               <Badge color="primary">{t('adm.studentsCount', { n: c.students })}</Badge>
             </div>
           )) : <EmptyState title={t('adm.noEnrollments')} />}

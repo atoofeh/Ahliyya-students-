@@ -290,7 +290,11 @@ export default {
   'video.mute': 'كتم الصوت',
   'video.unmute': 'إعادة الصوت',
   'video.seek': 'الموضع في الفيديو',
+  'video.speed': 'سرعة التشغيل',
+  'video.speedNormal': '1× · عادي',
   'video.retry': 'إعادة محاولة تشغيل الفيديو',
+  'usr.generatePassword': 'توليد كلمة مرور',
+  'usr.deleteAccount': 'حذف الحساب',
   'video.buffering': 'جارٍ تحميل الفيديو…',
   'video.playbackError': 'توقف تشغيل الفيديو. أعد المحاولة للمتابعة من موضعك.',
 

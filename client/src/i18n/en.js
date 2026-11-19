@@ -288,7 +288,11 @@ export default {
   'video.mute': 'Mute sound',
   'video.unmute': 'Turn sound back on',
   'video.seek': 'Position in the video',
+  'video.speed': 'Playback speed',
+  'video.speedNormal': '1× · Normal',
   'video.retry': 'Retry video',
+  'usr.generatePassword': 'Generate password',
+  'usr.deleteAccount': 'Delete account',
   'video.buffering': 'Loading video…',
   'video.playbackError': 'Playback was interrupted. Retry to continue from your position.',
 
