@@ -32,7 +32,7 @@ const sweepStaleSessions = async () => {
 const sweepExpiredEnrollments = async () => {
   const Enrollment = require('../models/Enrollment');
   const result = await Enrollment.updateMany(
-    { status: 'active', expiresAt: { $ne: null, $lt: new Date() } },
+    { status: { $in: ['active', 'completed'] }, expiresAt: { $ne: null, $lt: new Date() } },
     { $set: { status: 'expired' } }
   );
   if (result.modifiedCount) logger.info(`Enrollment sweep: expired ${result.modifiedCount} enrollment(s)`);
@@ -72,7 +72,7 @@ const assignmentDeadlineReminders = async () => {
     if (!assignment) break;
 
     const [enrollments, submissions] = await Promise.all([
-      Enrollment.find({ course: assignment.course._id, status: 'active' }).select('student'),
+      Enrollment.find({ course: assignment.course._id, status: { $in: ['active', 'completed'] } }).select('student'),
       Submission.find({ assignment: assignment._id }).select('student'),
     ]);
     const submitted = new Set(submissions.map((s) => String(s.student)));

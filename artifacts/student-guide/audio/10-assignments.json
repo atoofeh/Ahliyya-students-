@@ -1,0 +1,174 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 19.248,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 3391250,
+      "text": "من"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 4569580,
+      "duration": 9224160,
+      "text": "الواجبات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 16235410,
+      "duration": 4205000,
+      "text": "اقرأ"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 20575830,
+      "duration": 8274580,
+      "text": "التعليمات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 28986250,
+      "duration": 5425830,
+      "text": "وموعد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 34547910,
+      "duration": 7460830,
+      "text": "التسليم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 43907500,
+      "duration": 3662500,
+      "text": "ثم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 47705830,
+      "duration": 4069580,
+      "text": "اضغط"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 51910830,
+      "duration": 7732080,
+      "text": "تسليم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 69180830,
+      "duration": 4883330,
+      "text": "اكتب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 74199580,
+      "duration": 3255410,
+      "text": "نص"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 77590830,
+      "duration": 8003330,
+      "text": "الإجابة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 88171250,
+      "duration": 5561660,
+      "text": "وأضف"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 93868750,
+      "duration": 6104160,
+      "text": "مرفقاً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 100108330,
+      "duration": 2577500,
+      "text": "عند"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 102821660,
+      "duration": 6511250,
+      "text": "الحاجة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 111638750,
+      "duration": 3798330,
+      "text": "ثم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 115572500,
+      "duration": 4205000,
+      "text": "اضغط"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 119913330,
+      "duration": 4747500,
+      "text": "تسليم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 124796660,
+      "duration": 7596250,
+      "text": "الواجب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 141752500,
+      "duration": 5561660,
+      "text": "تأكّد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 147450000,
+      "duration": 1627910,
+      "text": "من"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 149213330,
+      "duration": 4340830,
+      "text": "ظهور"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 153689580,
+      "duration": 5019160,
+      "text": "حالة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 158844160,
+      "duration": 5697080,
+      "text": "سُلّم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 164677080,
+      "duration": 3933750,
+      "text": "قبل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 168746660,
+      "duration": 6646660,
+      "text": "مغادرة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 175529160,
+      "duration": 7596250,
+      "text": "الصفحة"
+    }
+  ]
+}

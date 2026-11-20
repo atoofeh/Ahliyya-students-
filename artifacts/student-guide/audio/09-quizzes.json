@@ -1,0 +1,174 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 20.328,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 4340830,
+      "text": "افتح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 5519160,
+      "duration": 8545830,
+      "text": "الاختبارات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 14200410,
+      "duration": 3798330,
+      "text": "وابدأ"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 18134160,
+      "duration": 5832910,
+      "text": "الاختبار"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 24102910,
+      "duration": 8138750,
+      "text": "المتاح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 41644160,
+      "duration": 5561660,
+      "text": "راقب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 47341250,
+      "duration": 4476250,
+      "text": "الوقت"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 51953330,
+      "duration": 6240000,
+      "text": "وحالة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 58328750,
+      "duration": 2848750,
+      "text": "حفظ"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 61312910,
+      "duration": 8545830,
+      "text": "الإجابات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 72436250,
+      "duration": 4612080,
+      "text": "وابقَ"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 77183750,
+      "duration": 3933750,
+      "text": "داخل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 81253330,
+      "duration": 7325000,
+      "text": "التطبيق"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 88714160,
+      "duration": 4069580,
+      "text": "حتى"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 92919160,
+      "duration": 7596250,
+      "text": "تنتهي"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 109875000,
+      "duration": 5019160,
+      "text": "راجع"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 115030000,
+      "duration": 9766660,
+      "text": "إجاباتك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 126967080,
+      "duration": 3662500,
+      "text": "ثم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 130765000,
+      "duration": 4340830,
+      "text": "اضغط"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 135241250,
+      "duration": 4340830,
+      "text": "تسليم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 139717910,
+      "duration": 7325000,
+      "text": "الاختبار"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 147178330,
+      "duration": 5425830,
+      "text": "وأكّد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 152740000,
+      "duration": 5697080,
+      "text": "بتسليم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 158572910,
+      "duration": 5968330,
+      "text": "الآن"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 173901250,
+      "duration": 2712910,
+      "text": "لا"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 176750000,
+      "duration": 6240000,
+      "text": "تنتظر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 183125410,
+      "duration": 4883330,
+      "text": "انتهاء"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 188144160,
+      "duration": 5561660,
+      "text": "الوقت"
+    }
+  ]
+}

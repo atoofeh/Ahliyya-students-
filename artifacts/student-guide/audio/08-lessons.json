@@ -1,0 +1,180 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 22.848,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 5154580,
+      "text": "داخل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 6332910,
+      "duration": 5968330,
+      "text": "الدورة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 14878750,
+      "duration": 4747500,
+      "text": "افتح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 19762080,
+      "duration": 8817080,
+      "text": "المحتويات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 28715000,
+      "duration": 4205000,
+      "text": "واختر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 33055410,
+      "duration": 7053750,
+      "text": "الدرس"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 41601660,
+      "duration": 3798330,
+      "text": "ثم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 45535410,
+      "duration": 3798330,
+      "text": "شغّل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 49469160,
+      "duration": 7867500,
+      "text": "الفيديو"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 66739160,
+      "duration": 7325000,
+      "text": "يتذكّر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 74199580,
+      "duration": 6375410,
+      "text": "التطبيق"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 80710830,
+      "duration": 8003330,
+      "text": "موضعك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 98209580,
+      "duration": 3391250,
+      "text": "إذا"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 101736250,
+      "duration": 3526660,
+      "text": "كانت"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 105398750,
+      "duration": 9088330,
+      "text": "المشاهدات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 114622910,
+      "duration": 7325000,
+      "text": "محدودة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 124253750,
+      "duration": 4747500,
+      "text": "يظهر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 129137080,
+      "duration": 7596250,
+      "text": "المتبقي"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 136869160,
+      "duration": 4069580,
+      "text": "أسفل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 141074160,
+      "duration": 8952910,
+      "text": "المشغّل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 159386660,
+      "duration": 7460830,
+      "text": "استخدم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 166983330,
+      "duration": 4476250,
+      "text": "حفظ"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 171595410,
+      "duration": 6240000,
+      "text": "للرجوع"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 177970830,
+      "duration": 8003330,
+      "text": "لاحقاً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 188415410,
+      "duration": 5697080,
+      "text": "ووضع"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 194248330,
+      "duration": 6240000,
+      "text": "علامة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 200624160,
+      "duration": 7189160,
+      "text": "مكتمل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 207949160,
+      "duration": 2848750,
+      "text": "بعد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 210933330,
+      "duration": 8003330,
+      "text": "الإنجاز"
+    }
+  ]
+}

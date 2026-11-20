@@ -1,0 +1,19 @@
+{
+  "createdDate": "2026-11-17",
+  "timezone": "Asia/Amman",
+  "sourceCommit": "3eadeee",
+  "durationSeconds": 269.782,
+  "sizeBytes": 10522293,
+  "width": 1080,
+  "height": 1920,
+  "videoCodec": "h264",
+  "audioCodec": "aac",
+  "chapters": 14,
+  "captionCues": 49,
+  "fullDecode": "passed",
+  "captionTiming": "passed",
+  "audioIntegratedLoudnessLUFS": -16.2,
+  "audioTruePeakDBFS": -1.4,
+  "screens": "Actual local frontend with fictional API fixtures; no production access",
+  "visualReview": "Decoded chapter samples reviewed separately"
+}

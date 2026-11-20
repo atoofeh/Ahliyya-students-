@@ -1,0 +1,174 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 20.976,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 4205000,
+      "text": "افتح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 5383330,
+      "duration": 5968330,
+      "text": "الأسئلة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 11487500,
+      "duration": 7189160,
+      "text": "السابقة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 18812500,
+      "duration": 4612080,
+      "text": "واختر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 23560410,
+      "duration": 6917910,
+      "text": "الورقة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 30613750,
+      "duration": 8681660,
+      "text": "المطلوبة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 48697910,
+      "duration": 4747500,
+      "text": "تُقرأ"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 53581250,
+      "duration": 5968330,
+      "text": "الأوراق"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 59685410,
+      "duration": 4069580,
+      "text": "داخل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 63890410,
+      "duration": 7189160,
+      "text": "التطبيق"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 71215410,
+      "duration": 3120000,
+      "text": "ولا"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 74470830,
+      "duration": 6646660,
+      "text": "تُنزّل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 90612910,
+      "duration": 3255410,
+      "text": "إذا"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 94004160,
+      "duration": 5154580,
+      "text": "توفّر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 99294580,
+      "duration": 7596250,
+      "text": "التدريب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 109332500,
+      "duration": 4340830,
+      "text": "أجب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 113809160,
+      "duration": 5019160,
+      "text": "واضغط"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 118963750,
+      "duration": 7053750,
+      "text": "تحقّق"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 128594580,
+      "duration": 4069580,
+      "text": "ثم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 132799580,
+      "duration": 4340830,
+      "text": "حاول"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 137276250,
+      "duration": 9766660,
+      "text": "مجدّداً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 156538330,
+      "duration": 3255410,
+      "text": "هذا"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 159929580,
+      "duration": 6104160,
+      "text": "التدريب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 166169160,
+      "duration": 10580410,
+      "text": "للمراجعة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 176885410,
+      "duration": 3662500,
+      "text": "ولا"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 180683750,
+      "duration": 6782500,
+      "text": "يُحتسب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 187601660,
+      "duration": 3391250,
+      "text": "ضمن"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 191128750,
+      "duration": 9224160,
+      "text": "علاماتك"
+    }
+  ]
+}

@@ -336,7 +336,7 @@ class VideoService {
     // signed in when the video sits on a free lesson) — an outsider must not
     // learn whether the video exists or is still processing.
     if (user.role === 'student') {
-      const enrollment = await Enrollment.findOne({ student: user.id, course: video.course, status: 'active' });
+      const enrollment = await Enrollment.findOne({ student: user.id, course: video.course, status: { $in: ['active', 'completed'] } });
       if (!enrollment && !(await VideoService.#isFreePreviewVideo(video))) {
         throw ApiError.forbidden('Not enrolled in this course');
       }

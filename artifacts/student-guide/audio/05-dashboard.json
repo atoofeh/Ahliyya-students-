@@ -1,0 +1,174 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 18.864,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 1356660,
+      "text": "في"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 2534580,
+      "duration": 8003330,
+      "text": "الرئيسية"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 10673750,
+      "duration": 4340830,
+      "text": "تجد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 15150000,
+      "duration": 7460830,
+      "text": "دوراتك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 22746250,
+      "duration": 6646660,
+      "text": "ونسبة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 29528750,
+      "duration": 8410000,
+      "text": "تقدّمك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 47341250,
+      "duration": 7053750,
+      "text": "استخدم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 54530830,
+      "duration": 3798330,
+      "text": "تابع"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 58464580,
+      "duration": 6511250,
+      "text": "التعلّم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 65111250,
+      "duration": 6646660,
+      "text": "للعودة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 71893750,
+      "duration": 2170410,
+      "text": "إلى"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 74199580,
+      "duration": 3933750,
+      "text": "الدرس"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 78269160,
+      "duration": 4205000,
+      "text": "الذي"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 82610000,
+      "duration": 4340830,
+      "text": "بدأت"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 87086250,
+      "duration": 3255410,
+      "text": "به"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 93326250,
+      "duration": 5697080,
+      "text": "وراجع"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 99159160,
+      "duration": 4069580,
+      "text": "قسم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 103364160,
+      "duration": 5154580,
+      "text": "التالي"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 108654160,
+      "duration": 6240000,
+      "text": "لمعرفة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 115030000,
+      "duration": 8681660,
+      "text": "الاختبارات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 123847080,
+      "duration": 7732080,
+      "text": "والواجبات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 131714580,
+      "duration": 8817080,
+      "text": "القريبة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 149891660,
+      "duration": 4476250,
+      "text": "افتح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 154503330,
+      "duration": 2441660,
+      "text": "أي"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 157080830,
+      "duration": 5697080,
+      "text": "دورة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 162913750,
+      "duration": 1763330,
+      "text": "من"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 164812910,
+      "duration": 6240000,
+      "text": "قائمة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 171188330,
+      "duration": 8003330,
+      "text": "دوراتي"
+    }
+  ]
+}

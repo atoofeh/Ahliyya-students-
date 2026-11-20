@@ -37,12 +37,12 @@ const requireCourseAccess = asyncHandler(async (req, _res, next) => {
     return next();
   }
 
-  // Student
+  // Student: active or completed (completed students retain access to materials)
   const Enrollment = require('../models/Enrollment');
   const enrollment = await Enrollment.findOne({
     student: req.user.id,
     course: course._id,
-    status: 'active',
+    status: { $in: ['active', 'completed'] },
   });
   if (!enrollment) throw ApiError.forbidden('You are not enrolled in this course', 'NOT_ENROLLED');
   if (enrollment.expiresAt && enrollment.expiresAt < new Date()) {

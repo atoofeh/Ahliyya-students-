@@ -134,7 +134,7 @@ class EnrollmentService {
     }
 
     const existing = await Enrollment.findOne({ student: studentId, course: course._id });
-    if (existing && existing.status === 'active') {
+    if (existing && ['active', 'completed'].includes(existing.status)) {
       throw ApiError.conflict('Already enrolled in this course', 'ALREADY_ENROLLED');
     }
 
@@ -206,7 +206,7 @@ class EnrollmentService {
   }
 
   static async removeStudent(courseId, studentId, actorId, ip) {
-    const enrollment = await Enrollment.findOne({ course: courseId, student: studentId, status: 'active' });
+    const enrollment = await Enrollment.findOne({ course: courseId, student: studentId, status: { $in: ['active', 'completed'] } });
     if (!enrollment) throw ApiError.notFound('Active enrollment not found');
     enrollment.status = 'removed';
     await enrollment.save();

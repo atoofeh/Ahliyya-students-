@@ -1,0 +1,174 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 21.672,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 5968330,
+      "text": "لديك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 7146660,
+      "duration": 5290410,
+      "text": "سؤال"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 12572500,
+      "duration": 2441660,
+      "text": "عن"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 15150000,
+      "duration": 6104160,
+      "text": "الدرس"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 30792080,
+      "duration": 4612080,
+      "text": "افتح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 35540000,
+      "duration": 7596250,
+      "text": "الأسئلة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 45577910,
+      "duration": 4883330,
+      "text": "واكتب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 50596660,
+      "duration": 5968330,
+      "text": "عنواناً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 56700830,
+      "duration": 7460830,
+      "text": "واضحاً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 64297500,
+      "duration": 2848750,
+      "text": "ثم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 67281660,
+      "duration": 8952910,
+      "text": "التفاصيل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 78540410,
+      "duration": 4883330,
+      "text": "واضغط"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 83559580,
+      "duration": 4340830,
+      "text": "إرسال"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 88035830,
+      "duration": 8138750,
+      "text": "السؤال"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 105534580,
+      "duration": 8681660,
+      "text": "يراجعه"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 114351660,
+      "duration": 8003330,
+      "text": "معلّمك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 122490410,
+      "duration": 3391250,
+      "text": "قبل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 126017500,
+      "duration": 5019160,
+      "text": "نشره"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 131172080,
+      "duration": 7189160,
+      "text": "للصف"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 140667500,
+      "duration": 4069580,
+      "text": "وقد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 144872500,
+      "duration": 5019160,
+      "text": "تظهر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 150027080,
+      "duration": 5561660,
+      "text": "حالة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 155724160,
+      "duration": 5697080,
+      "text": "بانتظار"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 161557080,
+      "duration": 9902500,
+      "text": "الموافقة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 180955000,
+      "duration": 8817080,
+      "text": "وتُراجع"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 189907910,
+      "duration": 3933750,
+      "text": "ردود"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 193977080,
+      "duration": 5425830,
+      "text": "الطلبة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 199538750,
+      "duration": 7596250,
+      "text": "أيضاً"
+    }
+  ]
+}

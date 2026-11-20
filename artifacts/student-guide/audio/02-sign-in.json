@@ -1,0 +1,174 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 20.184,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 4612080,
+      "text": "أدخل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 5790410,
+      "duration": 2305830,
+      "text": "اسم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 8232080,
+      "duration": 7053750,
+      "text": "المستخدم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 15421250,
+      "duration": 6375410,
+      "text": "وكلمة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 21932500,
+      "duration": 6917910,
+      "text": "المرور"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 30207080,
+      "duration": 3662500,
+      "text": "ثم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 34005000,
+      "duration": 3933750,
+      "text": "اضغط"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 38074580,
+      "duration": 4612080,
+      "text": "تسجيل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 42822500,
+      "duration": 7732080,
+      "text": "الدخول"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 59956660,
+      "duration": 3662500,
+      "text": "على"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 63754580,
+      "duration": 5561660,
+      "text": "هاتفك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 69452080,
+      "duration": 7053750,
+      "text": "الشخصي"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 78676250,
+      "duration": 6375410,
+      "text": "يمكنك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 85187080,
+      "duration": 5561660,
+      "text": "اختيار"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 90884580,
+      "duration": 2984160,
+      "text": "أبقِ"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 94004160,
+      "duration": 5425830,
+      "text": "الدخول"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 99565830,
+      "duration": 6511250,
+      "text": "مفتوحاً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 106212500,
+      "duration": 7460830,
+      "text": "لتستمر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 113809160,
+      "duration": 8003330,
+      "text": "جلستك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 121947910,
+      "duration": 11530000,
+      "text": "وإشعاراتك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 142973330,
+      "duration": 5968330,
+      "text": "احتفظ"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 149077500,
+      "duration": 6104160,
+      "text": "بكلمة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 155317500,
+      "duration": 5425830,
+      "text": "المرور"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 160879160,
+      "duration": 8138750,
+      "text": "لنفسك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 170917080,
+      "duration": 3255410,
+      "text": "ولا"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 174308330,
+      "duration": 7325000,
+      "text": "تشاركها"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 181768750,
+      "duration": 1899160,
+      "text": "مع"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 183803750,
+      "duration": 8545830,
+      "text": "الآخرين"
+    }
+  ]
+}

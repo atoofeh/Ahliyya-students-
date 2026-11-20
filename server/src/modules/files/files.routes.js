@@ -99,7 +99,7 @@ router.get('/:fileId/content', asyncHandler(async (req, res) => {
     const free = () => isFreeLessonMedia({ courseId: asset.course, fileAsset: asset._id });
     if (req.user.role === 'student') {
       const Enrollment = require('../../models/Enrollment');
-      const enrolled = await Enrollment.findOne({ student: req.user.id, course: asset.course, status: 'active' });
+      const enrolled = await Enrollment.findOne({ student: req.user.id, course: asset.course, status: { $in: ['active', 'completed'] } });
       if (!enrolled && !(await free())) throw ApiError.forbidden('Not enrolled');
     } else if (req.user.role === 'teacher') {
       const Course = require('../../models/Course');

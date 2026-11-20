@@ -530,7 +530,7 @@ class QuizService {
   static async remindStudents(quizId, courseId, message) {
     const quiz = await Quiz.findOne({ _id: quizId, course: courseId, deletedAt: null });
     if (!quiz) throw ApiError.notFound('Quiz not found');
-    const enrollments = await Enrollment.find({ course: courseId, status: 'active' }).select('student');
+    const enrollments = await Enrollment.find({ course: courseId, status: { $in: ['active', 'completed'] } }).select('student');
     await notifyMany(enrollments.map((e) => e.student), {
       type: 'quiz_reminder',
       title: `Reminder: ${quiz.title}`,

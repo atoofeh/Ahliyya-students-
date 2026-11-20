@@ -1,0 +1,37 @@
+[
+  {
+    "file": "server/src/modules/auth/auth.service.js",
+    "before": "1aeb2f76ed2ad916f11de6535ebc41b83bd7eb653e0ccea0afb9083fb7948c86",
+    "after": "b18bf6979386e41d1085c8e530677b445de9c7904c4f72814b046210d684e4b9"
+  },
+  {
+    "file": "server/src/modules/auth/device.service.js",
+    "before": "ab53cb0eddd6784b9c03e6c0892f6644472dfffa46cb5cf460deef823718837e",
+    "after": "82d86f96b15f6c953cb5786444013760fb824cf954b81a98fbd9884fcf6771a0"
+  },
+  {
+    "file": "server/src/modules/auth/auth.controller.js",
+    "before": "085389a73b0fb429605651e6db9afaf54792b79bc19ebc442717f12d4f3c2954",
+    "after": "50d20208f358b9166801a6282a2c6aac0fcd423ede1d2f37197db17e943de5fe"
+  },
+  {
+    "file": "server/src/modules/auth/auth.validators.js",
+    "before": "d262bdb4f25f7307e725d872441565250aa705e2c819119bd3bc73d949923dd0",
+    "after": "3f9117f9ab2536d4e465a688b770d8fc072397f3feeb8ceae4df62d690fb70ac"
+  },
+  {
+    "file": "server/src/models/Device.js",
+    "before": "e7ee99136bd6a258853c37369b6a0f9eee18117a6ba23d4164317e48d13f62a5",
+    "after": "c94519c2581273c81e9d475a73ce94688e2a91c13ecc1b8baba184793e5ca501"
+  },
+  {
+    "file": "server/src/models/Session.js",
+    "before": "fa9bd05cc9846249fdaec6ad49be773dfaa62adabb2b8c3ec75b2b96c5f437fc",
+    "after": "ca52c18e6ac96470a76378b6356a8b4815eed62f0ac5fd94278d440d9e1a224f"
+  },
+  {
+    "file": "server/src/config/constants.js",
+    "before": "a70781d5b2ad658b99c55ca8ea55a0515b18ed4ea070f4cdd8a9c98b5befc68c",
+    "after": "2dbd55b97bcb60732b12eac1a827c83e3e57f1db6a0f3087ea19f6fb7a5a4839"
+  }
+]

@@ -1,0 +1,174 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 19.056,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 8138750,
+      "text": "لإضافة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 9317080,
+      "duration": 5425830,
+      "text": "دورة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 16506660,
+      "duration": 4612080,
+      "text": "اضغط"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 21254160,
+      "duration": 7460830,
+      "text": "استخدام"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 28850410,
+      "duration": 3255410,
+      "text": "رمز"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 32241660,
+      "duration": 6646660,
+      "text": "الدورة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 48290830,
+      "duration": 4883330,
+      "text": "اكتب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 53310000,
+      "duration": 3120000,
+      "text": "رمز"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 56565410,
+      "duration": 5154580,
+      "text": "الدخول"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 61855830,
+      "duration": 3933750,
+      "text": "الذي"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 65925000,
+      "duration": 5425830,
+      "text": "حصلت"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 71486660,
+      "duration": 4747500,
+      "text": "عليه"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 76370000,
+      "duration": 1899160,
+      "text": "من"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 78404580,
+      "duration": 6104160,
+      "text": "الإدارة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 84644580,
+      "duration": 2984160,
+      "text": "أو"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 87764580,
+      "duration": 8274580,
+      "text": "معلّمك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 97938330,
+      "duration": 3662500,
+      "text": "ثم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 101736250,
+      "duration": 3933750,
+      "text": "اضغط"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 105805830,
+      "duration": 8681660,
+      "text": "التسجيل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 123847080,
+      "duration": 4476250,
+      "text": "الرمز"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 128459160,
+      "duration": 5290410,
+      "text": "الظاهر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 133885000,
+      "duration": 3255410,
+      "text": "هنا"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 137276250,
+      "duration": 5425830,
+      "text": "مثال"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 142837910,
+      "duration": 8681660,
+      "text": "توضيحي"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 153960830,
+      "duration": 5561660,
+      "text": "وليس"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 159658330,
+      "duration": 4612080,
+      "text": "رمزاً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 164405830,
+      "duration": 5697080,
+      "text": "صالحاً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 170238750,
+      "duration": 10851660,
+      "text": "للاستخدام"
+    }
+  ]
+}

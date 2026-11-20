@@ -1,0 +1,387 @@
+const ApiError = require('../../core/ApiError');
+const { isCourseStaff, staffCourseFilter } = require('./courseStaff');
+const audit = require('../../core/audit');
+const { paginatedQuery } = require('../../core/pagination');
+const Course = require('../../models/Course');
+const Section = require('../../models/Section');
+const Lesson = require('../../models/Lesson');
+const Enrollment = require('../../models/Enrollment');
+const LessonProgress = require('../../models/LessonProgress');
+const Video = require('../../models/Video');
+const FileAsset = require('../../models/FileAsset');
+const Quiz = require('../../models/Quiz');
+const Question = require('../../models/Question');
+const Assignment = require('../../models/Assignment');
+const Announcement = require('../../models/Announcement');
+const QAThread = require('../../models/QAThread');
+
+// Course-list searches are literal partial matches. Full-text search only
+// matches whole indexed words, so queries such as "bio" miss "Biology".
+const withSearch = (filter, search) => {
+  const query = search?.trim();
+  if (!query) return filter;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = { $regex: escaped, $options: 'i' };
+  return { $and: [filter, { $or: ['title', 'description', 'category', 'tags'].map((field) => ({ [field]: pattern })) }] };
+};
+
+class CourseService {
+  // ── Courses ─────────────────────────────────────────────────────────
+
+  static async createCourse(teacherId, data, ip) {
+    const course = await Course.create({ ...data, teacher: data.teacher || teacherId });
+    await audit({ user: teacherId, action: 'COURSE_CREATED', course: course._id, ip });
+    return course;
+  }
+
+  static async updateCourse(course, data, actorId, ip) {
+    const publishing = data.isPublished === true && !course.isPublished;
+    Object.assign(course, data);
+    await course.save();
+    await audit({ user: actorId, action: publishing ? 'COURSE_PUBLISHED' : 'COURSE_UPDATED', course: course._id, ip });
+    return course;
+  }
+
+  /**
+   * Deleting a course takes its content with it.
+   *
+   * Previously this marked only the course, so every lesson, quiz and — crucially
+   * — every uploaded video stayed live: still counted by the storage figure on the
+   * dashboard, and still occupying disk. A single deleted course could leave
+   * hundreds of megabytes behind with nothing in the interface pointing at it.
+   *
+   * Media bytes are removed here, the same way deleting a single video or file
+   * already does. Academic history is deliberately kept: certificates, quiz
+   * attempts, submissions and progress are a record of what a student actually
+   * did, and the audit log is never touched.
+   */
+  static async deleteCourse(course, actorId, ip) {
+    const now = new Date();
+    const courseId = course._id;
+
+    course.deletedAt = now;
+    course.isPublished = false;
+    await course.save();
+
+    const softDelete = (model, extra = {}) =>
+      model.updateMany({ course: courseId, deletedAt: null, ...extra }, { $set: { deletedAt: now } });
+
+    // Reclaim the bytes before the records are marked, so a failure here cannot
+    // orphan a file that nothing points to any more.
+    const freed = await CourseService.#purgeCourseMedia(courseId);
+
+    await Promise.all([
+      softDelete(Section),
+      softDelete(Lesson),
+      softDelete(Video),
+      softDelete(FileAsset),
+      softDelete(Quiz),
+      softDelete(Question),
+      softDelete(Assignment),
+      softDelete(Announcement),
+      softDelete(QAThread),
+      Enrollment.updateMany({ course: courseId, status: 'active' }, { $set: { status: 'removed' } }),
+      // An open co-teaching invitation for a course that no longer exists would
+      // otherwise sit in someone's inbox forever.
+      require('../../models/CoTeachInvite').updateMany(
+        { course: courseId, status: 'pending' },
+        { $set: { status: 'cancelled', respondedAt: now } }
+      ),
+    ]);
+
+    await audit({
+      user: actorId, action: 'COURSE_DELETED', course: courseId, ip,
+      meta: { videosRemoved: freed.videos, filesRemoved: freed.files, bytesFreed: freed.bytes },
+    });
+  }
+
+  /** Unlinks the encrypted media of a course and reports what it reclaimed. */
+  static async #purgeCourseMedia(courseId) {
+    const fs = require('fs');
+    const path = require('path');
+    let bytes = 0;
+
+    const videos = await Video.find({ course: courseId, deletedAt: null }).select('+storagePath sizeBytes');
+    for (const v of videos) {
+      bytes += v.sizeBytes || 0;
+      // Each video owns a directory; deleting a single video removes it the same way.
+      if (v.storagePath) await fs.promises.rm(path.dirname(v.storagePath), { recursive: true, force: true }).catch(() => {});
+    }
+
+    const files = await FileAsset.find({ course: courseId, deletedAt: null }).select('+storagePath sizeBytes');
+    for (const f of files) {
+      bytes += f.sizeBytes || 0;
+      if (f.storagePath) await fs.promises.unlink(f.storagePath).catch(() => {});
+    }
+
+    return { videos: videos.length, files: files.length, bytes };
+  }
+
+  /** Catalog: published courses their teacher chose to list. */
+  static async catalog({ page, limit, search, category }) {
+    const filter = { deletedAt: null, isPublished: true, visibility: 'listed' };
+    if (category) filter.category = category;
+    const result = await paginatedQuery(Course, withSearch(filter, search), {
+      page, limit,
+      populate: { path: 'teacher', select: 'name' },
+      select: '-__v',
+    });
+
+    // How many lessons each card offers for free — the reason to open it.
+    const counts = await Lesson.aggregate([
+      { $match: { course: { $in: result.items.map((c) => c._id) }, deletedAt: null, isPublished: true, isFree: true } },
+      { $group: { _id: '$course', n: { $sum: 1 } } },
+    ]);
+    const byCourse = Object.fromEntries(counts.map((c) => [String(c._id), c.n]));
+    result.items = result.items.map((c) => ({ ...c, freeLessonCount: byCourse[String(c._id)] || 0 }));
+    return result;
+  }
+
+  /** Courses this teacher runs — created or co-taught. */
+  static async teacherCourses(teacherId, { page, limit, search }) {
+    const filter = { ...staffCourseFilter(teacherId), deletedAt: null };
+    return paginatedQuery(Course, withSearch(filter, search), { page, limit });
+  }
+
+  static async allCourses({ page, limit, search }) {
+    const filter = { deletedAt: null };
+    return paginatedQuery(Course, withSearch(filter, search), { page, limit, populate: { path: 'teacher', select: 'name username' } });
+  }
+
+  /**
+   * Full course detail with curriculum. Students only see published lessons;
+   * grading/internal data never leaves the select projections.
+   */
+  static async courseDetail(course, user, enrollment) {
+    const isStaff = isCourseStaff(course, user);
+    const lessonFilter = { course: course._id, deletedAt: null, ...(isStaff ? {} : { isPublished: true }) };
+
+    const [sections, lessons, progress] = await Promise.all([
+      Section.find({ course: course._id, deletedAt: null }).sort({ order: 1 }).lean(),
+      Lesson.find(lessonFilter).sort({ order: 1 }).select('-content').lean(),
+      user.role === 'student'
+        ? LessonProgress.find({ student: user.id, course: course._id }).lean()
+        : Promise.resolve([]),
+    ]);
+
+    const progressByLesson = Object.fromEntries(progress.map((p) => [String(p.lesson), p]));
+    const curriculum = sections.map((s) => ({
+      ...s,
+      lessons: lessons
+        .filter((l) => String(l.section) === String(s._id))
+        .map((l) => ({
+          ...l,
+          progress: progressByLesson[String(l._id)] || null,
+        })),
+    }));
+
+    const teacher = await require('../../models/User').findById(course.teacher).select('name username');
+    return {
+      course: { ...course.toObject(), teacher },
+      curriculum,
+      enrollment: enrollment || null,
+    };
+  }
+
+  /**
+   * Preview of a listed course for someone who is not enrolled.
+   *
+   * Returns the course card plus only the lessons its teacher marked free —
+   * never the paid curriculum, never quizzes, assignments or announcements.
+   * The lesson list is the same set requireLessonAccess will let them open.
+   */
+  static async coursePreview(courseId, user) {
+    const course = await Course.findOne({ _id: courseId, deletedAt: null, isPublished: true, visibility: 'listed' });
+    if (!course) throw ApiError.notFound('Course not found');
+
+    const [freeLessons, lessonCount, teacher, enrollment] = await Promise.all([
+      Lesson.find({ course: course._id, deletedAt: null, isPublished: true, isFree: true })
+        .sort({ order: 1 })
+        .select('title type durationMinutes order section video')
+        .lean(),
+      Lesson.countDocuments({ course: course._id, deletedAt: null, isPublished: true }),
+      require('../../models/User').findById(course.teacher).select('name username'),
+      user.role === 'student'
+        ? Enrollment.findOne({ student: user.id, course: course._id, status: 'active' }).lean()
+        : Promise.resolve(null),
+    ]);
+
+    return {
+      course: {
+        _id: course._id,
+        title: course.title,
+        description: course.description,
+        category: course.category,
+        difficulty: course.difficulty,
+        thumbnail: course.thumbnail,
+        durationMinutes: course.durationMinutes,
+        tags: course.tags,
+        teacher,
+      },
+      lessonCount,
+      freeLessons,
+      enrolled: !!enrollment,
+    };
+  }
+
+  // ── Sections ────────────────────────────────────────────────────────
+
+  static async createSection(courseId, data) {
+    const count = await Section.countDocuments({ course: courseId, deletedAt: null });
+    return Section.create({ ...data, course: courseId, order: data.order ?? count });
+  }
+
+  static async updateSection(courseId, sectionId, data) {
+    const section = await Section.findOneAndUpdate(
+      { _id: sectionId, course: courseId, deletedAt: null },
+      { $set: data },
+      { new: true }
+    );
+    if (!section) throw ApiError.notFound('Section not found');
+    return section;
+  }
+
+  static async deleteSection(courseId, sectionId) {
+    const section = await Section.findOne({ _id: sectionId, course: courseId, deletedAt: null });
+    if (!section) throw ApiError.notFound('Section not found');
+    section.deletedAt = new Date();
+    await section.save();
+    await Lesson.updateMany({ section: sectionId }, { $set: { deletedAt: new Date() } });
+    await CourseService.refreshCourseAggregates(courseId);
+  }
+
+  // ── Lessons ─────────────────────────────────────────────────────────
+
+  static async createLesson(courseId, data) {
+    const section = await Section.findOne({ _id: data.section, course: courseId, deletedAt: null });
+    if (!section) throw ApiError.badRequest('Section does not belong to this course');
+    const count = await Lesson.countDocuments({ section: data.section, deletedAt: null });
+    const lesson = await Lesson.create({ ...data, course: courseId, order: data.order ?? count });
+    await CourseService.refreshCourseAggregates(courseId);
+    return lesson;
+  }
+
+  static async updateLesson(courseId, lessonId, data) {
+    const lesson = await Lesson.findOneAndUpdate(
+      { _id: lessonId, course: courseId, deletedAt: null },
+      { $set: data },
+      { new: true }
+    );
+    if (!lesson) throw ApiError.notFound('Lesson not found');
+    await CourseService.refreshCourseAggregates(courseId);
+    return lesson;
+  }
+
+  static async deleteLesson(courseId, lessonId) {
+    const lesson = await Lesson.findOne({ _id: lessonId, course: courseId, deletedAt: null });
+    if (!lesson) throw ApiError.notFound('Lesson not found');
+    lesson.deletedAt = new Date();
+    await lesson.save();
+    await CourseService.refreshCourseAggregates(courseId);
+  }
+
+  static async getLesson(courseId, lessonId, user, { previewOnly = false } = {}) {
+    const lesson = await Lesson.findOne({ _id: lessonId, course: courseId, deletedAt: null })
+      .populate('fileAsset', 'originalName mimeType sizeBytes downloadable')
+      .populate('video', 'title status durationSeconds thumbnail')
+      .populate('quiz', 'title timeLimitMinutes passingScore maxAttempts isLocked isPublished availableFrom availableUntil')
+      .populate('assignment', 'title dueAt maxPoints isPublished');
+    if (!lesson) throw ApiError.notFound('Lesson not found');
+
+    if (user.role === 'student' && !previewOnly) {
+      if (!lesson.isPublished) throw ApiError.forbidden('Lesson not available');
+      // Touch progress record for recent-activity feeds.
+      await LessonProgress.findOneAndUpdate(
+        { student: user.id, lesson: lessonId },
+        { $set: { course: courseId, lastAccessedAt: new Date() } },
+        { upsert: true }
+      );
+    }
+    return lesson;
+  }
+
+  static async reorder(courseId, { sections, lessons, videos } = {}) {
+    const sectionOps = [];
+    const lessonOps = [];
+    const videoOps = [];
+
+    if (sections !== undefined) {
+      const uniqueIds = new Set(sections.map(String));
+      const [existing, currentCount] = await Promise.all([
+        Section.find({ _id: { $in: sections }, course: courseId, deletedAt: null }).select('_id').lean(),
+        Section.countDocuments({ course: courseId, deletedAt: null }),
+      ]);
+      if (uniqueIds.size !== sections.length || existing.length !== sections.length || currentCount !== sections.length) {
+        throw ApiError.badRequest('Sections must be unique and belong to this course');
+      }
+      if (sections.length) {
+        sectionOps.push(...sections.map((id, order) => ({
+          updateOne: { filter: { _id: id, course: courseId, deletedAt: null }, update: { $set: { order } } },
+        })));
+      }
+    }
+
+    if (lessons?.length) {
+      const sectionIds = lessons.map((group) => String(group.sectionId));
+      const lessonIds = lessons.flatMap((group) => group.lessonIds.map(String));
+      const existingSections = await Section.find({
+        _id: { $in: lessons.map((group) => group.sectionId) }, course: courseId, deletedAt: null,
+      }).select('_id').lean();
+      const existingLessons = await Lesson.find({
+        _id: { $in: lessons.flatMap((group) => group.lessonIds) }, course: courseId, deletedAt: null,
+      }).select('_id').lean();
+      if (new Set(sectionIds).size !== sectionIds.length || existingSections.length !== sectionIds.length) {
+        throw ApiError.badRequest('Lesson destinations must be unique and belong to this course');
+      }
+      if (new Set(lessonIds).size !== lessonIds.length || existingLessons.length !== lessonIds.length) {
+        throw ApiError.badRequest('Lessons must be unique and belong to this course');
+      }
+      lessonOps.push(...lessons.flatMap((group) => group.lessonIds.map((id, order) => ({
+        updateOne: {
+          filter: { _id: id, course: courseId, deletedAt: null },
+          update: { $set: { order, section: group.sectionId } },
+        },
+      }))));
+    }
+
+    if (videos !== undefined) {
+      const uniqueIds = new Set(videos.map(String));
+      const [existing, currentCount] = await Promise.all([
+        Video.find({ _id: { $in: videos }, course: courseId, deletedAt: null }).select('_id').lean(),
+        Video.countDocuments({ course: courseId, deletedAt: null }),
+      ]);
+      if (uniqueIds.size !== videos.length || existing.length !== videos.length || currentCount !== videos.length) {
+        throw ApiError.badRequest('Videos must be unique and belong to this course');
+      }
+      if (videos.length) {
+        videoOps.push(...videos.map((id, order) => ({
+          updateOne: { filter: { _id: id, course: courseId, deletedAt: null }, update: { $set: { order } } },
+        })));
+      }
+    }
+
+    await Promise.all([
+      sectionOps.length && Section.bulkWrite(sectionOps),
+      lessonOps.length && Lesson.bulkWrite(lessonOps),
+      videoOps.length && Video.bulkWrite(videoOps),
+    ].filter(Boolean));
+  }
+
+  /** Recompute denormalized counters used on catalog cards. */
+  static async refreshCourseAggregates(courseId) {
+    const [lessonCount, duration, quizCount] = await Promise.all([
+      Lesson.countDocuments({ course: courseId, deletedAt: null }),
+      Lesson.aggregate([
+        { $match: { course: new (require('mongoose').Types.ObjectId)(String(courseId)), deletedAt: null } },
+        { $group: { _id: null, total: { $sum: '$durationMinutes' } } },
+      ]),
+      require('../../models/Quiz').countDocuments({ course: courseId, deletedAt: null }),
+    ]);
+    await Course.updateOne(
+      { _id: courseId },
+      { $set: { lessonCount, quizCount, durationMinutes: duration[0]?.total || 0 } }
+    );
+  }
+}
+
+module.exports = CourseService;

@@ -5,6 +5,11 @@
   "android": {
     "allowMixedContent": false
   },
+  "ios": {
+    "server": {
+      "url": "https://students-alahliyaa.com"
+    }
+  },
   "server": {
     "androidScheme": "https"
   },

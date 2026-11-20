@@ -1,0 +1,174 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 21.216,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 2305830,
+      "text": "في"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 3484160,
+      "duration": 6646660,
+      "text": "علاماتي"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 10266660,
+      "duration": 4205000,
+      "text": "تجد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 14607500,
+      "duration": 5561660,
+      "text": "نتائج"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 20304580,
+      "duration": 9224160,
+      "text": "اختباراتك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 29664580,
+      "duration": 8817080,
+      "text": "وتفاصيل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 38617080,
+      "duration": 10851660,
+      "text": "محاولاتك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 58871250,
+      "duration": 3933750,
+      "text": "بعض"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 62940830,
+      "duration": 7325000,
+      "text": "الإجابات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 70401660,
+      "duration": 6375410,
+      "text": "تنتظر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 76912500,
+      "duration": 5154580,
+      "text": "تصحيح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 82202910,
+      "duration": 7867500,
+      "text": "المعلّم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 92647910,
+      "duration": 6917910,
+      "text": "لذلك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 99701660,
+      "duration": 2034580,
+      "text": "قد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 101872080,
+      "duration": 3933750,
+      "text": "تظهر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 105941250,
+      "duration": 7460830,
+      "text": "النتيجة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 113537500,
+      "duration": 3255410,
+      "text": "قيد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 116928750,
+      "duration": 8952910,
+      "text": "التصحيح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 135377080,
+      "duration": 5561660,
+      "text": "وبعد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 141074160,
+      "duration": 5154580,
+      "text": "إتمام"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 146364580,
+      "duration": 8274580,
+      "text": "متطلبات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 154775000,
+      "duration": 6240000,
+      "text": "الدورة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 163185000,
+      "duration": 4340830,
+      "text": "راجع"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 167661250,
+      "duration": 7325000,
+      "text": "الشهادات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 175122080,
+      "duration": 6104160,
+      "text": "لرؤية"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 181362080,
+      "duration": 7732080,
+      "text": "شهادتك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 189229580,
+      "duration": 3798330,
+      "text": "إذا"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 193163330,
+      "duration": 9359580,
+      "text": "توفّرت"
+    }
+  ]
+}

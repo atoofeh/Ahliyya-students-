@@ -429,13 +429,19 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     lastPos.current = video.currentTime;
     setCurrent(video.currentTime);
     if (!playback.current.paused && !document.hidden && !video.ended) {
-      video.play().catch(() => {
+      if (video.readyState >= 2) setWaiting(false);
+      video.play().then(() => {
+        setWaiting(false);
+      }).catch(() => {
         // iOS may require another tap after an interruption. Keep the restored
         // position and offer Play, rather than silently starting from zero.
         playback.current.paused = true;
         setPlaying(false);
+        setWaiting(false);
         holdBar();
       });
+    } else {
+      setWaiting(false);
     }
   };
 
@@ -476,7 +482,11 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
    */
   const onTimeUpdate = () => {
     const video = videoRef.current;
-    if (!video || restoring.current || video.readyState === 0 || video.seeking) return;
+    if (!video || video.readyState === 0 || video.seeking) return;
+    if (restoring.current && !video.paused && video.readyState >= 2) {
+      restoring.current = false;
+    }
+    if (restoring.current) return;
     const position = video.currentTime;
     const advanced = position - lastPos.current;
     lastPos.current = position;
@@ -485,6 +495,9 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     // other browser re-renders four times a second for nothing.
     if (webkitMediaUi) setCurrent(position);
     if (video.paused) return;
+    if (advanced > 0 || video.readyState >= 3) {
+      setWaiting((wasWaiting) => (wasWaiting ? false : wasWaiting));
+    }
     if (advanced > 0 && advanced <= MAX_STEP_SECONDS) watchedRef.current += advanced;
     if (Date.now() - lastBeat.current > 10000) {
       lastBeat.current = Date.now();
@@ -504,13 +517,23 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
     if (restoring.current) {
       playback.current.paused = !playback.current.paused;
       setPlaying(!playback.current.paused);
-      if (playback.current.paused) video.pause();
-      else completeRestore(video);
+      if (playback.current.paused) {
+        video.pause();
+        setWaiting(false);
+      } else {
+        completeRestore(video);
+      }
       revealBar();
       return;
     }
-    if (video.paused) video.play().catch(() => {});
-    else video.pause();
+    if (video.paused) {
+      video.play().then(() => {
+        if (video.readyState >= 3) setWaiting(false);
+      }).catch(() => {});
+    } else {
+      video.pause();
+      setWaiting(false);
+    }
     revealBar();
   };
   const skip = (seconds) => {
@@ -596,8 +619,12 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
         onDurationChange={(e) => setDuration(Number.isFinite(e.target.duration) ? e.target.duration : 0)}
         onSeeked={(e) => {
           const video = e.currentTarget;
-          if (restoring.current) completeRestore(video);
-          else playback.current = playbackState(video);
+          if (restoring.current) {
+            completeRestore(video);
+          } else {
+            playback.current = playbackState(video);
+            if (video.readyState >= 2) setWaiting(false);
+          }
           lastPos.current = video.currentTime;
           setCurrent(video.currentTime);
         }}
@@ -609,12 +636,32 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
           }
           if (!restoring.current) playback.current.paused = false;
           setPlaying(true);
+          if (videoRef.current?.readyState >= 3) setWaiting(false);
           revealBar();
         }}
         onPlaying={() => { setWaiting(false); setMediaError(false); }}
         onCanPlay={(e) => { completeRestore(e.currentTarget); setWaiting(false); }}
-        onWaiting={() => setWaiting(true)}
-        onStalled={() => { if (!videoRef.current?.paused) setWaiting(true); }}
+        onCanPlayThrough={(e) => { completeRestore(e.currentTarget); setWaiting(false); }}
+        onProgress={(e) => {
+          if (!e.currentTarget.paused && e.currentTarget.readyState >= 3) {
+            setWaiting((was) => (was ? false : was));
+          }
+        }}
+        onWaiting={() => {
+          const video = videoRef.current;
+          // Spurious waiting events in WebKit during playback adjustments or
+          // frame drops should not flag buffering if the element still has
+          // future playable data ready.
+          if (video && video.readyState >= 3) return;
+          setWaiting(true);
+        }}
+        onStalled={() => {
+          // `stalled` is a download socket event (W3C HTMLMediaElement),
+          // fired when the media network fetch pauses or socket becomes idle.
+          // On WebKit/Safari, this fires routinely when the forward buffer is full
+          // during smooth, uninterrupted playback. Playback starvation is signaled
+          // by `waiting`. Never set waiting here.
+        }}
         onError={() => { setMediaError(true); setWaiting(false); holdBar(); }}
         onRateChange={(e) => {
           setSpeed(e.currentTarget.playbackRate);
@@ -632,6 +679,7 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
           if (restoring.current || e.currentTarget.readyState === 0) return;
           playback.current = playbackState(e.currentTarget);
           setPlaying(false);
+          setWaiting(false);
           holdBar();
           heartbeat(e.currentTarget.currentTime);
         }}
@@ -639,6 +687,7 @@ export default function VideoPlayer({ videoId, lessonId, startAt = 0, onProgress
           if (restoring.current) return;
           playback.current = playbackState(e.currentTarget);
           setPlaying(false);
+          setWaiting(false);
           holdBar();
           finish(e.currentTarget.duration || 0);
         }}

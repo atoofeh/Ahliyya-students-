@@ -1,0 +1,74 @@
+;FFMETADATA1
+title=Feker — Arabic Student Guide
+language=ara
+comment=Actual local frontend captures with fictional demonstration data.
+[CHAPTER]
+TIMEBASE=1/1000
+START=0
+END=16500
+title=أهلاً بك في فكر
+[CHAPTER]
+TIMEBASE=1/1000
+START=16500
+END=35900
+title=سجّل الدخول
+[CHAPTER]
+TIMEBASE=1/1000
+START=35900
+END=54567
+title=إعداد الحساب عند الطلب
+[CHAPTER]
+TIMEBASE=1/1000
+START=54567
+END=73933
+title=اختر كلمة مرور جديدة
+[CHAPTER]
+TIMEBASE=1/1000
+START=73933
+END=92100
+title=ابدأ من الرئيسية
+[CHAPTER]
+TIMEBASE=1/1000
+START=92100
+END=110467
+title=أضف دورتك بالرمز
+[CHAPTER]
+TIMEBASE=1/1000
+START=110467
+END=128500
+title=استكشف دليل الدورات
+[CHAPTER]
+TIMEBASE=1/1000
+START=128500
+END=150367
+title=شاهد الدروس وتقدّم
+[CHAPTER]
+TIMEBASE=1/1000
+START=150367
+END=169900
+title=حلّ الاختبار ثم سلّمه
+[CHAPTER]
+TIMEBASE=1/1000
+START=169900
+END=188433
+title=سلّم واجبك
+[CHAPTER]
+TIMEBASE=1/1000
+START=188433
+END=209200
+title=اسأل معلّمك
+[CHAPTER]
+TIMEBASE=1/1000
+START=209200
+END=229333
+title=راجع وتدرّب
+[CHAPTER]
+TIMEBASE=1/1000
+START=229333
+END=249700
+title=تابع نتائجك
+[CHAPTER]
+TIMEBASE=1/1000
+START=249700
+END=269700
+title=ابقَ على اطلاع

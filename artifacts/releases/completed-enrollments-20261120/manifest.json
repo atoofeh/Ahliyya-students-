@@ -1,0 +1,47 @@
+[
+  {
+    "file": "server/src/middleware/courseAccess.js",
+    "before": "e8594e624afbe2a18e8ccd5c1fe99118c0ca9be8b69c23c510d2aa61ffbf98d4",
+    "after": "12222a4abea6a7de0a06ca0829aa491a2af2e9d7402155ca218527c207e8bba2"
+  },
+  {
+    "file": "server/src/modules/courses/courses.service.js",
+    "before": "5eeeb3c0d5ab7b68f913c8e592de011e28fa2734f6936aadc702f42773ac2008",
+    "after": "1bdf06d1f12e8cc70e850a9f7b925745dccb2ff80842af8f6d54886c46eec169"
+  },
+  {
+    "file": "server/src/modules/videos/videos.service.js",
+    "before": "b970bfebea369f5669d7de324babde1320bd944e0d2ad9102ceccdb55aab41a7",
+    "after": "73f68dd15f02d86cd88d9c7fcec9ec3671007801e8930efd8b39d95e2358daf3"
+  },
+  {
+    "file": "server/src/modules/files/files.routes.js",
+    "before": "28bafbddf609878c6cc867418f595dc5daafbddb4fa76b9700e0a00ed3c891cb",
+    "after": "dfcc0d6e510a2186fbd456bb02653e0091d85ef719a6028d924c0cd1c5509dd8"
+  },
+  {
+    "file": "server/src/modules/bookmarks/bookmarks.routes.js",
+    "before": "92fbd1da18c6c19bd2a16f779be00150a7e40f6f44ada3823efa8abdace2f6f8",
+    "after": "7d330b856a697fe3923893a7f67fb0450ca69bf64abb738a65e5a2114f072ea0"
+  },
+  {
+    "file": "server/src/modules/qa/qa.routes.js",
+    "before": "37ee5dfe50d7ff9c7ea931540e95d78fbd286cb3cb20eb9e4e83c04eda0be7dc",
+    "after": "1593e2990e8154d7212cdb7cac6e27e5d9494548dc1cf898d7cb2e8ac64242ef"
+  },
+  {
+    "file": "server/src/modules/enrollments/enrollments.service.js",
+    "before": "5c736073cdd38f9bbd54c6b9be72a7e2d3ce41a8fd4c0ef562f555ff81f754f1",
+    "after": "1bc063d10c6828349077f7cf13e12c7a9b31494cf6fa150b13f9d8399de92d90"
+  },
+  {
+    "file": "server/src/modules/quizzes/quizzes.service.js",
+    "before": "9394a82761d322d2f1e0e0ae9ac5f9197a22cad50dc71e8143b281efca8b7f3a",
+    "after": "cc60fb439ef666b7d3b7c2b621ee3b47ed256a0b19be20ae8508593580b6908b"
+  },
+  {
+    "file": "server/src/jobs/index.js",
+    "before": "2a1476a70cfcf659e39faa1927e24f698d1d953b7866204b1b75b6ca148bcbae",
+    "after": "abede10fb84f2ac63a85e398cd1f66c6e0d41fbeabf87bd7db61f8e92ab17c92"
+  }
+]

@@ -1,0 +1,186 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 20.832,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 3662500,
+      "text": "تابع"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 4840830,
+      "duration": 6511250,
+      "text": "الأخبار"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 11487500,
+      "duration": 9359580,
+      "text": "والإعلانات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 20982910,
+      "duration": 5154580,
+      "text": "وجرس"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 26273330,
+      "duration": 9902500,
+      "text": "الإشعارات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 45713330,
+      "duration": 4069580,
+      "text": "أعد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 49918750,
+      "duration": 5832910,
+      "text": "جولة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 55887080,
+      "duration": 542500,
+      "text": "في"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 56565410,
+      "duration": 6104160,
+      "text": "التطبيق"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 62805000,
+      "duration": 1763330,
+      "text": "من"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 64704160,
+      "duration": 2441660,
+      "text": "زر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 67281660,
+      "duration": 8138750,
+      "text": "المساعدة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 75556250,
+      "duration": 2984160,
+      "text": "أعلى"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 78676250,
+      "duration": 7325000,
+      "text": "الشاشة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 95360830,
+      "duration": 10716250,
+      "text": "ولمشكلة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 106212500,
+      "duration": 678330,
+      "text": "في"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 107026660,
+      "duration": 6917910,
+      "text": "الدخول"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 116657500,
+      "duration": 4069580,
+      "text": "اختر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 120862910,
+      "duration": 5019160,
+      "text": "نسيت"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 126017500,
+      "duration": 4883330,
+      "text": "كلمة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 131036250,
+      "duration": 5425830,
+      "text": "المرور"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 136597910,
+      "duration": 3933750,
+      "text": "لفتح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 140667500,
+      "duration": 5697080,
+      "text": "الدعم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 149348750,
+      "duration": 2305830,
+      "text": "أو"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 151790410,
+      "duration": 5425830,
+      "text": "تواصل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 157352080,
+      "duration": 1899160,
+      "text": "مع"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 159386660,
+      "duration": 5697080,
+      "text": "مسؤول"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 165219580,
+      "duration": 8003330,
+      "text": "حسابك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 182718330,
+      "duration": 6375410,
+      "text": "تعلّماً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 189229580,
+      "duration": 9495410,
+      "text": "موفقاً"
+    }
+  ]
+}

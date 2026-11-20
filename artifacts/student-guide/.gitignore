@@ -1,0 +1,4 @@
+python-deps/
+tools/node_modules/
+tools/npm-cache/
+__pycache__/

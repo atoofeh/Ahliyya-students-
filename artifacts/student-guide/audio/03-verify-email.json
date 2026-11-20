@@ -1,0 +1,180 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 19.392,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 3120000,
+      "text": "إذا"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 4298330,
+      "duration": 4340830,
+      "text": "ظهرت"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 8774580,
+      "duration": 4883330,
+      "text": "صفحة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 13793750,
+      "duration": 4476250,
+      "text": "إعداد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 18405410,
+      "duration": 7596250,
+      "text": "الحساب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 28172080,
+      "duration": 5154580,
+      "text": "أدخل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 33462500,
+      "duration": 6511250,
+      "text": "بريدك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 40109160,
+      "duration": 4883330,
+      "text": "واضغط"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 45128330,
+      "duration": 5968330,
+      "text": "إرسال"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 51232500,
+      "duration": 3120000,
+      "text": "رمز"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 54487910,
+      "duration": 9088330,
+      "text": "التحقق"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 72978750,
+      "duration": 4747500,
+      "text": "افتح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 77862080,
+      "duration": 8274580,
+      "text": "بريدك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 88171250,
+      "duration": 5019160,
+      "text": "واكتب"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 93326250,
+      "duration": 4205000,
+      "text": "الرمز"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 97666660,
+      "duration": 7189160,
+      "text": "المكوّن"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 104991660,
+      "duration": 1627910,
+      "text": "من"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 106755410,
+      "duration": 4069580,
+      "text": "ستة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 110960410,
+      "duration": 7732080,
+      "text": "أرقام"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 121269580,
+      "duration": 3526660,
+      "text": "ثم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 124932080,
+      "duration": 4340830,
+      "text": "اضغط"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 129408750,
+      "duration": 4612080,
+      "text": "تأكيد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 134156250,
+      "duration": 6646660,
+      "text": "البريد"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 150162910,
+      "duration": 7189160,
+      "text": "يمكنك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 157487910,
+      "duration": 6646660,
+      "text": "إعادة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 164270000,
+      "duration": 4747500,
+      "text": "إرسال"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 169153330,
+      "duration": 4883330,
+      "text": "الرمز"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 174172500,
+      "duration": 2712910,
+      "text": "عند"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 177021250,
+      "duration": 7325000,
+      "text": "الحاجة"
+    }
+  ]
+}

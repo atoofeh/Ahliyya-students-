@@ -1,0 +1,162 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 17.064,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 4476250,
+      "text": "أهلاً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 5654580,
+      "duration": 2848750,
+      "text": "بك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 8638750,
+      "duration": 1763330,
+      "text": "في"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 10537910,
+      "duration": 5019160,
+      "text": "فكر"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 17998750,
+      "duration": 6917910,
+      "text": "منصّة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 25052500,
+      "duration": 4612080,
+      "text": "طلبة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 29800000,
+      "duration": 8138750,
+      "text": "الأهلية"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 47477080,
+      "duration": 10445000,
+      "text": "سنرافقك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 58057500,
+      "duration": 1627910,
+      "text": "من"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 59820830,
+      "duration": 4476250,
+      "text": "تسجيل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 64432910,
+      "duration": 5154580,
+      "text": "الدخول"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 69723330,
+      "duration": 2712910,
+      "text": "إلى"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 72572080,
+      "duration": 7596250,
+      "text": "متابعة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 80303750,
+      "duration": 7189160,
+      "text": "دروسك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 87628750,
+      "duration": 11258750,
+      "text": "ونتائجك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 108382910,
+      "duration": 5425830,
+      "text": "تحصل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 113944580,
+      "duration": 2170410,
+      "text": "على"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 116250830,
+      "duration": 2305830,
+      "text": "اسم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 118692500,
+      "duration": 6511250,
+      "text": "المستخدم"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 125339160,
+      "duration": 6375410,
+      "text": "وكلمة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 131850410,
+      "duration": 5561660,
+      "text": "المرور"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 137547500,
+      "duration": 1763330,
+      "text": "من"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 139446660,
+      "duration": 5968330,
+      "text": "مسؤول"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 145550830,
+      "duration": 6917910,
+      "text": "حسابك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 152604580,
+      "duration": 678330,
+      "text": "في"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 153418330,
+      "duration": 7732080,
+      "text": "الإدارة"
+    }
+  ]
+}

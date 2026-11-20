@@ -20,7 +20,7 @@ router.post('/', validate(createSchema), asyncHandler(async (req, res) => {
   const lesson = await Lesson.findOne({ _id: req.body.lesson, deletedAt: null });
   if (!lesson) throw ApiError.notFound('Lesson not found');
   const Enrollment = require('../../models/Enrollment');
-  const enrolled = await Enrollment.findOne({ student: req.user.id, course: lesson.course, status: 'active' });
+  const enrolled = await Enrollment.findOne({ student: req.user.id, course: lesson.course, status: { $in: ['active', 'completed'] } });
   if (!enrolled) throw ApiError.forbidden('Not enrolled in this course');
 
   const bookmark = await Bookmark.create({

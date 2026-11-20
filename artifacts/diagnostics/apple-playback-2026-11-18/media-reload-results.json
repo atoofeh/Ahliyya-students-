@@ -1,0 +1,120 @@
+[
+  {
+    "engine": "chromium",
+    "startAt": 0,
+    "before": {
+      "position": 12.1094,
+      "paused": false,
+      "src": "/__probe-api/videos/synthetic-video/stream?token=synthetic-1"
+    },
+    "after": {
+      "position": 0,
+      "paused": true,
+      "src": "/__probe-api/videos/synthetic-video/stream?token=synthetic-1"
+    },
+    "events": [
+      {
+        "event": "loadstart",
+        "time": 0,
+        "paused": true
+      },
+      {
+        "event": "loadedmetadata",
+        "time": 0,
+        "paused": true
+      },
+      {
+        "event": "playing",
+        "time": 12.0039,
+        "paused": false
+      },
+      {
+        "event": "emptied",
+        "time": 0,
+        "paused": true
+      },
+      {
+        "event": "loadstart",
+        "time": 0,
+        "paused": true
+      },
+      {
+        "event": "loadedmetadata",
+        "time": 0,
+        "paused": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "startAt": 7,
+    "before": {
+      "position": 12.1094,
+      "paused": false,
+      "src": "/__probe-api/videos/synthetic-video/stream?token=synthetic-1"
+    },
+    "after": {
+      "position": 7,
+      "paused": true,
+      "src": "/__probe-api/videos/synthetic-video/stream?token=synthetic-1"
+    },
+    "events": [
+      {
+        "event": "loadstart",
+        "time": 0,
+        "paused": true
+      },
+      {
+        "event": "loadedmetadata",
+        "time": 0,
+        "paused": true
+      },
+      {
+        "event": "playing",
+        "time": 12.0028,
+        "paused": false
+      },
+      {
+        "event": "emptied",
+        "time": 0,
+        "paused": true
+      },
+      {
+        "event": "loadstart",
+        "time": 0,
+        "paused": true
+      },
+      {
+        "event": "loadedmetadata",
+        "time": 0,
+        "paused": true
+      }
+    ],
+    "errors": []
+  },
+  {
+    "engine": "webkit",
+    "startAt": 0,
+    "error": "page.waitForFunction: Timeout 10000ms exceeded.",
+    "errors": [],
+    "mediaState": {
+      "readyState": 0,
+      "error": "",
+      "supportsMp4": "probably",
+      "supportsWebm": "probably"
+    }
+  },
+  {
+    "engine": "webkit",
+    "startAt": 7,
+    "error": "page.waitForFunction: Timeout 10000ms exceeded.",
+    "errors": [],
+    "mediaState": {
+      "readyState": 0,
+      "error": "",
+      "supportsMp4": "probably",
+      "supportsWebm": "probably"
+    }
+  }
+]

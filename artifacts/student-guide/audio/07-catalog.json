@@ -1,0 +1,162 @@
+{
+  "voice": "ar-JO-SanaNeural",
+  "duration": 18.696,
+  "boundaries": [
+    {
+      "type": "WordBoundary",
+      "offset": 1042500,
+      "duration": 2577500,
+      "text": "من"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 3755410,
+      "duration": 3255410,
+      "text": "دليل"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 7146660,
+      "duration": 5968330,
+      "text": "الدورات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 13250830,
+      "duration": 5290410,
+      "text": "يمكنك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 18677080,
+      "duration": 4476250,
+      "text": "البحث"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 23288750,
+      "duration": 2170410,
+      "text": "عن"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 25595000,
+      "duration": 5561660,
+      "text": "المادّة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 31292080,
+      "duration": 7867500,
+      "text": "وقراءة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 39295410,
+      "duration": 10037910,
+      "text": "تفاصيلها"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 58871250,
+      "duration": 3933750,
+      "text": "بعض"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 62940830,
+      "duration": 6375410,
+      "text": "الدورات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 69452080,
+      "duration": 4883330,
+      "text": "تتيح"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 74470830,
+      "duration": 5290410,
+      "text": "دروساً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 79897080,
+      "duration": 8545830,
+      "text": "مجانية"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 88578330,
+      "duration": 9088330,
+      "text": "للمشاهدة"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 97802500,
+      "duration": 7460830,
+      "text": "أولاً"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 114758330,
+      "duration": 3391250,
+      "text": "أما"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 118285410,
+      "duration": 5290410,
+      "text": "بقية"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 123711250,
+      "duration": 6240000,
+      "text": "المحتوى"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 130086660,
+      "duration": 9359580,
+      "text": "والاختبارات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 139582080,
+      "duration": 9766660,
+      "text": "والواجبات"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 152197500,
+      "duration": 7189160,
+      "text": "فتحتاج"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 159522500,
+      "duration": 2984160,
+      "text": "إلى"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 162642500,
+      "duration": 7460830,
+      "text": "تسجيلك"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 170238750,
+      "duration": 678330,
+      "text": "في"
+    },
+    {
+      "type": "WordBoundary",
+      "offset": 171052500,
+      "duration": 6511250,
+      "text": "الدورة"
+    }
+  ]
+}

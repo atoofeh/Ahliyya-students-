@@ -202,7 +202,7 @@ const loadThread = async (threadId, user) => {
   let member = staff;
   if (!member && course) {
     const Enrollment = require('../../models/Enrollment');
-    member = !!(await Enrollment.findOne({ student: user.id, course: course._id, status: 'active' }));
+    member = !!(await Enrollment.findOne({ student: user.id, course: course._id, status: { $in: ['active', 'completed'] } }));
   }
   return {
     thread,

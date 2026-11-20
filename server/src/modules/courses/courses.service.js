@@ -202,7 +202,7 @@ class CourseService {
       Lesson.countDocuments({ course: course._id, deletedAt: null, isPublished: true }),
       require('../../models/User').findById(course.teacher).select('name username'),
       user.role === 'student'
-        ? Enrollment.findOne({ student: user.id, course: course._id, status: 'active' }).lean()
+        ? Enrollment.findOne({ student: user.id, course: course._id, status: { $in: ['active', 'completed'] } }).lean()
         : Promise.resolve(null),
     ]);
 

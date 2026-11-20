@@ -437,3 +437,67 @@ browserTest('watermark stays longer than six seconds and moves within the video 
   assert.equal(await mark.evaluate((node) => getComputedStyle(node).pointerEvents), 'none');
   assert.ok(await page.getByRole('combobox', { name: 'video.speed' }).isVisible());
 });
+
+browserTest('a stalled network event while actively playing does not display a buffering overlay', async (t) => {
+  const { page } = await openPlayer(t, { customControls: true });
+  await positionPlayer(page, { paused: false, position: 10 });
+  await page.waitForFunction(() => !document.querySelector('video').paused && document.querySelector('video').readyState >= 3);
+  assert.equal(await page.getByRole('status').count(), 0);
+  await page.locator('video').evaluate((video) => video.dispatchEvent(new Event('stalled')));
+  assert.equal(await page.getByRole('status').count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'video.pause', exact: true }).count(), 1);
+});
+
+browserTest('a stalled event when readyState is below HAVE_FUTURE_DATA does not trigger buffering', async (t) => {
+  const { page } = await openPlayer(t, { customControls: true });
+  await positionPlayer(page, { paused: false, position: 10 });
+  await page.waitForFunction(() => !document.querySelector('video').paused);
+  assert.equal(await page.getByRole('status').count(), 0);
+  // Emulate WebKit socket stall where readyState is HAVE_CURRENT_DATA (2)
+  await page.locator('video').evaluate((video) => {
+    Object.defineProperty(video, 'readyState', { value: 2, configurable: true });
+    video.dispatchEvent(new Event('stalled'));
+  });
+  assert.equal(await page.getByRole('status').count(), 0);
+});
+
+browserTest('a spurious waiting event with HAVE_FUTURE_DATA is ignored', async (t) => {
+  const { page } = await openPlayer(t, { customControls: true });
+  await positionPlayer(page, { paused: false, position: 10 });
+  await page.waitForFunction(() => !document.querySelector('video').paused && document.querySelector('video').readyState >= 3);
+  assert.equal(await page.getByRole('status').count(), 0);
+  // Emulate spurious waiting event while readyState >= 3
+  await page.locator('video').evaluate((video) => video.dispatchEvent(new Event('waiting')));
+  assert.equal(await page.getByRole('status').count(), 0);
+});
+
+browserTest('a transient waiting event is cleared as soon as playback progresses', async (t) => {
+  const { page } = await openPlayer(t, { customControls: true });
+  await positionPlayer(page, { paused: false, position: 10 });
+  await page.waitForFunction(() => !document.querySelector('video').paused);
+  assert.equal(await page.getByRole('status').count(), 0);
+  // When readyState < 3, waiting event triggers buffering overlay
+  await page.locator('video').evaluate((video) => {
+    Object.defineProperty(video, 'readyState', { value: 2, configurable: true });
+    video.dispatchEvent(new Event('waiting'));
+  });
+  await page.getByRole('status').waitFor();
+  assert.equal(await page.getByRole('status').count(), 1);
+  // Restore readyState and wait for playback timeupdate to clear buffering
+  await page.locator('video').evaluate((video) => {
+    delete video.readyState;
+  });
+  await page.waitForFunction(() => document.querySelectorAll('[role="status"]').length === 0, undefined, { timeout: 5000 });
+  assert.equal(await page.getByRole('status').count(), 0);
+});
+
+browserTest('an autoplay rejection after renewal clears any buffering overlay', async (t) => {
+  const { page } = await openPlayer(t, { customControls: true });
+  await positionPlayer(page);
+  await page.locator('video').evaluate((video) => {
+    video.play = () => Promise.reject(new DOMException('Simulated gesture requirement', 'NotAllowedError'));
+  });
+  await fireRenewal(page);
+  await page.getByRole('button', { name: 'video.play', exact: true }).waitFor();
+  assert.equal(await page.getByRole('status').count(), 0);
+});
