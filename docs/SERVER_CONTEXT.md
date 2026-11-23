@@ -81,3 +81,13 @@
 - Inspection of Windows desktop app (FekerDesktop Electron) traffic confirmed the desktop app loads `https://students-alahliyaa.com/` directly, but Chromium's HTTP disk cache preserved older `index.html` builds across app launches due to absent `Cache-Control` headers on SPA entry routes.
 - Updated `/etc/nginx/sites-available/lms` to explicitly set `Cache-Control: "no-cache, no-store, must-revalidate"`, `Pragma: "no-cache"`, and `Expires: "0"` for `location = /index.html` and `location /`, while preserving `max-age=31536000, immutable` for hashed assets under `/assets/` and `/fonts/`.
 - Verified `nginx -t` passed and reloaded `nginx`. Live HTTPS headers confirmed `Cache-Control: no-cache, no-store, must-revalidate` is returned on both `/` and `/index.html`. Backup saved at `/etc/nginx/sites-available/lms.bak`.
+
+## November 23, 2026, 11:51 (Asia/Amman) · Feker 1.0.10 Android release build
+
+- Built Android release package `com.alahliyya.lms` as version `1.0.10`, version code `13`, incorporating the player buffering state machine fix and live HTTPS API target (`https://students-alahliyaa.com/api/v1`).
+- Signed APK: `Feker-1.0.10.apk` (7,318,580 bytes, SHA-256 `84fff77dec673899a0dbf76dfe2ed044e318582830acf9d61a38dbabdacc1688`).
+- Google Play bundle: `Feker-1.0.10.aab` (6,971,387 bytes, SHA-256 `507ffede6b2e8056e13f399e7f89303e76d12df4badb7bd53bc9e37463f3bf45`).
+- Verification:
+  - Signature verified with `apksigner` against official upload certificate `09340f795faa304bb7503055ba9ec8356814986df3ef9ca07f21ccab72ecdf71`.
+  - Secret scan (`node scripts/scan-apk-secrets.mjs`) verified zero server secrets in the APK.
+  - Manifest badging verified `versionCode='13'` and `versionName='1.0.10'`. Release documentation recorded in `docs/releases/1.0.10.md`.
